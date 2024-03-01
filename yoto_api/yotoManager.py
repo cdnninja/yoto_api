@@ -5,8 +5,6 @@ class YotoManager:
     def __init__(self) -> None:
         pass
 
-    def initialize(self) _> None:
+    def initialize(self) -> None:
         pass
 
-    def login(self, username: str, password: str) -> Token:
-        pass
