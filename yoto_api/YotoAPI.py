@@ -15,11 +15,10 @@ class YotoAPI(self):
         self.LOGIN_URL: str = "login.yotoplay.com"
         self.SCOPE: str = "YOUR_SCOPE"
 
-
     def login(self, username: str, password: str) -> Token:
         token = GetToken(self.LOGIN_URL, self.CLIENT_ID, client_secret=self.CLIENT_ID)
         token.login(username=username, password=password, realm="Username-Password-Authentication")
+        return token
+    
     def getDevices(self) -> None:
         #`${BASE_URL}/device-v2/devices/mine`;
-
-    
