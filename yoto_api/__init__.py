@@ -1,4 +1,4 @@
 """Top-level package for Yoto API"""
 
-from .yoto import Yoto
-from .yotoManager import YotoManager
+from .Yoto import Yoto
+from .YotoManager import YotoManager
