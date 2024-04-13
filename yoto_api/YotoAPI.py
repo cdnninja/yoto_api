@@ -326,11 +326,9 @@ class YotoAPI:
         #   }
         # }
 
-    def _get_authenticated_headers(
-            self, token: Token
-        ) -> dict:
-            return {
-                "User-Agent": "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4",
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token,  # maybe?
-            }
+    def _get_authenticated_headers(self, token: Token) -> dict:
+        return {
+            "User-Agent": "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token,  # maybe?
+        }
