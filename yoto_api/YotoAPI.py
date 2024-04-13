@@ -18,7 +18,7 @@ class YotoAPI:
         self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
         self.MQTT_URL: str = "wss://aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
 
-    def login(self, username: str, password: str) -> Token:
+    def login(self, username: str, password: str) -> GetToken:
         token = GetToken(self.LOGIN_URL, self.CLIENT_ID, client_secret=self.CLIENT_ID)
         token.login(
             username=username,
