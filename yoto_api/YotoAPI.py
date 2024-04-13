@@ -33,7 +33,7 @@ class YotoAPI(self):
         # Request POST contents:
         # audience=https%3A//api.yotoplay.com&client_id=i42noid4b2oiboi4bo&grant_type=password&password=sndoinoinscoif&scope=openid%20email%20profile%20offline_access&username=anonymous%40gmail.com
         
-        ############## ${BASE_URL}/card/details/abcABC #############
+        ############## ${BASE_URL}/card/family/library #############
         # {
         #   "cards": [
         #     {
