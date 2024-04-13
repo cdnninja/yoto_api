@@ -15,8 +15,8 @@ class YotoAPI:
         self.LOGIN_URL: str = "login.yotoplay.com"
         self.TOKEN_URL: str = "https://api.yotoplay.com/auth/token"
         self.SCOPE: str = "YOUR_SCOPE"
-        #self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
-        #self.MQTT_URL: str = "wss://aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
+        # self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
+        # self.MQTT_URL: str = "wss://aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
 
     def login(self, username: str, password: str) -> Token:
         url = self.TOKEN_URL
@@ -38,8 +38,9 @@ class YotoAPI:
             refresh_token=response["refresh_token"],
             token_type=response["token_type"],
             scope=response["scope"],
-            valid_until=response["expires_in"] # Needs to be adjusted to DT
+            valid_until=response["expires_in"],  # Needs to be adjusted to DT
         )
+
     # pass='audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=password&password=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access&username=FILL_THIS_IN%40gmail.com'
     # curl -d "$pass" https://api.yotoplay.com/auth/token | jq '.access_token'
 
@@ -351,7 +352,7 @@ class YotoAPI:
         }
 
     def refresh_token(self, token: Token) -> Token:
-        #to do: add command to refresh token
+        # to do: add command to refresh token
         # audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=refresh_token&refresh_token=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access
 
         return token
