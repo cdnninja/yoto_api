@@ -8,7 +8,7 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-class YotoAPI(self):
+class YotoAPI:
     def __init__(self) -> None:
         self.AUDIENCE: str = "https://api.yotoplay.com"
         self.BASE_URL: str = "https://api.yotoplay.com"
