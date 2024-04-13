@@ -342,3 +342,7 @@ class YotoAPI:
             "Content-Type": "application/json",
             "Authorization": "Bearer " + token,  # maybe?
         }
+
+    def refresh_token(self, token: Token) -> Token:
+        #to do: add command to refresh token
+        return token
