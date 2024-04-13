@@ -1,0 +1,6 @@
+"""Card class"""
+
+@dataclass
+class Card:
+    id: str = None
+    title: str = None
