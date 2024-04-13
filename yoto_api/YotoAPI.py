@@ -4,7 +4,7 @@ import requests
 import logging
 from auth0.authentication import GetToken
 import paho.mqtt.client as mqtt 
-
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
