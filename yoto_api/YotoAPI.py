@@ -12,6 +12,7 @@ _LOGGER = logging.getLogger(__name__)
 class YotoAPI(self):
     def __init__(self) -> None:
         self.AUDIENCE: str = "https://api.yotoplay.com"
+        self.BASE_URL: str = "https://api.yotoplay.com"
         self.CLIENT_ID: str = "cIQ241O2gouOOAwFFvxuGVkHGT3LL6rn"
         self.LOGIN_URL: str = "login.yotoplay.com"
         self.SCOPE: str = "YOUR_SCOPE"
@@ -23,10 +24,16 @@ class YotoAPI(self):
         token.login(username=username, password=password, realm="Username-Password-Authentication")
         return token
     
-    def getDevices(self) -> None:
-        #`${BASE_URL}/device-v2/devices/mine`;
+    def get_devices(self, token) -> None:
+        url = self.BASE_URL + "/device-v2/devices/mine"
+        
+        response = requests.get(
+            url
+        ).json()
+        _LOGGER.debug(f"{DOMAIN} - Get Devices Response: {response}")
+        return response
 
-    def getCards(self) -> None:
+    def get_cards(self, token) -> dict:
         ############## Details below from snooping JSON requests of the app ######################
         
         ############## ${BASE_URL}/auth/token #############
@@ -34,6 +41,14 @@ class YotoAPI(self):
         # audience=https%3A//api.yotoplay.com&client_id=i42noid4b2oiboi4bo&grant_type=password&password=sndoinoinscoif&scope=openid%20email%20profile%20offline_access&username=anonymous%40gmail.com
         
         ############## ${BASE_URL}/card/family/library #############
+        url = self.BASE_URL + "/card/family/library"
+        
+        response = requests.post(
+            url
+        ).json()
+        _LOGGER.debug(f"{DOMAIN} - Get Card Library: {response}")
+        return response
+        
         # {
         #   "cards": [
         #     {
@@ -157,6 +172,16 @@ class YotoAPI(self):
         #     }
         # }
 
+    def get_card_detail(self, token, cardid) -> dict:
+        ############## Details below from snooping JSON requests of the app ######################
+        
+        url = self.BASE_URL + "/card/details/" + cardid
+        
+        response = requests.post(
+            url
+        ).json()
+        _LOGGER.debug(f"{DOMAIN} - Get Card Library: {response}")
+        return response
 
         ############# ${BASE_URL}/card/details/abcABC #############
         # {
