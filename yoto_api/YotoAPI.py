@@ -3,13 +3,12 @@
 import requests
 import logging
 from auth0.authentication import GetToken
-import paho.mqtt.client as mqtt 
-
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class YotoAPI(self):
+class YotoAPI:
     def __init__(self) -> None:
         self.AUDIENCE: str = "https://api.yotoplay.com"
         self.BASE_URL: str = "https://api.yotoplay.com"
@@ -17,38 +16,38 @@ class YotoAPI(self):
         self.LOGIN_URL: str = "login.yotoplay.com"
         self.SCOPE: str = "YOUR_SCOPE"
         self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
-        self.MQTT_URL: str  = "wss://aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
+        self.MQTT_URL: str = "wss://aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
 
     def login(self, username: str, password: str) -> Token:
         token = GetToken(self.LOGIN_URL, self.CLIENT_ID, client_secret=self.CLIENT_ID)
-        token.login(username=username, password=password, realm="Username-Password-Authentication")
+        token.login(
+            username=username,
+            password=password,
+            realm="Username-Password-Authentication",
+        )
         return token
-    
+
     def get_devices(self, token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
-        
-        response = requests.get(
-            url
-        ).json()
+
+        response = requests.get(url).json()
         _LOGGER.debug(f"{DOMAIN} - Get Devices Response: {response}")
         return response
 
     def get_cards(self, token) -> dict:
         ############## Details below from snooping JSON requests of the app ######################
-        
+
         ############## ${BASE_URL}/auth/token #############
         # Request POST contents:
         # audience=https%3A//api.yotoplay.com&client_id=i42noid4b2oiboi4bo&grant_type=password&password=sndoinoinscoif&scope=openid%20email%20profile%20offline_access&username=anonymous%40gmail.com
-        
+
         ############## ${BASE_URL}/card/family/library #############
         url = self.BASE_URL + "/card/family/library"
-        
-        response = requests.post(
-            url
-        ).json()
+
+        response = requests.post(url).json()
         _LOGGER.debug(f"{DOMAIN} - Get Card Library: {response}")
         return response
-        
+
         # {
         #   "cards": [
         #     {
@@ -174,12 +173,10 @@ class YotoAPI(self):
 
     def get_card_detail(self, token, cardid) -> dict:
         ############## Details below from snooping JSON requests of the app ######################
-        
+
         url = self.BASE_URL + "/card/details/" + cardid
-        
-        response = requests.post(
-            url
-        ).json()
+
+        response = requests.post(url).json()
         _LOGGER.debug(f"{DOMAIN} - Get Card Detail: {response}")
         return response
 
@@ -313,4 +310,3 @@ class YotoAPI(self):
         #     "isAccessibleUsingSubscription": false
         #   }
         # }
-
