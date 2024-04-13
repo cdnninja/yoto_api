@@ -8,7 +8,7 @@ from yoto_api import *
 
 
 def login():
-    username = os.environ["USERNAME"]
-    password = os.environ["PASSWORD"]
+    username = os.environ["CDNINJA_USERNAME"]
+    password = os.environ["CDNINJA_PASSWORD"]
     yotomanager = YotoManager(username=username, password=password)
     assert yotomanager
