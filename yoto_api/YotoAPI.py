@@ -37,7 +37,7 @@ class YotoAPI:
             access_token=response["access_token"],
             refresh_token=response["refresh_token"],
             token_type=response["token_type"],
-            scope=response["scope"]
+            scope=response["scope"],
             valid_until=response["expires_in"] # Needs to be adjusted to DT
         )
     # pass='audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=password&password=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access&username=FILL_THIS_IN%40gmail.com'
