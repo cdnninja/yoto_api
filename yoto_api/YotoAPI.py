@@ -20,8 +20,15 @@ class YotoAPI:
 
     def login(self, username: str, password: str) -> Token:
         url = self.TOKEN_URL
-        data = self.BASE_URL + "&client_id=" + self.CLIENT_ID + "&grant_type=password&password=" + password + "&scope=openid%20email%20profile%20offline_access&username=" + password
-        response = self.sessions.post(url, json=data)
+        payload = {}
+        # all the values here should be URL encoded - not sure if this is done automatically by requests
+        payload["audience"] = self.BASE_URL
+        payload["client_id"] = self.CLIENT_ID
+        payload["grant_type"] = "password"
+        payload["password"] = password
+        payload["scope"] = "openid email profile offline_access"
+        payload["username"] = username
+        response = requests.post(url, json=payload).json()
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response.text}")
 
         return Token(
@@ -340,7 +347,7 @@ class YotoAPI:
         return {
             "User-Agent": "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4",
             "Content-Type": "application/json",
-            "Authorization": token.token_type + token.access_token,  # maybe?
+            "Authorization": token.token_type + " " + token.access_token,  # maybe?
         }
 
     def refresh_token(self, token: Token) -> Token:
