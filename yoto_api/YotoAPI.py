@@ -180,7 +180,7 @@ class YotoAPI(self):
         response = requests.post(
             url
         ).json()
-        _LOGGER.debug(f"{DOMAIN} - Get Card Library: {response}")
+        _LOGGER.debug(f"{DOMAIN} - Get Card Detail: {response}")
         return response
 
         ############# ${BASE_URL}/card/details/abcABC #############
