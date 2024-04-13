@@ -13,4 +13,3 @@ class YotoManager:
     def initialize(self) -> None:
         self.token: GetToken = self.YotoAPI.login(self.username, self.password)
         self.players = self.api.get_devices(self.token)
-
