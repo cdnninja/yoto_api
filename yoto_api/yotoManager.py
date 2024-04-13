@@ -1,4 +1,3 @@
-from .Yoto import Yoto
 from .YotoAPI import YotoAPI
 from auth0.authentication import GetToken
 
@@ -8,7 +7,9 @@ class YotoManager:
         self.username: str = username
         self.password: str = password
         self.api: YotoAPI = YotoAPI(self)
-      
+        self.players: dict = {}
+        self.token: GetToken = None
+
     def initialize(self) -> None:
         self.token: GetToken = self.YotoAPI.login(self.username, self.password)
-
+        self.players = self.api.get_devices(self.token)
