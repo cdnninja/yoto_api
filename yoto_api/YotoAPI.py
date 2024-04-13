@@ -340,7 +340,7 @@ class YotoAPI:
         return {
             "User-Agent": "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4",
             "Content-Type": "application/json",
-            "Authorization": "Bearer " + token,  # maybe?
+            "Authorization": "Bearer " + token.access_token,  # maybe?
         }
 
     def refresh_token(self, token: Token) -> Token:
