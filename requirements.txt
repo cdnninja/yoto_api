@@ -1,2 +1,2 @@
-auth0python>=4.7.1
+auth0-python>=4.7.1
 paho-mqtt>=2.0.0
