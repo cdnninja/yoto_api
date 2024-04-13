@@ -2,8 +2,8 @@
 
 import requests
 import logging
-from auth0.authentication import GetToken
 from .const import DOMAIN
+from .Token import Token
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,11 +57,7 @@ class YotoAPI:
         ############## ${BASE_URL}/card/family/library #############
         url = self.BASE_URL + "/card/family/library"
 
-        headers = {"Content-Type": "application/json"}
-        headers = {
-            "User-Agent": "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4",
-            "Authorization": "Bearer " + token,  # maybe?
-        }
+        headers = self._get_authenticated_headers
 
         response = requests.get(url, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Get Card Library: {response}")
@@ -329,3 +325,12 @@ class YotoAPI:
         #     "isAccessibleUsingSubscription": false
         #   }
         # }
+
+    def _get_authenticated_headers(
+            self, token: Token
+        ) -> dict:
+            return {
+                "User-Agent": "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4",
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token,  # maybe?
+            }
