@@ -10,22 +10,31 @@ _LOGGER = logging.getLogger(__name__)
 
 class YotoAPI:
     def __init__(self) -> None:
-        self.AUDIENCE: str = "https://api.yotoplay.com"
         self.BASE_URL: str = "https://api.yotoplay.com"
         self.CLIENT_ID: str = "cIQ241O2gouOOAwFFvxuGVkHGT3LL6rn"
         self.LOGIN_URL: str = "login.yotoplay.com"
+        self.TOKEN_URL: str = "https://api.yotoplay.com/auth/token"
         self.SCOPE: str = "YOUR_SCOPE"
-        self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
-        self.MQTT_URL: str = "wss://aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
+        #self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
+        #self.MQTT_URL: str = "wss://aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
 
     def login(self, username: str, password: str) -> Token:
-        token = GetToken(self.LOGIN_URL, self.CLIENT_ID, client_secret=self.CLIENT_ID)
-        token.login(
+        url = self.TOKEN_URL
+        data = self.BASE_URL + "&client_id=" + self.CLIENT_ID + "&grant_type=password&password=" + password + "&scope=openid%20email%20profile%20offline_access&username=" + password
+        response = self.sessions.post(url, json=data)
+        _LOGGER.debug(f"{DOMAIN} - Sign In Response {response.text}")
+
+        return Token(
             username=username,
             password=password,
-            realm="Username-Password-Authentication",
+            access_token=response["access_token"],
+            refresh_token=response["refresh_token"],
+            token_type=response["token_type"],
+            scope=response["scope"]
+            valid_until=response["expires_in"] # Needs to be adjusted to DT
         )
-        return token
+    # pass='audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=password&password=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access&username=FILL_THIS_IN%40gmail.com'
+    # curl -d "$pass" https://api.yotoplay.com/auth/token | jq '.access_token'
 
     def get_devices(self, token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
@@ -57,7 +66,7 @@ class YotoAPI:
         ############## ${BASE_URL}/card/family/library #############
         url = self.BASE_URL + "/card/family/library"
 
-        headers = self._get_authenticated_headers
+        headers = self._get_authenticated_headers(token)
 
         response = requests.get(url, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Get Card Library: {response}")
@@ -190,8 +199,9 @@ class YotoAPI:
         ############## Details below from snooping JSON requests of the app ######################
 
         url = self.BASE_URL + "/card/details/" + cardid
+        headers = self._get_authenticated_headers(token)
 
-        response = requests.post(url).json()
+        response = requests.post(url, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Get Card Detail: {response}")
         return response
 

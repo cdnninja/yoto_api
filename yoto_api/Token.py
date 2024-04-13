@@ -13,6 +13,6 @@ class Token:
     access_token: str = None
     refresh_token: str = None
     id_token: str = None
-    scope: str = "openid email profile user-cards users offline_access"
+    scope: str = None
     valid_until: dt.datetime = dt.datetime.min
-    token_type: str = "Bearer"
+    token_type: str = None
