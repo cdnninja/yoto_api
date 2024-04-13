@@ -40,7 +40,7 @@ class YotoAPI:
         ############## ${BASE_URL}/auth/token #############
         # Request POST contents:
         # audience=https%3A//api.yotoplay.com&client_id=i42noid4b2oiboi4bo&grant_type=password&password=sndoinoinscoif&scope=openid%20email%20profile%20offline_access&username=anonymous%40gmail.com
-        # 
+        #
         # Response to above:
         # {
         #    "access_token": "kalfkbalsbljagsl",
@@ -50,17 +50,17 @@ class YotoAPI:
         #    "expires_in":86400,
         #    "token_type":"Bearer"
         # }
-        # Requests to endpoints below use contents of "access_token" in the header -> 
+        # Requests to endpoints below use contents of "access_token" in the header ->
         # Authorization: Bearer access_token
         # User-Agent: Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4
 
         ############## ${BASE_URL}/card/family/library #############
         url = self.BASE_URL + "/card/family/library"
 
-        headers = {'Content-Type': 'application/json'}
+        headers = {"Content-Type": "application/json"}
         headers = {
-            'User-Agent': 'Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4',
-            'Authorization': 'Bearer ' + token, #maybe?
+            "User-Agent": "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4",
+            "Authorization": "Bearer " + token,  # maybe?
         }
 
         response = requests.get(url, headers=headers).json()
