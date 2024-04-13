@@ -24,7 +24,7 @@ class YotoAPI:
         # all the values here should be URL encoded - not sure if this is done automatically by requests
         payload["audience"] = self.BASE_URL
         payload["client_id"] = self.CLIENT_ID
-        payload["grant_type'] = "password"
+        payload["grant_type"] = "password"
         payload["password"] = password
         payload["scope"] = "openid email profile offline_access"
         payload["username"] = username
