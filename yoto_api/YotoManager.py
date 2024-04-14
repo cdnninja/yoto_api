@@ -27,11 +27,11 @@ class YotoManager:
         self.update_player_status(self.token)
         self.update_cards(self.token)
 
-    def update_player_status(self, token) -> None:
+    def update_player_status(self) -> None:
         # TODO: Should update the self.players object with a current dict of players. Below isn't complete
         self.players = self.api.update_devices(self.token)
 
-    def update_cards(self, token) -> None:
+    def update_cards(self) -> None:
         # TODO: Should update the self.library object with a current dict of players. Should it do details for all cards too or separate?
         self.library = self.api.update_library(self.token)
 
