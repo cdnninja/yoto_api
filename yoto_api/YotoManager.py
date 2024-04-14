@@ -24,8 +24,8 @@ class YotoManager:
         self.initialize()
 
     def initialize(self) -> None:
-        self.update_player_status(self.token)
-        self.update_cards(self.token)
+        self.update_player_status()
+        self.update_cards()
 
     def update_player_status(self) -> None:
         # TODO: Should update the self.players object with a current dict of players. Below isn't complete
