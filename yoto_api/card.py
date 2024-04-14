@@ -2,6 +2,26 @@
 
 from dataclasses import dataclass
 
+@dataclass
+class Track:
+    icon: str = None  # $.card.content.chapters[0].tracks[0].display.icon16x16 e.g. "https://card-content.yotoplay.com/yoto/SwcetJ..."
+    title: str = None  # $.card.content.chapters[0].tracks[0].title e.g. "Introduction"
+    duration: int = None  # $.card.content.chapters[0].tracks[0].duration e.g. 349
+    key: str = None  # $.card.content.chapters[0].tracks[0].key e.g. "01-INT"
+    format: str = None  # $.card.content.chapters[0].tracks[0].format e.g. "aac"
+    channels: str = None  # $.card.content.chapters[0].tracks[0].channels e.g. "mono"
+    trackUrl: str = None  # $.card.content.chapters[0].tracks[0].trackUrl e.g. "https://secure-media.yotoplay.com/yoto/mYZ6T..."
+    type: str = None  # $.card.content.chapters[0].tracks[0].type e.g. "audio"
+
+
+@dataclass
+class Chapter:
+    icon: str = None  # $.card.content.chapters[0].display.icon16x16 e.g. "https://card-content.yotoplay.com/yoto/SwcetJ..."
+    title: str = None  # $.card.content.chapters[0].title e.g. "Introduction"
+    duration: int = None  # $.card.content.chapters[0].duration e.g. 349
+    key: str = None  # $.card.content.chapters[0].key e.g. "01-INT"
+    tracks: list[Track]  # $.card.content.chapters[0].tracks
+
 
 @dataclass
 class Card:
@@ -15,23 +35,4 @@ class Card:
         None  # $.card.metadata.seriestitle e.g. "Ladybird Audio Adventures Volume 1"
     )
     seriesorder: int = None  # $.card.metadata.seriesorder e.g. 4
-    #chapters: list[Chapter]  # $.card.content.chapters
-
-@dataclass
-class Chapter:
-    icon: str = None  # $.card.content.chapters[0].display.icon16x16 e.g. "https://card-content.yotoplay.com/yoto/SwcetJ..."
-    title: str = None  # $.card.content.chapters[0].title e.g. "Introduction"
-    duration: int = None  # $.card.content.chapters[0].duration e.g. 349
-    key: str = None  # $.card.content.chapters[0].key e.g. "01-INT"
-    #tracks: list[Track]  # $.card.content.chapters[0].tracks
-
-@dataclass
-class Track:
-    icon: str = None  # $.card.content.chapters[0].tracks[0].display.icon16x16 e.g. "https://card-content.yotoplay.com/yoto/SwcetJ..."
-    title: str = None  # $.card.content.chapters[0].tracks[0].title e.g. "Introduction"
-    duration: int = None  # $.card.content.chapters[0].tracks[0].duration e.g. 349
-    key: str = None  # $.card.content.chapters[0].tracks[0].key e.g. "01-INT"
-    format: str = None  # $.card.content.chapters[0].tracks[0].format e.g. "aac"
-    channels: str = None  # $.card.content.chapters[0].tracks[0].channels e.g. "mono"
-    trackUrl: str = None  # $.card.content.chapters[0].tracks[0].trackUrl e.g. "https://secure-media.yotoplay.com/yoto/mYZ6T..."
-    type: str = None  # $.card.content.chapters[0].tracks[0].type e.g. "audio"
+    chapters: list[Chapter]  # $.card.content.chapters

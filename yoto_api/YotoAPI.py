@@ -5,10 +5,10 @@ import logging
 from .const import DOMAIN
 from .Token import Token
 from .Card import Card
-from.YotoPlayer import YotoPlayer
+from .YotoPlayer import YotoPlayer
 
 _LOGGER = logging.getLogger(__name__)
-logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename="example.log", encoding="utf-8", level=logging.DEBUG)
 
 
 class YotoAPI:
@@ -31,7 +31,7 @@ class YotoAPI:
         payload["password"] = password
         payload["scope"] = "openid email profile offline_access"
         payload["username"] = username
-        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = requests.post(url, data=payload, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response}")
 
@@ -60,12 +60,12 @@ class YotoAPI:
             result.append(player)
 
         return result
-        #TODO: parse the data and return a list of yoto devices.
+        # TODO: parse the data and return a list of yoto devices.
 
     def update_library(self, token) -> list[Card]:
         cards = self._get_cards(token)
         return cards
-        #TODO: parse the data and return a list of cards.
+        # TODO: parse the data and return a list of cards.
 
     def refresh_token(self, token: Token) -> Token:
         # to do: add command to refresh token
@@ -75,7 +75,7 @@ class YotoAPI:
 
     def _get_devices(self, token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
-        
+
         headers = self._get_authenticated_headers(token)
 
         response = requests.get(url, headers=headers).json()
@@ -375,14 +375,13 @@ class YotoAPI:
         #   }
         # }
 
-
     def _get_authenticated_headers(self, token: Token) -> dict:
         return {
             "User-Agent": "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4",
             "Content-Type": "application/json",
             "Authorization": token.token_type + " " + token.access_token,  # maybe?
         }
-    
+
     def get_child_value(data, key):
         value = data
         for x in key.split("."):
