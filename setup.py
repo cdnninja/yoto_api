@@ -41,7 +41,7 @@ setup(
     packages=find_packages(include=["yoto_api", "yoto_api.*"]),
     test_suite="tests",
     tests_require=test_requirements,
-    url="https://github.com/cdninja/yoto_api",
+    url="https://github.com/cdnninja/yoto_api",
     version="1.0.4",
     zip_safe=False,
 )
