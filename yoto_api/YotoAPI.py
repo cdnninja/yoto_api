@@ -4,6 +4,8 @@ import requests
 import logging
 from .const import DOMAIN
 from .Token import Token
+from .Card import Card
+from.YotoPlayer import YotoPlayer
 
 _LOGGER = logging.getLogger(__name__)
 logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
@@ -46,7 +48,32 @@ class YotoAPI:
     # pass='audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=password&password=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access&username=FILL_THIS_IN%40gmail.com'
     # curl -d "$pass" https://api.yotoplay.com/auth/token | jq '.access_token'
 
-    def get_devices(self, token) -> None:
+    def update_devices(self, token) -> list[YotoPlayer]:
+        response = self._get_devices(token)
+        result = []
+        for device in response["devices"]:
+            player: YotoPlayer = YotoPlayer(
+                id=device["deviceId"],
+                name=device["name"],
+                deviceType=device["deviceType"],
+            )
+            result.append(player)
+
+        return result
+        #TODO: parse the data and return a list of yoto devices.
+
+    def update_library(self, token) -> list[Card]:
+        cards = self._get_cards(token)
+        return cards
+        #TODO: parse the data and return a list of cards.
+
+    def refresh_token(self, token: Token) -> Token:
+        # to do: add command to refresh token
+        # audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=refresh_token&refresh_token=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access
+
+        return token
+
+    def _get_devices(self, token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
         
         headers = self._get_authenticated_headers(token)
@@ -55,7 +82,7 @@ class YotoAPI:
         _LOGGER.debug(f"{DOMAIN} - Get Devices Response: {response}")
         return response
 
-    def get_cards(self, token) -> dict:
+    def _get_cards(self, token) -> dict:
         ############## Details below from snooping JSON requests of the app ######################
 
         ############## ${BASE_URL}/auth/token #############
@@ -207,7 +234,7 @@ class YotoAPI:
         #     }
         # }
 
-    def get_card_detail(self, token, cardid) -> dict:
+    def _get_card_detail(self, token, cardid) -> dict:
         ############## Details below from snooping JSON requests of the app ######################
 
         url = self.BASE_URL + "/card/details/" + cardid
@@ -348,15 +375,22 @@ class YotoAPI:
         #   }
         # }
 
+
     def _get_authenticated_headers(self, token: Token) -> dict:
         return {
             "User-Agent": "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4",
             "Content-Type": "application/json",
             "Authorization": token.token_type + " " + token.access_token,  # maybe?
         }
-
-    def refresh_token(self, token: Token) -> Token:
-        # to do: add command to refresh token
-        # audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=refresh_token&refresh_token=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access
-
-        return token
+    
+    def get_child_value(data, key):
+        value = data
+        for x in key.split("."):
+            try:
+                value = value[x]
+            except Exception:
+                try:
+                    value = value[int(x)]
+                except Exception:
+                    value = None
+        return value
