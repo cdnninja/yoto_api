@@ -1,6 +1,4 @@
 from .YotoAPI import YotoAPI
-from auth0.authentication import GetToken
-
 
 class YotoManager:
     def __init__(self, username: str, password: str) -> None:
