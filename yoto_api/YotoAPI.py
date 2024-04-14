@@ -9,6 +9,7 @@ from .YotoPlayer import YotoPlayer
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class YotoAPI:
     def __init__(self) -> None:
         self.BASE_URL: str = "https://api.yotoplay.com"

@@ -38,9 +38,7 @@ setup(
     include_package_data=True,
     keywords="yoto_api",
     name="yoto_api",
-    packages=find_packages(
-        include=["yoto_api", "yoto_api.*"]
-    ),
+    packages=find_packages(include=["yoto_api", "yoto_api.*"]),
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/cdninja/yoto_api",

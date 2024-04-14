@@ -16,7 +16,7 @@ class YotoManager:
         self.password: str = password
         self.api: YotoAPI = YotoAPI()
         self.players: dict = {}
-        self.token: Token = None 
+        self.token: Token = None
 
         self.token: Token = self.api.login(self.username, self.password)
         self.players: list = None
@@ -31,8 +31,8 @@ class YotoManager:
         # TODO: Should update the self.players object with a current dict of players. Below isn't complete
         self.players = self.api.update_devices(self.token)
 
-    def update_cards(self, token) -> None: 
-        # TODO: Should update the self.library object with a current dict of players. Should it do details for all cards too or seperate? 
+    def update_cards(self, token) -> None:
+        # TODO: Should update the self.library object with a current dict of players. Should it do details for all cards too or seperate?
         self.library = self.api.update_library(self.token)
 
     def check_and_refresh_token(self) -> bool:
@@ -43,4 +43,3 @@ class YotoManager:
             self.token: Token = self.api.refresh_token(self.token)
             return True
         return False
-    
