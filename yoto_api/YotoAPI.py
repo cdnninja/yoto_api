@@ -55,6 +55,7 @@ class YotoAPI:
                 id=device["deviceId"],
                 name=device["name"],
                 deviceType=device["deviceType"],
+                online=device["online"],
             )
             result.append(player)
 
