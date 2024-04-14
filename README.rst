@@ -1,4 +1,5 @@
-# Introduction
+Introduction
+============
 
 Early days of this API. Plan is to use this for home assistant. Basics are only item build for auth so far. 
 
