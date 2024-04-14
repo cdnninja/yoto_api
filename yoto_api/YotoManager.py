@@ -32,7 +32,7 @@ class YotoManager:
         self.players = self.api.update_devices(self.token)
 
     def update_cards(self, token) -> None:
-        # TODO: Should update the self.library object with a current dict of players. Should it do details for all cards too or seperate?
+        # TODO: Should update the self.library object with a current dict of players. Should it do details for all cards too or separate?
         self.library = self.api.update_library(self.token)
 
     def check_and_refresh_token(self) -> bool:
