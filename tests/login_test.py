@@ -4,7 +4,7 @@ import os
 path_root = r"C:\Users\jayde\OneDrive\Documents\GitHub\main\yoto_api\yoto_api"
 sys.path.append(str(path_root))
 
-from yoto_api import *
+from yoto_api import YotoManager
 
 
 def login():
