@@ -6,12 +6,13 @@ from .const import DOMAIN
 from .Token import Token
 
 _LOGGER = logging.getLogger(__name__)
+logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
 
 
 class YotoAPI:
     def __init__(self) -> None:
         self.BASE_URL: str = "https://api.yotoplay.com"
-        self.CLIENT_ID: str = "cIQ241O2gouOOAwFFvxuGVkHGT3LL6rn"
+        self.CLIENT_ID: str = "4P2do5RhHDXvCDZDZ6oti27Ft2XdRrzr"
         self.LOGIN_URL: str = "login.yotoplay.com"
         self.TOKEN_URL: str = "https://api.yotoplay.com/auth/token"
         self.SCOPE: str = "YOUR_SCOPE"
@@ -29,7 +30,7 @@ class YotoAPI:
         payload["scope"] = "openid email profile offline_access"
         payload["username"] = username
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        response = requests.post(url, json=payload, headers=headers).json()
+        response = requests.post(url, data=payload, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response}")
 
         return Token(
@@ -47,8 +48,10 @@ class YotoAPI:
 
     def get_devices(self, token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
+        
+        headers = self._get_authenticated_headers(token)
 
-        response = requests.get(url).json()
+        response = requests.get(url, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Get Devices Response: {response}")
         return response
 
