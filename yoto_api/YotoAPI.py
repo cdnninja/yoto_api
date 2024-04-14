@@ -28,7 +28,8 @@ class YotoAPI:
         payload["password"] = password
         payload["scope"] = "openid email profile offline_access"
         payload["username"] = username
-        response = requests.post(url, json=payload).json()
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        response = requests.post(url, json=payload, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response}")
 
         return Token(
