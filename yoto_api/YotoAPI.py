@@ -8,8 +8,6 @@ from .Card import Card
 from .YotoPlayer import YotoPlayer
 
 _LOGGER = logging.getLogger(__name__)
-logging.basicConfig(filename="example.log", encoding="utf-8", level=logging.DEBUG)
-
 
 class YotoAPI:
     def __init__(self) -> None:
