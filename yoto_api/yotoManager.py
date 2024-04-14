@@ -8,7 +8,7 @@ class YotoManager:
         self.password: str = password
         self.api: YotoAPI = YotoAPI()
         self.players: dict = {}
-        self.token: GetToken = None
+        self.token: Token = None
 
     def initialize(self) -> None:
         self.token: Token = self.YotoAPI.login(self.username, self.password)
