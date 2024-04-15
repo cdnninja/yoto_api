@@ -16,14 +16,12 @@ class YotoManager:
         self.password: str = password
         self.api: YotoAPI = YotoAPI()
         self.players: dict = {}
-        self.token: Token = None
-
-        self.token: Token = self.api.login(self.username, self.password)
+        self.token: Token = None      
         self.players: list = None
         self.library: list = None
-        self.initialize()
 
     def initialize(self) -> None:
+        self.token: Token = self.api.login(self.username, self.password)
         self.update_player_status()
         self.update_cards()
 
@@ -38,8 +36,9 @@ class YotoManager:
     def check_and_refresh_token(self) -> bool:
         if self.token is None:
             self.initialize()
-        if self.token.valid_until <= dt.datetime.now(pytz.utc):
-            _LOGGER.debug(f"{DOMAIN} - Refresh token expired")
-            self.token: Token = self.api.refresh_token(self.token)
-            return True
-        return False
+        # Check if valid and correct if not
+        #if self.token.valid_until <= dt.datetime.now(pytz.utc):
+            #_LOGGER.debug(f"{DOMAIN} - Refresh token expired")
+            #self.token: Token = self.api.refresh_token(self.token)
+        return True
+        #return False
