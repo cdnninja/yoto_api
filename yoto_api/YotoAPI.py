@@ -2,6 +2,7 @@
 
 import requests
 import logging
+import datetime
 from .const import DOMAIN
 from .Token import Token
 from .Card import Card
@@ -56,6 +57,7 @@ class YotoAPI:
                 name=device["name"],
                 deviceType=device["deviceType"],
                 online=device["online"],
+                last_updated_at=datetime.datetime.now()
             )
             result[player.id] = player
 
