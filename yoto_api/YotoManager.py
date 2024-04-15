@@ -1,11 +1,8 @@
 """YotoManager.py"""
 
 import logging
-import datetime as dt
-import pytz
 from .YotoAPI import YotoAPI
 from .Token import Token
-from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -16,7 +13,7 @@ class YotoManager:
         self.password: str = password
         self.api: YotoAPI = YotoAPI()
         self.players: dict = {}
-        self.token: Token = None      
+        self.token: Token = None
         self.players: list = None
         self.library: list = None
 
@@ -37,8 +34,8 @@ class YotoManager:
         if self.token is None:
             self.initialize()
         # Check if valid and correct if not
-        #if self.token.valid_until <= dt.datetime.now(pytz.utc):
-            #_LOGGER.debug(f"{DOMAIN} - Refresh token expired")
-            #self.token: Token = self.api.refresh_token(self.token)
+        # if self.token.valid_until <= dt.datetime.now(pytz.utc):
+        # _LOGGER.debug(f"{DOMAIN} - Refresh token expired")
+        # self.token: Token = self.api.refresh_token(self.token)
         return True
-        #return False
+        # return False

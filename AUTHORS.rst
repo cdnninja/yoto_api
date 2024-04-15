@@ -5,7 +5,7 @@ Credits
 Development Lead
 ----------------
 
-* 
+*
 
 Contributors
 ------------

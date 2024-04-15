@@ -1,7 +1,7 @@
 Introduction
 ============
 
-Early days of this API. Plan is to use this for home assistant. Basics are only item build for auth so far. 
+Early days of this API. Plan is to use this for home assistant. Basics are only item build for auth so far.
 
 To run this code for test I am doing::
 
