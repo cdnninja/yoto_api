@@ -40,4 +40,3 @@ class YotoManager:
         # self.token: Token = self.api.refresh_token(self.token)
         return True
         # return False
-    
