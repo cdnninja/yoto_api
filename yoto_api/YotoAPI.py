@@ -47,9 +47,9 @@ class YotoAPI:
     # pass='audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=password&password=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access&username=FILL_THIS_IN%40gmail.com'
     # curl -d "$pass" https://api.yotoplay.com/auth/token | jq '.access_token'
 
-    def update_devices(self, token) -> list[YotoPlayer]:
+    def update_devices(self, token) -> dict[YotoPlayer]:
         response = self._get_devices(token)
-        result = []
+        result = {}
         for device in response["devices"]:
             player: YotoPlayer = YotoPlayer(
                 id=device["deviceId"],
@@ -57,7 +57,7 @@ class YotoAPI:
                 deviceType=device["deviceType"],
                 online=device["online"],
             )
-            result.append(player)
+            result[player.id] = player
 
         return result
         # TODO: parse the data and return a list of yoto devices.
