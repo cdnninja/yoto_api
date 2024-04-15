@@ -18,4 +18,6 @@ To run this code for test I am doing::
     logger = logging.getLogger(**name**)
 
     ym = YotoManager(username="username", password="password")
+    ym.check_and_refresh_token()
+    ym.update_player_status()
     print (ym.players)
