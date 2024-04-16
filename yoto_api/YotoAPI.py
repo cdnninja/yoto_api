@@ -24,7 +24,6 @@ class YotoAPI:
     def login(self, username: str, password: str) -> Token:
         url = self.TOKEN_URL
         payload = {}
-        # all the values here should be URL encoded - not sure if this is done automatically by requests
         payload["audience"] = self.BASE_URL
         payload["client_id"] = self.CLIENT_ID
         payload["grant_type"] = "password"
@@ -70,10 +69,26 @@ class YotoAPI:
         # TODO: parse the data and return a list of cards.
 
     def refresh_token(self, token: Token) -> Token:
-        # to do: add command to refresh token
         # audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=refresh_token&refresh_token=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access
-
-        return token
+        url = self.TOKEN_URL
+        payload = {}
+        payload["audience"] = self.BASE_URL
+        payload["client_id"] = self.CLIENT_ID
+        payload["grant_type"] = "refresh_token"
+        payload["refresh_token"] = token.refresh_token
+        payload["scope"] = "openid email profile offline_access"
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        response = requests.post(url, data=payload, headers=headers).json()
+        _LOGGER.debug(f"{DOMAIN} - Sign In Response {response}")
+        return Token(
+            username=token.username,
+            password=token.password,
+            access_token=response["access_token"],
+            refresh_token=response["refresh_token"],
+            token_type=response["token_type"],
+            scope=response["scope"],
+            valid_until=response["expires_in"],  # Needs to be adjusted to DT
+        )
 
     def _get_devices(self, token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
