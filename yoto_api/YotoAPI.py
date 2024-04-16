@@ -3,6 +3,7 @@
 import requests
 import logging
 import datetime
+from datetime import timedelta
 import pytz
 from .const import DOMAIN
 from .Token import Token
@@ -34,6 +35,7 @@ class YotoAPI:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = requests.post(url, data=payload, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response}")
+        valid_until = datetime.datetime.now(pytz.utc) + timedelta(seconds=response["expires_in"])
 
         return Token(
             username=username,
@@ -42,7 +44,7 @@ class YotoAPI:
             refresh_token=response["refresh_token"],
             token_type=response["token_type"],
             scope=response["scope"],
-            valid_until=response["expires_in"],  # Needs to be adjusted to DT
+            valid_until=valid_until,
         )
 
     # pass='audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=password&password=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access&username=FILL_THIS_IN%40gmail.com'
@@ -81,6 +83,7 @@ class YotoAPI:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = requests.post(url, data=payload, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response}")
+        valid_until = datetime.datetime.now(pytz.utc) + timedelta(seconds=response["expires_in"])
         return Token(
             username=token.username,
             password=token.password,
@@ -88,7 +91,7 @@ class YotoAPI:
             refresh_token=response["refresh_token"],
             token_type=response["token_type"],
             scope=response["scope"],
-            valid_until=response["expires_in"],  # Needs to be adjusted to DT
+            valid_until=valid_until,
         )
 
     def _get_devices(self, token) -> None:
