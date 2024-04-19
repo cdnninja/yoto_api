@@ -50,20 +50,29 @@ class YotoAPI:
     # pass='audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=password&password=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access&username=FILL_THIS_IN%40gmail.com'
     # curl -d "$pass" https://api.yotoplay.com/auth/token | jq '.access_token'
 
-    def update_devices(self, token, devices) -> dict[YotoPlayer]:
-        response = self._get_devices(token)      
-        if devices is None:
-            devices = {}
-        else: 
-            for player in response["devices"]:
-                devices[player.id].id = player["deviceId"]
-                devices[player.id].name = player["name"]
-                devices[player.id].deviceType = player["deviceType"]
-                devices[player.id].last_update_at = datetime.datetime.now(pytz.utc)
-                devices[player.id].online = player["online"],
+    def get_devices(self, token) -> dict[YotoPlayer]:
+        response = self._get_devices(token)
+        result = {}
+        for device in response["devices"]:
+            player: YotoPlayer = YotoPlayer(
+                id=device["deviceId"],
+                name=device["name"],
+                deviceType=device["deviceType"],
+                online=device["online"],
+                last_updated_at=datetime.datetime.now(pytz.utc)
+            )
+            result[player.id] = player
+
+        return result
+    
+    def update_devices(self, token, players) -> None:
+        response = self._get_devices(token)
+        for device in response["devices"]:
+            players[device["deviceId"]].online=device["online"]
+            players[device["deviceId"]].last_update_at=datetime.datetime.now(pytz.utc)
 
 
-    def update_library(self, token) -> list[Card]:
+    def get_library(self, token) -> list[Card]:
         cards = self._get_cards(token)
         return cards
         # TODO: parse the data and return a list of cards.
