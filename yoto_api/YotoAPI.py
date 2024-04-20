@@ -68,34 +68,26 @@ class YotoAPI:
     # pass='audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=password&password=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access&username=FILL_THIS_IN%40gmail.com'
     # curl -d "$pass" https://api.yotoplay.com/auth/token | jq '.access_token'
 
-    def get_devices(self, token: Token) -> dict[YotoPlayer]:
+
+    def update_players(self, token: Token, players: list[YotoPlayer]) -> None:
         response = self._get_devices(token)
-        result = {}
-        for device in response["devices"]:
-            player: YotoPlayer = YotoPlayer(
-                id=device["deviceId"],
-                name=device["name"],
-                deviceType=device["deviceType"],
-                online=device["online"],
-                last_updated_at=datetime.datetime.now(pytz.utc),
-            )
-            result[player.id] = player
+        for item in response["devices"]:
+            if self.get_child_value(item,"deviceId") not in players:
+                player: YotoPlayer = YotoPlayer(
+                    id=self.get_child_value(item,"deviceId"),
+                )
+                players[player.id] = player
+            deviceId = self.get_child_value(item,"deviceId")
+            players[deviceId].name=self.get_child_value(item,"name")
+            players[deviceId].deviceType=self.get_child_value(item,"deviceType")
+            players[deviceId].online=self.get_child_value(item,"online")
+            players[deviceId].last_updated_at=datetime.datetime.now(pytz.utc)
 
-        return result
 
-    def update_devices(self, token: Token, players: list[YotoPlayer]) -> None:
-        response = self._get_devices(token)
-        for player in players.values():
-            print(player)
-            player.last_updated_at = datetime.datetime.now(pytz.utc)
-            for device in response["devices"]:
-                if device["deviceId"] == player.id:
-                    player.online = device["online"]
-
-    def get_library(self, token: Token) -> list[Card]:
+    def update_library(self, token: Token, library: dict[Card]) -> list[Card]:
         response = self._get_cards(token)
-        cards = {}
         for item in response["cards"]:
+<<<<<<< Updated upstream
             card: Card = Card(
                 id=self.get_child_value(item, "cardId"),
                 title=self.get_child_value(item, "card.title"),
@@ -113,6 +105,21 @@ class YotoAPI:
             cards[card.id] = card
         return cards
         # TODO: parse the data and return a list of cards.
+=======
+            if self.get_child_value(item,"cardId") not in library:
+                card: Card = Card(
+                    id=self.get_child_value(item,"cardId"),
+                )
+                library[card.id] = card
+            library[self.get_child_value(item,"cardId")].title=self.get_child_value(item,"card.title")
+            library[self.get_child_value(item,"cardId")].description=self.get_child_value(item,"card.metadata.description")
+            library[self.get_child_value(item,"cardId")].author=self.get_child_value(item,"card.metadata.author")
+            library[self.get_child_value(item,"cardId")].category=self.get_child_value(item,"card.metadata.stories")
+            library[self.get_child_value(item,"cardId")].coverImageL=self.get_child_value(item,"card.metadata.cover.imageL")
+            library[self.get_child_value(item,"cardId")].seriesOrder=self.get_child_value(item,"card.metadata.cover.seriesorder")
+            library[self.get_child_value(item,"cardId")].seriesTitle=self.get_child_value(item,"card.metadata.cover.seriestitle")
+
+>>>>>>> Stashed changes
 
     def refresh_token(self, token: Token) -> Token:
         # audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=refresh_token&refresh_token=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access

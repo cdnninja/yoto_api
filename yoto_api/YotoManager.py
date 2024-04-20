@@ -18,22 +18,21 @@ class YotoManager:
         self.api: YotoAPI = YotoAPI()
         self.players: dict = {}
         self.token: Token = None
-        self.players: list = None
-        self.library: list = None
+        self.library: list = {}
 
     def initialize(self) -> None:
         self.token: Token = self.api.login(self.username, self.password)
-        self.players = self.api.get_devices(self.token)
-        self.library = self.api.get_library(self.token)
+        self.update_players_status()
+        self.update_cards()
 
-    def update_player_status(self) -> None:
+    def update_players_status(self) -> None:
         # Updates the data with current player data.
-        self.api.update_devices(self.token, self.players)
+        self.api.update_players(self.token, self.players)
 
     def update_cards(self) -> None:
         # Updates library and all card data.  Typically only required on startup.
         # TODO: Should update the self.library object with a current dict of players. Should it do details for all cards too or separate?
-        self.library = self.api.update_library(self.token)
+        self.api.update_library(self.token, self.library)
 
     def check_and_refresh_token(self) -> bool:
         if self.token is None:
