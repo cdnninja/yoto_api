@@ -65,12 +65,14 @@ class YotoAPI:
 
         return result
     
-    def update_devices(self, token, players) -> None:
+    def update_devices(self, token, players: list[YotoPlayer]) -> None:
         response = self._get_devices(token)
-        for device in response["devices"]:
-            players[device["deviceId"]].online=device["online"]
-            players[device["deviceId"]].last_update_at=datetime.datetime.now(pytz.utc)
-
+        for player in players.values():
+            print(player)
+            player.last_updated_at=datetime.datetime.now(pytz.utc)
+            for device in response["devices"]:
+                if device["deviceId"] == player.id:
+                    player.online=device["online"]
 
     def get_library(self, token) -> list[Card]:
         cards = self._get_cards(token)

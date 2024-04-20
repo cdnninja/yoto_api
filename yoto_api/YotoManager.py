@@ -27,7 +27,7 @@ class YotoManager:
 
     def update_player_status(self) -> None:
         # Updates the data with current player data.
-        self.players = self.api.update_devices(self.token, self.players)
+        self.api.update_devices(self.token, self.players)
 
     def update_cards(self) -> None:
         # Updates library and all card data.  Typically only required on startup.
