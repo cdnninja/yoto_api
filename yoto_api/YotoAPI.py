@@ -35,7 +35,9 @@ class YotoAPI:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = requests.post(url, data=payload, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response}")
-        valid_until = datetime.datetime.now(pytz.utc) + timedelta(seconds=response["expires_in"])
+        valid_until = datetime.datetime.now(pytz.utc) + timedelta(
+            seconds=response["expires_in"]
+        )
 
         return Token(
             username=username,
@@ -59,20 +61,20 @@ class YotoAPI:
                 name=device["name"],
                 deviceType=device["deviceType"],
                 online=device["online"],
-                last_updated_at=datetime.datetime.now(pytz.utc)
+                last_updated_at=datetime.datetime.now(pytz.utc),
             )
             result[player.id] = player
 
         return result
-    
+
     def update_devices(self, token, players: list[YotoPlayer]) -> None:
         response = self._get_devices(token)
         for player in players.values():
             print(player)
-            player.last_updated_at=datetime.datetime.now(pytz.utc)
+            player.last_updated_at = datetime.datetime.now(pytz.utc)
             for device in response["devices"]:
                 if device["deviceId"] == player.id:
-                    player.online=device["online"]
+                    player.online = device["online"]
 
     def get_library(self, token) -> list[Card]:
         cards = self._get_cards(token)
@@ -91,7 +93,9 @@ class YotoAPI:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = requests.post(url, data=payload, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response}")
-        valid_until = datetime.datetime.now(pytz.utc) + timedelta(seconds=response["expires_in"])
+        valid_until = datetime.datetime.now(pytz.utc) + timedelta(
+            seconds=response["expires_in"]
+        )
         return Token(
             username=token.username,
             password=token.password,

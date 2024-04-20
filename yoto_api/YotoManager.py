@@ -1,4 +1,5 @@
 """YotoManager.py"""
+
 import datetime
 import logging
 import pytz
@@ -23,7 +24,7 @@ class YotoManager:
     def initialize(self) -> None:
         self.token: Token = self.api.login(self.username, self.password)
         self.players = self.api.get_devices(self.token)
-        # self.library = 
+        # self.library =
 
     def update_player_status(self) -> None:
         # Updates the data with current player data.
