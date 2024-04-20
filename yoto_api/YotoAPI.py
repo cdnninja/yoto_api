@@ -87,25 +87,6 @@ class YotoAPI:
     def update_library(self, token: Token, library: dict[Card]) -> list[Card]:
         response = self._get_cards(token)
         for item in response["cards"]:
-<<<<<<< Updated upstream
-            card: Card = Card(
-                id=self.get_child_value(item, "cardId"),
-                title=self.get_child_value(item, "card.title"),
-                description=self.get_child_value(item, "card.metadata.description"),
-                author=self.get_child_value(item, "card.metadata.author"),
-                category=self.get_child_value(item, "card.metadata.stories"),
-                coverImageL=self.get_child_value(item, "card.metadata.cover.imageL"),
-                seriesOrder=self.get_child_value(
-                    item, "card.metadata.cover.seriesorder"
-                ),
-                seriesTitle=self.get_child_value(
-                    item, "card.metadata.cover.seriestitle"
-                ),
-            )
-            cards[card.id] = card
-        return cards
-        # TODO: parse the data and return a list of cards.
-=======
             if self.get_child_value(item,"cardId") not in library:
                 card: Card = Card(
                     id=self.get_child_value(item,"cardId"),
@@ -119,7 +100,6 @@ class YotoAPI:
             library[self.get_child_value(item,"cardId")].seriesOrder=self.get_child_value(item,"card.metadata.cover.seriesorder")
             library[self.get_child_value(item,"cardId")].seriesTitle=self.get_child_value(item,"card.metadata.cover.seriestitle")
 
->>>>>>> Stashed changes
 
     def refresh_token(self, token: Token) -> Token:
         # audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=refresh_token&refresh_token=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access
