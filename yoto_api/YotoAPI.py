@@ -65,7 +65,6 @@ class YotoAPI:
         # Authorization: Bearer access_token
         # User-Agent: Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4
 
-
     # pass='audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=password&password=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access&username=FILL_THIS_IN%40gmail.com'
     # curl -d "$pass" https://api.yotoplay.com/auth/token | jq '.access_token'
 
@@ -98,15 +97,19 @@ class YotoAPI:
         cards = {}
         for item in response["cards"]:
             card: Card = Card(
-                id=self.get_child_value(item,"cardId"),
-                title=self.get_child_value(item,"card.title"),
-                description=self.get_child_value(item,"card.metadata.description"),
-                author=self.get_child_value(item,"card.metadata.author"),
-                category=self.get_child_value(item,"card.metadata.stories"),
-                coverImageL=self.get_child_value(item,"card.metadata.cover.imageL"),
-                seriesOrder=self.get_child_value(item,"card.metadata.cover.seriesorder"),
-                seriesTitle=self.get_child_value(item,"card.metadata.cover.seriestitle")
-        )
+                id=self.get_child_value(item, "cardId"),
+                title=self.get_child_value(item, "card.title"),
+                description=self.get_child_value(item, "card.metadata.description"),
+                author=self.get_child_value(item, "card.metadata.author"),
+                category=self.get_child_value(item, "card.metadata.stories"),
+                coverImageL=self.get_child_value(item, "card.metadata.cover.imageL"),
+                seriesOrder=self.get_child_value(
+                    item, "card.metadata.cover.seriesorder"
+                ),
+                seriesTitle=self.get_child_value(
+                    item, "card.metadata.cover.seriestitle"
+                ),
+            )
             cards[card.id] = card
         return cards
         # TODO: parse the data and return a list of cards.
@@ -135,7 +138,6 @@ class YotoAPI:
             scope=response["scope"],
             valid_until=valid_until,
         )
-    
 
     def _get_devices(self, token: Token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
@@ -153,7 +155,7 @@ class YotoAPI:
         headers = self._get_authenticated_headers(token)
 
         response = requests.get(url, headers=headers).json()
-        #_LOGGER.debug(f"{DOMAIN} - Get Card Library: {response}")
+        # _LOGGER.debug(f"{DOMAIN} - Get Card Library: {response}")
         return response
 
         # {
