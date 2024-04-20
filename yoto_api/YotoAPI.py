@@ -90,28 +90,29 @@ class YotoAPI:
                     id=self.get_child_value(item, "cardId"),
                 )
                 library[card.id] = card
-            library[self.get_child_value(item, "cardId")].title = self.get_child_value(
+            cardId = self.get_child_value(item, "cardId")
+            library[cardId].title = self.get_child_value(
                 item, "card.title"
             )
             library[
-                self.get_child_value(item, "cardId")
+                cardId
             ].description = self.get_child_value(item, "card.metadata.description")
             library[self.get_child_value(item, "cardId")].author = self.get_child_value(
                 item, "card.metadata.author"
             )
             library[
-                self.get_child_value(item, "cardId")
+                cardId
             ].category = self.get_child_value(item, "card.metadata.stories")
             library[
-                self.get_child_value(item, "cardId")
+                cardId
             ].coverImageL = self.get_child_value(item, "card.metadata.cover.imageL")
             library[
-                self.get_child_value(item, "cardId")
+                cardId
             ].seriesOrder = self.get_child_value(
                 item, "card.metadata.cover.seriesorder"
             )
             library[
-                self.get_child_value(item, "cardId")
+                cardId
             ].seriesTitle = self.get_child_value(
                 item, "card.metadata.cover.seriestitle"
             )
