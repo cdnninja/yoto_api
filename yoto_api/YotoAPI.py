@@ -411,7 +411,7 @@ class YotoAPI:
         return {
             "User-Agent": "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4",
             "Content-Type": "application/json",
-            "Authorization": token.token_type + " " + token.access_token,  # maybe?
+            "Authorization": token.token_type + " " + token.access_token,
         }
 
     def get_child_value(data, key):
