@@ -24,7 +24,7 @@ class YotoManager:
     def initialize(self) -> None:
         self.token: Token = self.api.login(self.username, self.password)
         self.players = self.api.get_devices(self.token)
-        # self.library =
+        self.library = self.api.get_library(self.token)
 
     def update_player_status(self) -> None:
         # Updates the data with current player data.

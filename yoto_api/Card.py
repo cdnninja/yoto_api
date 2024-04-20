@@ -32,8 +32,8 @@ class Card:
     category: str = None  # $.card.metadata.category e.g. "stories"
     author: str = None  # $.card.metadata.author e.g. "Ladybird Audio Adventures"
     coverImageL: str = None  # $.card.metadata.cover.imageL e.g. "https://card-content.yotoplay.com/yoto/pub/WgoJMZ..."
-    seriestitle: str = (
+    seriesTitle: str = (
         None  # $.card.metadata.seriestitle e.g. "Ladybird Audio Adventures Volume 1"
     )
-    seriesorder: int = None  # $.card.metadata.seriesorder e.g. 4
+    seriesOrder: int = None  # $.card.metadata.seriesorder e.g. 4
     chapters: list[Chapter] = None  # $.card.content.chapters

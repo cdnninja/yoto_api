@@ -94,7 +94,20 @@ class YotoAPI:
                     player.online = device["online"]
 
     def get_library(self, token: Token) -> list[Card]:
-        cards = self._get_cards(token)
+        response = self._get_cards(token)
+        cards = {}
+        for item in response["cards"]:
+            card: Card = Card(
+                id=self.get_child_value(item,"cardId"),
+                title=self.get_child_value(item,"card.title"),
+                description=self.get_child_value(item,"card.metadata.description"),
+                author=self.get_child_value(item,"card.metadata.author"),
+                category=self.get_child_value(item,"card.metadata.stories"),
+                coverImageL=self.get_child_value(item,"card.metadata.cover.imageL"),
+                seriesOrder=self.get_child_value(item,"card.metadata.cover.seriesorder"),
+                seriesTitle=self.get_child_value(item,"card.metadata.cover.seriestitle")
+        )
+            cards[card.id] = card
         return cards
         # TODO: parse the data and return a list of cards.
 
@@ -140,7 +153,7 @@ class YotoAPI:
         headers = self._get_authenticated_headers(token)
 
         response = requests.get(url, headers=headers).json()
-        _LOGGER.debug(f"{DOMAIN} - Get Card Library: {response}")
+        #_LOGGER.debug(f"{DOMAIN} - Get Card Library: {response}")
         return response
 
         # {
@@ -414,7 +427,7 @@ class YotoAPI:
             "Authorization": token.token_type + " " + token.access_token,
         }
 
-    def get_child_value(data, key):
+    def get_child_value(self, data, key):
         value = data
         for x in key.split("."):
             try:
