@@ -48,11 +48,28 @@ class YotoAPI:
             scope=response["scope"],
             valid_until=valid_until,
         )
+        ############## ${BASE_URL}/auth/token #############
+        # Request POST contents:
+        # audience=https%3A//api.yotoplay.com&client_id=i42noid4b2oiboi4bo&grant_type=password&password=sndoinoinscoif&scope=openid%20email%20profile%20offline_access&username=anonymous%40gmail.com
+        #
+        # Response to above:
+        # {
+        #    "access_token": "kalfkbalsbljagsl",
+        #    "refresh_token":"akklabflkablksf",
+        #    "id_token":"klasblgkablksgb",
+        #    "scope":"openid email profile user-cards users offline_access",
+        #    "expires_in":86400,
+        #    "token_type":"Bearer"
+        # }
+        # Requests to endpoints below use contents of "access_token" in the header ->
+        # Authorization: Bearer access_token
+        # User-Agent: Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4
+
 
     # pass='audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=password&password=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access&username=FILL_THIS_IN%40gmail.com'
     # curl -d "$pass" https://api.yotoplay.com/auth/token | jq '.access_token'
 
-    def get_devices(self, token) -> dict[YotoPlayer]:
+    def get_devices(self, token: Token) -> dict[YotoPlayer]:
         response = self._get_devices(token)
         result = {}
         for device in response["devices"]:
@@ -67,7 +84,7 @@ class YotoAPI:
 
         return result
 
-    def update_devices(self, token, players: list[YotoPlayer]) -> None:
+    def update_devices(self, token: Token, players: list[YotoPlayer]) -> None:
         response = self._get_devices(token)
         for player in players.values():
             print(player)
@@ -76,7 +93,7 @@ class YotoAPI:
                 if device["deviceId"] == player.id:
                     player.online = device["online"]
 
-    def get_library(self, token) -> list[Card]:
+    def get_library(self, token: Token) -> list[Card]:
         cards = self._get_cards(token)
         return cards
         # TODO: parse the data and return a list of cards.
@@ -105,8 +122,9 @@ class YotoAPI:
             scope=response["scope"],
             valid_until=valid_until,
         )
+    
 
-    def _get_devices(self, token) -> None:
+    def _get_devices(self, token: Token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
 
         headers = self._get_authenticated_headers(token)
@@ -115,26 +133,7 @@ class YotoAPI:
         _LOGGER.debug(f"{DOMAIN} - Get Devices Response: {response}")
         return response
 
-    def _get_cards(self, token) -> dict:
-        ############## Details below from snooping JSON requests of the app ######################
-
-        ############## ${BASE_URL}/auth/token #############
-        # Request POST contents:
-        # audience=https%3A//api.yotoplay.com&client_id=i42noid4b2oiboi4bo&grant_type=password&password=sndoinoinscoif&scope=openid%20email%20profile%20offline_access&username=anonymous%40gmail.com
-        #
-        # Response to above:
-        # {
-        #    "access_token": "kalfkbalsbljagsl",
-        #    "refresh_token":"akklabflkablksf",
-        #    "id_token":"klasblgkablksgb",
-        #    "scope":"openid email profile user-cards users offline_access",
-        #    "expires_in":86400,
-        #    "token_type":"Bearer"
-        # }
-        # Requests to endpoints below use contents of "access_token" in the header ->
-        # Authorization: Bearer access_token
-        # User-Agent: Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4
-
+    def _get_cards(self, token: Token) -> dict:
         ############## ${BASE_URL}/card/family/library #############
         url = self.BASE_URL + "/card/family/library"
 
@@ -267,7 +266,7 @@ class YotoAPI:
         #     }
         # }
 
-    def _get_card_detail(self, token, cardid) -> dict:
+    def _get_card_detail(self, token: Token, cardid: str) -> dict:
         ############## Details below from snooping JSON requests of the app ######################
 
         url = self.BASE_URL + "/card/details/" + cardid
