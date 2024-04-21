@@ -3,6 +3,9 @@
 import requests
 import logging
 import datetime
+import time
+import paho.mqtt.client as mqtt
+
 from datetime import timedelta
 import pytz
 from .const import DOMAIN
@@ -20,8 +23,8 @@ class YotoAPI:
         self.LOGIN_URL: str = "login.yotoplay.com"
         self.TOKEN_URL: str = "https://api.yotoplay.com/auth/token"
         self.SCOPE: str = "YOUR_SCOPE"
-        # self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
-        # self.MQTT_URL: str = "wss://aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
+        self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
+        self.MQTT_URL: str = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
 
     def login(self, username: str, password: str) -> Token:
         url = self.TOKEN_URL
@@ -81,6 +84,7 @@ class YotoAPI:
             players[deviceId].deviceType = self.get_child_value(item, "deviceType")
             players[deviceId].online = self.get_child_value(item, "online")
             players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
+            self.connect_mqtt(token=token, deviceId=deviceId)
 
     def update_library(self, token: Token, library: dict[Card]) -> list[Card]:
         response = self._get_cards(token)
@@ -282,6 +286,26 @@ class YotoAPI:
         #       "masterUid": "04dedd46720000"
         #     }
         # }
+
+
+    def connect_mqtt(self, token: Token, deviceId: str):
+        def on_message(client, userdata, message):
+            # Process MQTT Message
+            print("message received " ,str(message.payload.decode("utf-8")))
+        client=mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id="DASH"+deviceId,  transport="websockets")
+        client.username_pw_set(username=deviceId + "?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,password=token.access_token)
+        # client.on_connect = on_message
+        client.on_message = on_message
+        client.tls_set()
+        client.connect(host=self.MQTT_URL, port=443)
+        client.subscribe("device/"+deviceId+"/events")
+        client.subscribe("device/"+deviceId+"/status")
+        client.subscribe("device/"+deviceId+"/response")
+        client.loop_start()
+        time.sleep(20)
+        client.loop_stop()
+
+
 
     def _get_card_detail(self, token: Token, cardid: str) -> dict:
         ############## Details below from snooping JSON requests of the app ######################
