@@ -8,10 +8,11 @@ import datetime
 class YotoPlayer:
     id: str = None
     name: str = None
-    deviceType: str = None
+    device_type: str = None
     online: bool = None
     last_updated_at: datetime.datetime = None
-    battery_Level: int = None
+    battery_level: int = None
+    night_light_mode
 
 
 # {'devices': [{'deviceId': 'y23IBS76kCaOSrGlz29XhIFO', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}

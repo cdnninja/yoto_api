@@ -81,7 +81,7 @@ class YotoAPI:
                 players[player.id] = player
             deviceId = self.get_child_value(item, "deviceId")
             players[deviceId].name = self.get_child_value(item, "name")
-            players[deviceId].deviceType = self.get_child_value(item, "deviceType")
+            players[deviceId].device_type = self.get_child_value(item, "deviceType")
             players[deviceId].online = self.get_child_value(item, "online")
             players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
 
