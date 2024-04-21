@@ -1,7 +1,7 @@
 Introduction
 ============
 
-Early days of this API. Plan is to use this for home assistant. So far basic device data comes back including online.   The library of cards is also populated.  Pause command functions.  Not other commands work yet.  
+Early days of this API. Plan is to use this for home assistant. So far basic device data comes back including online.   The library of cards is also populated.  Pause command functions.  Not other commands work yet.
 
 Example Test Code
 =================
@@ -33,13 +33,13 @@ Usage
 =====
 
     ym.check_and_refresh_token()
-Check and refresh token will pull the first set of data.   It also should be run regularily if you keep your code running for days.  It will check if the token is valid.  If it isn't it will refresh the token.  If this is first run of the command and no data has been pulled it will also run update_player_status() and update_cards() for you. 
+Check and refresh token will pull the first set of data.   It also should be run regularily if you keep your code running for days.  It will check if the token is valid.  If it isn't it will refresh the token.  If this is first run of the command and no data has been pulled it will also run update_player_status() and update_cards() for you.
 
     ym.update_player_status()
-Will get a list of players and current status.  Currently this really only updates online / offline.  This is done as part of check_refresh_token so only needed if data is stale. 
+Will get a list of players and current status.  Currently this really only updates online / offline.  This is done as part of check_refresh_token so only needed if data is stale.
 
     ym.connect_to_events()
-Connects to the MQTT broker.  This must be run before any command and also get get useful data. 
+Connects to the MQTT broker.  This must be run before any command and also get get useful data.
 
     ym.pause_player(player_id: str)
 Pauses the player for the player ID sent. ID can be found in ym.players.keys()
@@ -51,6 +51,4 @@ Updates the library of cards.   This is done as part of check_refresh_token so o
 Contains player object will data values you can access.
 
     ym.library
-Contains the library of cards.  Each card being an object with the data values you can use. 
-
-
+Contains the library of cards.  Each card being an object with the data values you can use.
