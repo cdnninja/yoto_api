@@ -292,9 +292,9 @@ class YotoAPI:
             parts = message.topic.split("/")
             base, device, topic = parts
             if topic == "status":
-                self._parse_status_message(str(message.payload.decode('utf-8')), )
-
-
+                self._parse_status_message(
+                    str(message.payload.decode("utf-8")),
+                )
 
         client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION1,
