@@ -61,4 +61,4 @@ Contains the library of cards.  Each card being an object with the data values y
 Other Notes
 ===========
 
-This is not associated or affiliated with yoto play in any way. 
+This is not associated or affiliated with yoto play in any way.
