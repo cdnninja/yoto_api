@@ -1,7 +1,7 @@
 Introduction
 ============
 
-Early days of this API. Plan is to use this for home assistant. So far basic device data comes back including online.   The library of cards is also populated.  Next up I need to figure out MQTT to enable the useful items. 
+Early days of this API. Plan is to use this for home assistant. So far basic device data comes back including online.   The library of cards is also populated.  Next up I need to figure out MQTT to enable the useful items.
 
 To run this code for test I am doing::
 
