@@ -3,6 +3,8 @@
 import requests
 import logging
 import datetime
+import paho.mqtt.client as mqtt
+
 from datetime import timedelta
 import pytz
 from .const import DOMAIN
@@ -20,8 +22,8 @@ class YotoAPI:
         self.LOGIN_URL: str = "login.yotoplay.com"
         self.TOKEN_URL: str = "https://api.yotoplay.com/auth/token"
         self.SCOPE: str = "YOUR_SCOPE"
-        # self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
-        # self.MQTT_URL: str = "wss://aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
+        self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
+        self.MQTT_URL: str = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
 
     def login(self, username: str, password: str) -> Token:
         url = self.TOKEN_URL
@@ -78,7 +80,7 @@ class YotoAPI:
                 players[player.id] = player
             deviceId = self.get_child_value(item, "deviceId")
             players[deviceId].name = self.get_child_value(item, "name")
-            players[deviceId].deviceType = self.get_child_value(item, "deviceType")
+            players[deviceId].device_type = self.get_child_value(item, "deviceType")
             players[deviceId].online = self.get_child_value(item, "online")
             players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
 
@@ -277,6 +279,54 @@ class YotoAPI:
         #       "masterUid": "04dedd46720000"
         #     }
         # }
+
+    def connect_mqtt(self, token: Token, deviceId: str):
+        def on_message(client, userdata, message):
+            # Process MQTT Message
+            _LOGGER.debug(
+                f"{DOMAIN} - MQTT Message: {str(message.payload.decode('utf-8'))}"
+            )
+            _LOGGER.debug(f"{DOMAIN} - MQTT Topic: {message.topic}")
+            _LOGGER.debug(f"{DOMAIN} - MQTT QOS: {message.qos}")
+            _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
+
+        client = mqtt.Client(
+            mqtt.CallbackAPIVersion.VERSION1,
+            client_id="DASH" + deviceId,
+            transport="websockets",
+        )
+        client.username_pw_set(
+            username=deviceId + "?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,
+            password=token.access_token,
+        )
+        # client.on_connect = on_message
+        client.on_message = on_message
+        client.tls_set()
+        client.connect(host=self.MQTT_URL, port=443)
+        client.loop_start()
+        client.subscribe("device/" + deviceId + "/events")
+        client.subscribe("device/" + deviceId + "/status")
+        client.subscribe("device/" + deviceId + "/response")
+        # Command not needed but helps sniffing traffic
+        client.subscribe("device/" + deviceId + "/command")
+
+        # time.sleep(60)
+        # client.loop_stop()
+        return client
+
+    def card_pause(self, client, deviceId):
+        topic = "device/" + deviceId + "/command/card-pause"
+        payload = ""
+        self._publish_command(client, topic, payload)
+        # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}
+
+    def card_play(self, client, deviceId):
+        topic = "device/" + deviceId + "/command/card-play"
+        self._publish_command(self, client, topic, "card-play")
+        # MQTT Message: {"status":{"card-play":"OK","req_body":"{\"uri\":\"https://yoto.io/7JtVV\",\"secondsIn\":0,\"cutOff\":0,\"chapterKey\":\"01\",\"trackKey\":\"01\",\"requestId\":\"5385910e-f853-4f34-99a4-d2ed94f02f6d\"}"}}
+
+    def _publish_command(self, client, topic, payload):
+        client.publish(topic, payload)
 
     def _get_card_detail(self, token: Token, cardid: str) -> dict:
         ############## Details below from snooping JSON requests of the app ######################

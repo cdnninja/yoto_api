@@ -21,3 +21,8 @@ To run this code for test I am doing::
     ym.check_and_refresh_token()
     ym.update_player_status()
     print (ym.players)
+    ym.connect_to_events()
+    # Pauses the first player
+    ym.pause_player(next(iter(ym.players)))
+    # Sleep will let the terminal show events coming back. For dev today.
+    time.sleep(60)
