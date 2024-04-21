@@ -291,22 +291,41 @@ class YotoAPI:
         def on_message(client, userdata, message):
             # Process MQTT Message
             _LOGGER.debug(f"{DOMAIN} - MQTT Message: {str(message.payload.decode('utf-8'))}")
+            _LOGGER.debug(f"{DOMAIN} - MQTT Topic: {message.topic}")
+            _LOGGER.debug(f"{DOMAIN} - MQTT QOS: {message.qos}")
+            _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
+
         client=mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id="DASH"+deviceId,  transport="websockets")
         client.username_pw_set(username=deviceId + "?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,password=token.access_token)
         # client.on_connect = on_message
         client.on_message = on_message
         client.tls_set()
         client.connect(host=self.MQTT_URL, port=443)
+        client.loop_start()
         client.subscribe("device/"+deviceId+"/events")
         client.subscribe("device/"+deviceId+"/status")
         client.subscribe("device/"+deviceId+"/response")
-        client.loop_start()
-        time.sleep(20)
-        client.loop_stop()
+        # Command not needed but helps sniffing traffic
+        client.subscribe("device/"+deviceId+"/command")
+
+        #time.sleep(60)
+        #client.loop_stop()
         return client
+
     
-    def publish_command(self, client, topic, command):
-        client.publish(topic,command)
+    def card_pause(self, client, deviceId):
+        topic = "device/" + deviceId + "/command/card-pause"
+        payload = ""
+        self._publish_command(client, topic, payload)
+        # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}
+    
+    def card_play(self, client, deviceId):
+        topic = "device/" + deviceId + "/command/card-play"
+        self._publish_command(self, client, topic, "card-play")
+        #MQTT Message: {"status":{"card-play":"OK","req_body":"{\"uri\":\"https://yoto.io/7JtVV\",\"secondsIn\":0,\"cutOff\":0,\"chapterKey\":\"01\",\"trackKey\":\"01\",\"requestId\":\"5385910e-f853-4f34-99a4-d2ed94f02f6d\"}"}}
+    
+    def _publish_command(self, client, topic, payload):
+        client.publish(topic, payload)
 
 
     def _get_card_detail(self, token: Token, cardid: str) -> dict:
