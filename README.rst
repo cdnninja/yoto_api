@@ -3,6 +3,11 @@ Introduction
 
 Early days of this API. Plan is to use this for home assistant. So far basic device data comes back including online.   The library of cards is also populated.  Pause command functions.  Not other commands work yet.
 
+Credit
+======
+
+A big thank you to @buzzeddesign for helping to sniff some of the API and make sense of it.  Thank you to @fuatakgun for creating to core architecture is based on over in kia_uvo
+
 Example Test Code
 =================
 To run this code for test I am doing::
@@ -52,3 +57,8 @@ Contains player object will data values you can access.
 
     ym.library
 Contains the library of cards.  Each card being an object with the data values you can use.
+
+Other Notes
+===========
+
+This is not associated or affiliated with yoto play in any way. 
