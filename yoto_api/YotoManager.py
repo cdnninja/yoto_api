@@ -19,6 +19,7 @@ class YotoManager:
         self.players: dict = {}
         self.token: Token = None
         self.library: list = {}
+        self.mqtt_client = None
 
     def initialize(self) -> None:
         self.token: Token = self.api.login(self.username, self.password)
@@ -28,6 +29,10 @@ class YotoManager:
     def update_players_status(self) -> None:
         # Updates the data with current player data.
         self.api.update_players(self.token, self.players)
+
+    def connect_to_events(self) -> None:
+        for player in self.players.values():
+            self.mqtt_client = self.api.connect_mqtt(self.token, player.id)
 
     def update_cards(self) -> None:
         # Updates library and all card data.  Typically only required on startup.

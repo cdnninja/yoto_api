@@ -84,7 +84,6 @@ class YotoAPI:
             players[deviceId].deviceType = self.get_child_value(item, "deviceType")
             players[deviceId].online = self.get_child_value(item, "online")
             players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
-            self.connect_mqtt(token=token, deviceId=deviceId)
 
     def update_library(self, token: Token, library: dict[Card]) -> list[Card]:
         response = self._get_cards(token)
@@ -291,7 +290,7 @@ class YotoAPI:
     def connect_mqtt(self, token: Token, deviceId: str):
         def on_message(client, userdata, message):
             # Process MQTT Message
-            print("message received " ,str(message.payload.decode("utf-8")))
+            _LOGGER.debug(f"{DOMAIN} - MQTT Message: {str(message.payload.decode('utf-8'))}")
         client=mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id="DASH"+deviceId,  transport="websockets")
         client.username_pw_set(username=deviceId + "?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,password=token.access_token)
         # client.on_connect = on_message
@@ -304,7 +303,10 @@ class YotoAPI:
         client.loop_start()
         time.sleep(20)
         client.loop_stop()
-
+        return client
+    
+    def publish_command(self, client, topic, command):
+        client.publish(topic,command)
 
 
     def _get_card_detail(self, token: Token, cardid: str) -> dict:
