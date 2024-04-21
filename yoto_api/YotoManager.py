@@ -25,6 +25,7 @@ class YotoManager:
         self.token: Token = self.api.login(self.username, self.password)
         self.update_players_status()
         self.update_cards()
+        self.connect_to_events()
 
     def update_players_status(self) -> None:
         # Updates the data with current player data.

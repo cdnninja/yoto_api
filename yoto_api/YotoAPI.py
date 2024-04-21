@@ -289,6 +289,12 @@ class YotoAPI:
             _LOGGER.debug(f"{DOMAIN} - MQTT Topic: {message.topic}")
             _LOGGER.debug(f"{DOMAIN} - MQTT QOS: {message.qos}")
             _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
+            parts = message.topic.split("/")
+            base, device, topic = parts
+            if topic == "status":
+                self._parse_status_message(str(message.payload.decode('utf-8')), )
+
+
 
         client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION1,
@@ -327,6 +333,9 @@ class YotoAPI:
 
     def _publish_command(self, client, topic, payload):
         client.publish(topic, payload)
+
+    def _parse_status_message(self, message, player):
+        pass
 
     def _get_card_detail(self, token: Token, cardid: str) -> dict:
         ############## Details below from snooping JSON requests of the app ######################
