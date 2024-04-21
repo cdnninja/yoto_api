@@ -293,11 +293,8 @@ class YotoAPI:
             base, device, topic = parts
             if topic == "status":
                 self._parse_status_message(str(message.payload.decode('utf-8')), )
-
-
-
+        #             mqtt.CallbackAPIVersion.VERSION1,
         client = mqtt.Client(
-            mqtt.CallbackAPIVersion.VERSION1,
             client_id="DASH" + deviceId,
             transport="websockets",
         )
