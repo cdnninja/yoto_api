@@ -3,6 +3,7 @@
 import requests
 import logging
 import datetime
+import re
 import paho.mqtt.client as mqtt
 
 from datetime import timedelta
@@ -85,9 +86,9 @@ class YotoAPI:
 
             # Should we call here or make this a separate call from YM?  This could help us reduce API calls.
             player_status_response = self._get_device_status(token, deviceId)
-            players[deviceId].last_updated_at = self.get_child_value(
+            players[deviceId].last_updated_at = self._parse_datetime(self.get_child_value(
                 player_status_response, "updatedAt"
-            )
+            ), pytz.utc)
             if self.get_child_value(
                 player_status_response, "activeCard"
             ) is not "none":
@@ -562,6 +563,21 @@ class YotoAPI:
                     value = None
         return value
 
+    def _parse_datetime(self, value, timezone) -> datetime.datetime:
+        if value is None:
+            return datetime.datetime(2000, 1, 1, tzinfo=timezone)
+
+        value = value.replace("-", "").replace("T", "").replace(":", "").replace("Z", "")
+        m = re.match(r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})", value)
+        return datetime.datetime(
+            year=int(m.group(1)),
+            month=int(m.group(2)),
+            day=int(m.group(3)),
+            hour=int(m.group(4)),
+            minute=int(m.group(5)),
+            second=int(m.group(6)),
+            tzinfo=timezone,
+        )
 
 ######Endpoints:
 

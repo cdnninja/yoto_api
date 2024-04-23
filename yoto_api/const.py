@@ -10,7 +10,8 @@ LIGHT_COLORS = {
     None: None,
     "0x000000": "Off",
     "0x194a55": "On Night",
-    "0x643600": "On Day"
+    "0x643600": "On Day",
+    "off": "Off",
 }
 
 POWER_SOURCE = {
