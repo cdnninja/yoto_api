@@ -4,7 +4,7 @@ DOMAIN: str = "yoto_api"
 
 # Blue night_light_mode 0x194a55
 # off is 0x000000
-# 0x643600 is a valid response too. I think this is day. 
+# 0x643600 is a valid response too. I think this is day.
 
 LIGHT_COLORS = {
     None: None,
@@ -15,7 +15,7 @@ LIGHT_COLORS = {
 }
 
 POWER_SOURCE = {
-    # Guessing on this. 
+    # Guessing on this.
     1: False,
-    2: True
+    2: True,
 }
