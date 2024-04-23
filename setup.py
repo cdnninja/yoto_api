@@ -31,7 +31,7 @@ setup(
         "Natural Language :: English",
         "Programming Language :: Python :: 3.9",
     ],
-    description="Python Boilerplate contains all the boilerplate you need to create a Python package.",
+    description="A python package that makes it a bit easier to work with the yoto play API. Not associated with Yoto in any way.",
     install_requires=requirements,
     license="MIT license",
     long_description=long_description,
