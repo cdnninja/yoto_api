@@ -83,23 +83,44 @@ class YotoAPI:
             players[deviceId].device_type = self.get_child_value(item, "deviceType")
             players[deviceId].online = self.get_child_value(item, "online")
             players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
-            # Should we call here or make this a seperate call from YM?  This could help us reduce API calls. 
+            # Should we call here or make this a seperate call from YM?  This could help us reduce API calls.
             player_status_response = self._get_device_status(token, deviceId)
             if self.get_child_value(player_status_response, "activeCard") == "none":
                 players[deviceId].active_card = ""
             else:
-                players[deviceId].active_card = self.get_child_value(player_status_response, "activeCard")
-            players[deviceId].ambient_light_sensor_reading = self.get_child_value(player_status_response, "ambientLightSensorReading")
-            players[deviceId].battery_level_percentage = self.get_child_value(player_status_response, "batteryLevelPercentage")
-            players[deviceId].night_mode_on = self.get_child_value(player_status_response, "dayMode")
-            players[deviceId].user_volume = self.get_child_value(player_status_response, "userVolumePercentage")
-            players[deviceId].system_volume = self.get_child_value(player_status_response, "systemVolumePercentage")
-            players[deviceId].temperature_celcius = self.get_child_value(player_status_response, "temperatureCelcius")
-            players[deviceId].bluetooth_audio_connected = self.get_child_value(player_status_response, "isBluetoothAudioConnected")
-            players[deviceId].charging = self.get_child_value(player_status_response, "isCharging")
-            players[deviceId].audio_device_connected = self.get_child_value(player_status_response, "isAudioDeviceConnected")
-            players[deviceId].firmware_version = self.get_child_value(player_status_response, "firmwareVersion")
-
+                players[deviceId].active_card = self.get_child_value(
+                    player_status_response, "activeCard"
+                )
+            players[deviceId].ambient_light_sensor_reading = self.get_child_value(
+                player_status_response, "ambientLightSensorReading"
+            )
+            players[deviceId].battery_level_percentage = self.get_child_value(
+                player_status_response, "batteryLevelPercentage"
+            )
+            players[deviceId].night_mode_on = self.get_child_value(
+                player_status_response, "dayMode"
+            )
+            players[deviceId].user_volume = self.get_child_value(
+                player_status_response, "userVolumePercentage"
+            )
+            players[deviceId].system_volume = self.get_child_value(
+                player_status_response, "systemVolumePercentage"
+            )
+            players[deviceId].temperature_celcius = self.get_child_value(
+                player_status_response, "temperatureCelcius"
+            )
+            players[deviceId].bluetooth_audio_connected = self.get_child_value(
+                player_status_response, "isBluetoothAudioConnected"
+            )
+            players[deviceId].charging = self.get_child_value(
+                player_status_response, "isCharging"
+            )
+            players[deviceId].audio_device_connected = self.get_child_value(
+                player_status_response, "isAudioDeviceConnected"
+            )
+            players[deviceId].firmware_version = self.get_child_value(
+                player_status_response, "firmwareVersion"
+            )
 
     def update_library(self, token: Token, library: dict[Card]) -> list[Card]:
         response = self._get_cards(token)
@@ -163,9 +184,9 @@ class YotoAPI:
         response = requests.get(url, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Get Devices Response: {response}")
         return response
-    
+
     def _get_device_status(self, token: Token, player_id: str) -> None:
-        url = self.BASE_URL + "/device-v2/"+ player_id + "/status"
+        url = self.BASE_URL + "/device-v2/" + player_id + "/status"
 
         headers = self._get_authenticated_headers(token)
 
