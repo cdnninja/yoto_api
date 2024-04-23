@@ -6,17 +6,29 @@ import datetime
 
 @dataclass
 class YotoPlayer:
+    # Device API
     id: str = None
     name: str = None
     device_type: str = None
     online: bool = None
     last_updated_at: datetime.datetime = None
-    battery_level: int = None
-    night_light_mode: str = None
+
+    # Status API
+    active_card: str = None
+    ambient_light_sensor_reading: int = None
+    battery_level_percentage: int = None
+    night_mode_on: bool = None
+    user_volume: int = None
+    system_volume: int = None
+    temperature_celcius: int = None
+    bluetooth_audio_connected: bool = None
+    charging: bool = None
+    audio_device_connected: bool = None
+    firmware_version: str = None
 
 
-# {'devices': [{'deviceId': 'y23IBS76kCaOSrGlz29XhIFO', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}
-
+# {'devices': [{'deviceId': 'XXXX', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}
+# Device Status API: {'activeCard': 'none', 'ambientLightSensorReading': 0, 'averageDownloadSpeedBytesSecond': 0, 'batteryLevelPercentage': 100, 'buzzErrors': 0, 'cardInsertionState': 2, 'dayMode': 0, 'deviceId': 'XXXX', 'errorsLogged': 210, 'firmwareVersion': 'v2.17.5', 'freeDiskSpaceBytes': 30250544, 'isAudioDeviceConnected': False, 'isBackgroundDownloadActive': False, 'isBluetoothAudioConnected': False, 'isCharging': False, 'isOnline': True, 'networkSsid': 'XXXX', 'nightlightMode': '0x000000', 'playingSource': 0, 'powerCapabilities': '0x02', 'powerSource': 2, 'systemVolumePercentage': 47, 'taskWatchdogTimeoutCount': 0, 'temperatureCelcius': '20', 'totalDiskSpaceBytes': 31385600, 'updatedAt': '2024-04-23T01:26:19.927Z', 'uptime': 252342, 'userVolumePercentage': 50, 'utcOffsetSeconds': -21600, 'utcTime': 1713835609, 'wifiStrength': -61}
 # Mqtt response:
 
 {
