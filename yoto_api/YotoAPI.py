@@ -83,7 +83,7 @@ class YotoAPI:
             players[deviceId].device_type = self.get_child_value(item, "deviceType")
             players[deviceId].online = self.get_child_value(item, "online")
             players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
-            # Should we call here or make this a seperate call from YM?  This could help us reduce API calls.
+            # Should we call here or make this a separate call from YM?  This could help us reduce API calls.
             player_status_response = self._get_device_status(token, deviceId)
             if self.get_child_value(player_status_response, "activeCard") == "none":
                 players[deviceId].active_card = ""
