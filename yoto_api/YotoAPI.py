@@ -102,7 +102,7 @@ class YotoAPI:
             players[deviceId].battery_level_percentage = self.get_child_value(
                 player_status_response, "batteryLevelPercentage"
             )
-            players[deviceId].night_mode_on = self.get_child_value(
+            players[deviceId].day_mode_on = self.get_child_value(
                 player_status_response, "dayMode"
             )
             players[deviceId].user_volume = self.get_child_value(

@@ -19,7 +19,7 @@ class YotoPlayer:
     playing_source: str = None
     ambient_light_sensor_reading: int = None
     battery_level_percentage: int = None
-    night_mode_on: bool = None
+    day_mode_on: bool = None
     night_light_mode: str = None
     user_volume: int = None
     system_volume: int = None
