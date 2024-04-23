@@ -7,7 +7,7 @@ import paho.mqtt.client as mqtt
 
 from datetime import timedelta
 import pytz
-from .const import DOMAIN
+from .const import DOMAIN, LIGHT_COLORS, POWER_SOURCE
 from .Token import Token
 from .Card import Card
 from .YotoPlayer import YotoPlayer
@@ -82,9 +82,12 @@ class YotoAPI:
             players[deviceId].name = self.get_child_value(item, "name")
             players[deviceId].device_type = self.get_child_value(item, "deviceType")
             players[deviceId].online = self.get_child_value(item, "online")
-            players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
+
             # Should we call here or make this a separate call from YM?  This could help us reduce API calls.
             player_status_response = self._get_device_status(token, deviceId)
+            players[deviceId].last_updated_at = self.get_child_value(
+                player_status_response, "updatedAt"
+            )
             if self.get_child_value(
                 player_status_response, "activeCard"
             ) is not "none":
@@ -130,9 +133,12 @@ class YotoAPI:
             players[deviceId].playing_source = self.get_child_value(
                 player_status_response, "playingSource"
             )
-            players[deviceId].night_light_mode = self.get_child_value(
+            players[deviceId].night_light_mode = LIGHT_COLORS[self.get_child_value(
                 player_status_response, "nightlightMode"
-            )
+            )]
+            players[deviceId].plugged_in = POWER_SOURCE[self.get_child_value(
+                player_status_response, "powerSource"
+            )]
 
     def update_library(self, token: Token, library: dict[Card]) -> list[Card]:
         response = self._get_cards(token)
