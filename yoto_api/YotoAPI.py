@@ -85,12 +85,15 @@ class YotoAPI:
             players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
             # Should we call here or make this a separate call from YM?  This could help us reduce API calls.
             player_status_response = self._get_device_status(token, deviceId)
-            if self.get_child_value(player_status_response, "activeCard") == "none":
-                players[deviceId].active_card = ""
+            if self.get_child_value(
+                player_status_response, "activeCard"
+            ) is not "none":
+                players[deviceId].is_playing = True
             else:
-                players[deviceId].active_card = self.get_child_value(
-                    player_status_response, "activeCard"
-                )
+                players[deviceId].is_playing = False
+            players[deviceId].active_card = self.get_child_value(
+                player_status_response, "activeCard"
+            )
             players[deviceId].ambient_light_sensor_reading = self.get_child_value(
                 player_status_response, "ambientLightSensorReading"
             )
@@ -120,6 +123,15 @@ class YotoAPI:
             )
             players[deviceId].firmware_version = self.get_child_value(
                 player_status_response, "firmwareVersion"
+            )
+            players[deviceId].wifi_strength = self.get_child_value(
+                player_status_response, "wifiStrength"
+            )
+            players[deviceId].playing_source = self.get_child_value(
+                player_status_response, "playingSource"
+            )
+            players[deviceId].night_light_mode = self.get_child_value(
+                player_status_response, "nightlightMode"
             )
 
     def update_library(self, token: Token, library: dict[Card]) -> list[Card]:

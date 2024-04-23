@@ -15,6 +15,8 @@ class YotoPlayer:
 
     # Status API
     active_card: str = None
+    is_playing: bool = None
+    playing_source: str = None
     ambient_light_sensor_reading: int = None
     battery_level_percentage: int = None
     night_mode_on: bool = None
@@ -25,6 +27,7 @@ class YotoPlayer:
     charging: bool = None
     audio_device_connected: bool = None
     firmware_version: str = None
+    wifi_strength: int = None
 
 
 # {'devices': [{'deviceId': 'XXXX', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}
