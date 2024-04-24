@@ -12,6 +12,7 @@ LIGHT_COLORS = {
     "0x194a55": "On Night",
     "0x643600": "On Day",
     "off": "Off",
+    "0x5a6400": "On Night",
 }
 
 POWER_SOURCE = {
