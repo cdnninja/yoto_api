@@ -29,7 +29,7 @@ class YotoPlayer:
     audio_device_connected: bool = None
     firmware_version: str = None
     wifi_strength: int = None
-    plugged_in: bool = None
+    power_source: str = None
 
 
 # {'devices': [{'deviceId': 'XXXX', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}

@@ -135,7 +135,7 @@ class YotoAPI:
             players[deviceId].night_light_mode = LIGHT_COLORS[
                 self.get_child_value(player_status_response, "nightlightMode")
             ]
-            players[deviceId].plugged_in = POWER_SOURCE[
+            players[deviceId].power_source = POWER_SOURCE[
                 self.get_child_value(player_status_response, "powerSource")
             ]
 

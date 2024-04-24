@@ -16,6 +16,8 @@ LIGHT_COLORS = {
 
 POWER_SOURCE = {
     # Guessing on this.
-    1: False,
-    2: True,
+    0: "Battery Power",
+    1: "Battery Power",
+    2: "USB Power",
+    3: "USB Power"
 }
