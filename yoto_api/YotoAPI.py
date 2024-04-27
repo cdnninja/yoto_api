@@ -187,9 +187,9 @@ class YotoAPI:
             username=token.username,
             password=token.password,
             access_token=response["access_token"],
-            refresh_token=response["refresh_token"],
+            refresh_token=response["id_token"],
             token_type=response["token_type"],
-            scope=response["scope"],
+            scope=token.scope,
             valid_until=valid_until,
         )
 
