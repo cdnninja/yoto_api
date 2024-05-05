@@ -179,7 +179,7 @@ class YotoAPI:
         payload["scope"] = "openid email profile offline_access"
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = requests.post(url, data=payload, headers=headers).json()
-        _LOGGER.debug(f"{DOMAIN} - Sign In Response {response}")
+        _LOGGER.debug(f"{DOMAIN} - Refresh TokenResponse {response}")
         valid_until = datetime.datetime.now(pytz.utc) + timedelta(
             seconds=response["expires_in"]
         )
@@ -187,7 +187,7 @@ class YotoAPI:
             username=token.username,
             password=token.password,
             access_token=response["access_token"],
-            refresh_token=response["id_token"],
+            refresh_token=token.refresh_token,
             token_type=response["token_type"],
             scope=token.scope,
             valid_until=valid_until,
