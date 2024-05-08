@@ -13,11 +13,11 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class YotoMQTTClient:
-    def __init__(self, players: dict[YotoPlayer]) -> None:
+    def __init__(self, player) -> None:
         self.CLIENT_ID: str = "4P2do5RhHDXvCDZDZ6oti27Ft2XdRrzr"
         self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
         self.MQTT_URL: str = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
-        self.players = players
+        self.player = player
         self.client = None
 
     def connect_mqtt(self, token: Token):
