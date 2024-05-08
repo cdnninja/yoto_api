@@ -66,7 +66,6 @@ class YotoMQTTClient:
         player.online = get_child_value(message, "online")
         player.chapter_title = get_child_value(message, "chapterTitle")
 
-
     # {"repeatAll":true,"volume":6,"volumeMax":6,"cardId":"none","playbackStatus":"stopped","streaming":false,"playbackWait":false,"sleepTimerActive":false,"eventUtc":1714960275}
 
     def _on_message(self, client, player, message):
