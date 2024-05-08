@@ -22,9 +22,7 @@ class YotoMQTTClient:
     def connect_mqtt(self, token: Token, player: YotoPlayer):
         #             mqtt.CallbackAPIVersion.VERSION1,
         self.client = mqtt.Client(
-            client_id="DASH" + player.id,
-            transport="websockets",
-            userdata=player
+            client_id="DASH" + player.id, transport="websockets", userdata=player
         )
         self.client.username_pw_set(
             username=player.id + "?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,
