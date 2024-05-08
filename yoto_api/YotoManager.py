@@ -5,6 +5,7 @@ import logging
 import pytz
 
 from .YotoAPI import YotoAPI
+from .YotoMQTTClient import YotoMQTTClient
 from .Token import Token
 from .const import DOMAIN
 
@@ -34,7 +35,8 @@ class YotoManager:
     def connect_to_events(self) -> None:
         for player in self.players.values():
             # Needs to be correct to handle multiple devices. 1 client per device
-            self.mqtt_client = self.api.connect_mqtt(self.token, player.id)
+            self.mqtt_client: YotoMQTTClient = YotoMQTTClient(player)
+            self.mqtt_client.connect_mqtt(self.token)
 
     def update_cards(self) -> None:
         # Updates library and all card data.  Typically only required on startup.

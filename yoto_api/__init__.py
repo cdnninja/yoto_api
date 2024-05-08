@@ -5,3 +5,4 @@ from .YotoPlayer import YotoPlayer
 from .YotoManager import YotoManager
 from .YotoAPI import YotoAPI
 from .Token import Token
+from .YotoMQTTClient import YotoMQTTClient
