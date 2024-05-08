@@ -3,8 +3,6 @@
 import requests
 import logging
 import datetime
-import re
-import paho.mqtt.client as mqtt
 
 from datetime import timedelta
 import pytz
@@ -12,6 +10,7 @@ from .const import DOMAIN, LIGHT_COLORS, POWER_SOURCE
 from .Token import Token
 from .Card import Card
 from .YotoPlayer import YotoPlayer
+from .utils import get_child_value, parse_datetime
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,9 +21,6 @@ class YotoAPI:
         self.CLIENT_ID: str = "4P2do5RhHDXvCDZDZ6oti27Ft2XdRrzr"
         self.LOGIN_URL: str = "login.yotoplay.com"
         self.TOKEN_URL: str = "https://api.yotoplay.com/auth/token"
-        self.SCOPE: str = "YOUR_SCOPE"
-        self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
-        self.MQTT_URL: str = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
 
     def login(self, username: str, password: str) -> Token:
         url = self.TOKEN_URL
@@ -74,97 +70,95 @@ class YotoAPI:
     def update_players(self, token: Token, players: list[YotoPlayer]) -> None:
         response = self._get_devices(token)
         for item in response["devices"]:
-            if self.get_child_value(item, "deviceId") not in players:
+            if get_child_value(item, "deviceId") not in players:
                 player: YotoPlayer = YotoPlayer(
-                    id=self.get_child_value(item, "deviceId"),
+                    id=get_child_value(item, "deviceId"),
                 )
                 players[player.id] = player
-            deviceId = self.get_child_value(item, "deviceId")
-            players[deviceId].name = self.get_child_value(item, "name")
-            players[deviceId].device_type = self.get_child_value(item, "deviceType")
-            players[deviceId].online = self.get_child_value(item, "online")
+            deviceId = get_child_value(item, "deviceId")
+            players[deviceId].name = get_child_value(item, "name")
+            players[deviceId].device_type = get_child_value(item, "deviceType")
+            players[deviceId].online = get_child_value(item, "online")
 
             # Should we call here or make this a separate call from YM?  This could help us reduce API calls.
             player_status_response = self._get_device_status(token, deviceId)
-            players[deviceId].last_updated_at = self._parse_datetime(
-                self.get_child_value(player_status_response, "updatedAt"), pytz.utc
+            players[deviceId].last_updated_at = parse_datetime(
+                get_child_value(player_status_response, "updatedAt"), pytz.utc
             )
-            if self.get_child_value(player_status_response, "activeCard") != "none":
+            if get_child_value(player_status_response, "activeCard") != "none":
                 players[deviceId].is_playing = True
             else:
                 players[deviceId].is_playing = False
-            players[deviceId].active_card = self.get_child_value(
+            players[deviceId].active_card = get_child_value(
                 player_status_response, "activeCard"
             )
-            players[deviceId].ambient_light_sensor_reading = self.get_child_value(
+            players[deviceId].ambient_light_sensor_reading = get_child_value(
                 player_status_response, "ambientLightSensorReading"
             )
-            players[deviceId].battery_level_percentage = self.get_child_value(
+            players[deviceId].battery_level_percentage = get_child_value(
                 player_status_response, "batteryLevelPercentage"
             )
-            players[deviceId].day_mode_on = self.get_child_value(
+            players[deviceId].day_mode_on = get_child_value(
                 player_status_response, "dayMode"
             )
-            players[deviceId].user_volume = self.get_child_value(
+            players[deviceId].user_volume = get_child_value(
                 player_status_response, "userVolumePercentage"
             )
-            players[deviceId].system_volume = self.get_child_value(
+            players[deviceId].system_volume = get_child_value(
                 player_status_response, "systemVolumePercentage"
             )
-            players[deviceId].temperature_celcius = self.get_child_value(
+            players[deviceId].temperature_celcius = get_child_value(
                 player_status_response, "temperatureCelcius"
             )
-            players[deviceId].bluetooth_audio_connected = self.get_child_value(
+            players[deviceId].bluetooth_audio_connected = get_child_value(
                 player_status_response, "isBluetoothAudioConnected"
             )
-            players[deviceId].charging = self.get_child_value(
+            players[deviceId].charging = get_child_value(
                 player_status_response, "isCharging"
             )
-            players[deviceId].audio_device_connected = self.get_child_value(
+            players[deviceId].audio_device_connected = get_child_value(
                 player_status_response, "isAudioDeviceConnected"
             )
-            players[deviceId].firmware_version = self.get_child_value(
+            players[deviceId].firmware_version = get_child_value(
                 player_status_response, "firmwareVersion"
             )
-            players[deviceId].wifi_strength = self.get_child_value(
+            players[deviceId].wifi_strength = get_child_value(
                 player_status_response, "wifiStrength"
             )
-            players[deviceId].playing_source = self.get_child_value(
+            players[deviceId].playing_source = get_child_value(
                 player_status_response, "playingSource"
             )
             players[deviceId].night_light_mode = LIGHT_COLORS[
-                self.get_child_value(player_status_response, "nightlightMode")
+                get_child_value(player_status_response, "nightlightMode")
             ]
             players[deviceId].power_source = POWER_SOURCE[
-                self.get_child_value(player_status_response, "powerSource")
+                get_child_value(player_status_response, "powerSource")
             ]
 
     def update_library(self, token: Token, library: dict[Card]) -> list[Card]:
         response = self._get_cards(token)
         for item in response["cards"]:
-            if self.get_child_value(item, "cardId") not in library:
+            if get_child_value(item, "cardId") not in library:
                 card: Card = Card(
-                    id=self.get_child_value(item, "cardId"),
+                    id=get_child_value(item, "cardId"),
                 )
                 library[card.id] = card
-            cardId = self.get_child_value(item, "cardId")
-            library[cardId].title = self.get_child_value(item, "card.title")
-            library[cardId].description = self.get_child_value(
+            cardId = get_child_value(item, "cardId")
+            library[cardId].title = get_child_value(item, "card.title")
+            library[cardId].description = get_child_value(
                 item, "card.metadata.description"
             )
-            library[self.get_child_value(item, "cardId")].author = self.get_child_value(
+            library[get_child_value(item, "cardId")].author = get_child_value(
                 item, "card.metadata.author"
             )
-            library[cardId].category = self.get_child_value(
-                item, "card.metadata.stories"
-            )
-            library[cardId].coverImageL = self.get_child_value(
+            library[cardId].category = get_child_value(item, "card.metadata.stories")
+            library[cardId].coverImageL = get_child_value(
                 item, "card.metadata.cover.imageL"
             )
-            library[cardId].seriesOrder = self.get_child_value(
+            library[cardId].seriesOrder = get_child_value(
                 item, "card.metadata.cover.seriesorder"
             )
-            library[cardId].seriesTitle = self.get_child_value(
+            library[cardId].seriesTitle = get_child_value(
                 item, "card.metadata.cover.seriestitle"
             )
 
@@ -344,63 +338,6 @@ class YotoAPI:
         #     }
         # }
 
-    def connect_mqtt(self, token: Token, deviceId: str):
-        def on_message(client, userdata, message):
-            # Process MQTT Message
-            _LOGGER.debug(
-                f"{DOMAIN} - MQTT Message: {str(message.payload.decode('utf-8'))}"
-            )
-            _LOGGER.debug(f"{DOMAIN} - MQTT Topic: {message.topic}")
-            _LOGGER.debug(f"{DOMAIN} - MQTT QOS: {message.qos}")
-            _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
-            parts = message.topic.split("/")
-            base, device, topic = parts
-            if topic == "status":
-                self._parse_status_message(
-                    str(message.payload.decode("utf-8")),
-                )
-
-        #             mqtt.CallbackAPIVersion.VERSION1,
-        client = mqtt.Client(
-            client_id="DASH" + deviceId,
-            transport="websockets",
-        )
-        client.username_pw_set(
-            username=deviceId + "?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,
-            password=token.access_token,
-        )
-        # client.on_connect = on_message
-        client.on_message = on_message
-        client.tls_set()
-        client.connect(host=self.MQTT_URL, port=443)
-        client.loop_start()
-        client.subscribe("device/" + deviceId + "/events")
-        client.subscribe("device/" + deviceId + "/status")
-        client.subscribe("device/" + deviceId + "/response")
-        # Command not needed but helps sniffing traffic
-        client.subscribe("device/" + deviceId + "/command")
-
-        # time.sleep(60)
-        # client.loop_stop()
-        return client
-
-    def card_pause(self, client, deviceId):
-        topic = "device/" + deviceId + "/command/card-pause"
-        payload = ""
-        self._publish_command(client, topic, payload)
-        # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}
-
-    def card_play(self, client, deviceId):
-        topic = "device/" + deviceId + "/command/card-play"
-        self._publish_command(self, client, topic, "card-play")
-        # MQTT Message: {"status":{"card-play":"OK","req_body":"{\"uri\":\"https://yoto.io/7JtVV\",\"secondsIn\":0,\"cutOff\":0,\"chapterKey\":\"01\",\"trackKey\":\"01\",\"requestId\":\"5385910e-f853-4f34-99a4-d2ed94f02f6d\"}"}}
-
-    def _publish_command(self, client, topic, payload):
-        client.publish(topic, payload)
-
-    def _parse_status_message(self, message, player):
-        pass
-
     def _get_card_detail(self, token: Token, cardid: str) -> dict:
         ############## Details below from snooping JSON requests of the app ######################
 
@@ -548,36 +485,6 @@ class YotoAPI:
             "Content-Type": "application/json",
             "Authorization": token.token_type + " " + token.access_token,
         }
-
-    def get_child_value(self, data, key):
-        value = data
-        for x in key.split("."):
-            try:
-                value = value[x]
-            except Exception:
-                try:
-                    value = value[int(x)]
-                except Exception:
-                    value = None
-        return value
-
-    def _parse_datetime(self, value, timezone) -> datetime.datetime:
-        if value is None:
-            return datetime.datetime(2000, 1, 1, tzinfo=timezone)
-
-        value = (
-            value.replace("-", "").replace("T", "").replace(":", "").replace("Z", "")
-        )
-        m = re.match(r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})", value)
-        return datetime.datetime(
-            year=int(m.group(1)),
-            month=int(m.group(2)),
-            day=int(m.group(3)),
-            hour=int(m.group(4)),
-            minute=int(m.group(5)),
-            second=int(m.group(6)),
-            tzinfo=timezone,
-        )
 
 
 ######Endpoints:
