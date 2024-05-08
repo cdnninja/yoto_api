@@ -56,11 +56,14 @@ class YotoMQTTClient:
         self.client.publish(topic, payload)
 
     def _parse_status_message(self, message, player):
-        _LOGGER.debug(f"{DOMAIN} - Parsing Status: {message}")
+        pass
 
     def _parse_events_message(self, message, player):
-        _LOGGER.debug(f"{DOMAIN} - Parsing Event: {message}")
         player.repeat_all = get_child_value(message, "repeatAll")
+        player.volume = get_child_value(message, "volume")
+        player.volume_max = get_child_value(message, "volumeMax")
+        player.online = get_child_value(message, "online")
+        player.chapter_title = get_child_value(message, "chapterTitle")
 
     # {"repeatAll":true,"volume":6,"volumeMax":6,"cardId":"none","playbackStatus":"stopped","streaming":false,"playbackWait":false,"sleepTimerActive":false,"eventUtc":1714960275}
 

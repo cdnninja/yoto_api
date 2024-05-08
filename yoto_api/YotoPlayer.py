@@ -33,6 +33,9 @@ class YotoPlayer:
 
     # MQTT
     repeat_all: bool = None
+    volume_max: int = None
+    volume: int = None
+    chapter_title: str = None
 
 
 # {'devices': [{'deviceId': 'XXXX', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}
