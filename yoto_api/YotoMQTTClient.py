@@ -13,21 +13,22 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class YotoMQTTClient:
-    def __init__(self, player) -> None:
+    def __init__(self) -> None:
         self.CLIENT_ID: str = "4P2do5RhHDXvCDZDZ6oti27Ft2XdRrzr"
         self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
         self.MQTT_URL: str = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
-        self.player = player
         self.client = None
 
-    def connect_mqtt(self, token: Token):
+    def connect_mqtt(self, token: Token, player: YotoPlayer):
         #             mqtt.CallbackAPIVersion.VERSION1,
+        player_userdata = {'player':player}
         self.client = mqtt.Client(
-            client_id="DASH" + self.player.id,
+            client_id="DASH" + player.id,
             transport="websockets",
+            userdata=player_userdata
         )
         self.client.username_pw_set(
-            username=self.player.id
+            username=player.id
             + "?x-amz-customauthorizer-name="
             + self.MQTT_AUTH_NAME,
             password=token.access_token,
@@ -37,11 +38,11 @@ class YotoMQTTClient:
         self.client.tls_set()
         self.client.connect(host=self.MQTT_URL, port=443)
         self.client.loop_start()
-        self.client.subscribe("device/" + self.player.id + "/events")
-        self.client.subscribe("device/" + self.player.id + "/status")
-        self.client.subscribe("device/" + self.player.id + "/response")
+        self.client.subscribe("device/" + player.id + "/events")
+        self.client.subscribe("device/" + player.id + "/status")
+        self.client.subscribe("device/" + player.id + "/response")
         # Command not needed but helps sniffing traffic
-        self.client.subscribe("device/" + self.player.id + "/command")
+        self.client.subscribe("device/" + player.id + "/command")
 
         # time.sleep(60)
         # client.loop_stop()
@@ -60,13 +61,14 @@ class YotoMQTTClient:
     def _publish_command(self, topic, payload):
         self.client.publish(topic, payload)
 
-    def _parse_status_message(self, message):
+    def _parse_status_message(self, message, player):
         _LOGGER.debug(f"{DOMAIN} - Parsing Status: {message}")
 
-    def _parse_events_message(self, message):
+    def _parse_events_message(self, message, player):
         _LOGGER.debug(f"{DOMAIN} - Parsing Event: {message}")
-        self.player.repeat_all = get_child_value(message, "repeatAll")
-        _LOGGER.debug(f"{DOMAIN} - Player: {self.player.repeat_all}")
+        _LOGGER.debug(f"{DOMAIN} - Player Before: {player}")
+        player.repeat_all = get_child_value(message, "repeatAll")
+        _LOGGER.debug(f"{DOMAIN} - Player After: {player.repeat_all}")
 
     # {"repeatAll":true,"volume":6,"volumeMax":6,"cardId":"none","playbackStatus":"stopped","streaming":false,"playbackWait":false,"sleepTimerActive":false,"eventUtc":1714960275}
 
@@ -80,12 +82,12 @@ class YotoMQTTClient:
         # _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
         parts = message.topic.split("/")
         base, device, topic = parts
-        _LOGGER.debug(f"{DOMAIN} - MQTT Topic: {topic}")
+        _LOGGER.debug(f"{DOMAIN} - UserData: {userdata['player']}")
         if topic == "status":
             self._parse_status_message(
-                json.loads(str(message.payload.decode("utf-8"))),
+                json.loads(str(message.payload.decode("utf-8"))), userdata['player']
             )
         elif topic == "events":
             self._parse_events_message(
-                json.loads(str(message.payload.decode("utf-8"))),
+                json.loads(str(message.payload.decode("utf-8"))), userdata['player']
             )

@@ -21,7 +21,6 @@ class YotoAPI:
         self.CLIENT_ID: str = "4P2do5RhHDXvCDZDZ6oti27Ft2XdRrzr"
         self.LOGIN_URL: str = "login.yotoplay.com"
         self.TOKEN_URL: str = "https://api.yotoplay.com/auth/token"
-        self.SCOPE: str = "YOUR_SCOPE"
 
     def login(self, username: str, password: str) -> Token:
         url = self.TOKEN_URL
