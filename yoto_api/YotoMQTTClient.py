@@ -6,7 +6,6 @@ import json
 
 from .const import DOMAIN
 from .Token import Token
-from .YotoPlayer import YotoPlayer
 from .utils import get_child_value
 
 _LOGGER = logging.getLogger(__name__)
