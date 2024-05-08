@@ -32,7 +32,8 @@ class YotoPlayer:
     power_source: str = None
 
     # MQTT
-    repeatAll: bool = None
+    repeat_all: bool = None
+
 
 
 # {'devices': [{'deviceId': 'XXXX', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}

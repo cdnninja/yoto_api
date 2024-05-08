@@ -7,6 +7,7 @@ import json
 from .const import DOMAIN
 from .Token import Token
 from .utils import get_child_value
+from .YotoPlayer import YotoPlayer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,11 +21,10 @@ class YotoMQTTClient:
 
     def connect_mqtt(self, token: Token, player: YotoPlayer):
         #             mqtt.CallbackAPIVersion.VERSION1,
-        player_userdata = {'player':player}
         self.client = mqtt.Client(
             client_id="DASH" + player.id,
             transport="websockets",
-            userdata=player_userdata
+            userdata=player
         )
         self.client.username_pw_set(
             username=player.id
@@ -42,7 +42,6 @@ class YotoMQTTClient:
         self.client.subscribe("device/" + player.id + "/response")
         # Command not needed but helps sniffing traffic
         self.client.subscribe("device/" + player.id + "/command")
-
         # time.sleep(60)
         # client.loop_stop()
 
@@ -65,13 +64,11 @@ class YotoMQTTClient:
 
     def _parse_events_message(self, message, player):
         _LOGGER.debug(f"{DOMAIN} - Parsing Event: {message}")
-        _LOGGER.debug(f"{DOMAIN} - Player Before: {player}")
         player.repeat_all = get_child_value(message, "repeatAll")
-        _LOGGER.debug(f"{DOMAIN} - Player After: {player.repeat_all}")
 
     # {"repeatAll":true,"volume":6,"volumeMax":6,"cardId":"none","playbackStatus":"stopped","streaming":false,"playbackWait":false,"sleepTimerActive":false,"eventUtc":1714960275}
 
-    def _on_message(self, client, userdata, message):
+    def _on_message(self, client, player, message):
         # Process MQTT Message
         _LOGGER.debug(
             f"{DOMAIN} - MQTT Message: {str(message.payload.decode('utf-8'))}"
@@ -81,12 +78,12 @@ class YotoMQTTClient:
         # _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
         parts = message.topic.split("/")
         base, device, topic = parts
-        _LOGGER.debug(f"{DOMAIN} - UserData: {userdata['player']}")
+        _LOGGER.debug(f"{DOMAIN} - UserData: {player}")
         if topic == "status":
             self._parse_status_message(
-                json.loads(str(message.payload.decode("utf-8"))), userdata['player']
+                json.loads(str(message.payload.decode("utf-8"))), player
             )
         elif topic == "events":
             self._parse_events_message(
-                json.loads(str(message.payload.decode("utf-8"))), userdata['player']
+                json.loads(str(message.payload.decode("utf-8"))), player
             )
