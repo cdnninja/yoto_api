@@ -20,16 +20,14 @@ class YotoMQTTClient:
 
     def connect_mqtt(self, token: Token, player: YotoPlayer):
         #             mqtt.CallbackAPIVersion.VERSION1,
-        player_userdata = {'player':player}
+        player_userdata = {"player": player}
         self.client = mqtt.Client(
             client_id="DASH" + player.id,
             transport="websockets",
-            userdata=player_userdata
+            userdata=player_userdata,
         )
         self.client.username_pw_set(
-            username=player.id
-            + "?x-amz-customauthorizer-name="
-            + self.MQTT_AUTH_NAME,
+            username=player.id + "?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,
             password=token.access_token,
         )
         # client.on_connect = on_message
@@ -84,9 +82,9 @@ class YotoMQTTClient:
         _LOGGER.debug(f"{DOMAIN} - UserData: {userdata['player']}")
         if topic == "status":
             self._parse_status_message(
-                json.loads(str(message.payload.decode("utf-8"))), userdata['player']
+                json.loads(str(message.payload.decode("utf-8"))), userdata["player"]
             )
         elif topic == "events":
             self._parse_events_message(
-                json.loads(str(message.payload.decode("utf-8"))), userdata['player']
+                json.loads(str(message.payload.decode("utf-8"))), userdata["player"]
             )
