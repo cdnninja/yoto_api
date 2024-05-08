@@ -3,7 +3,6 @@
 import requests
 import logging
 import datetime
-import re
 
 from datetime import timedelta
 import pytz
@@ -153,9 +152,7 @@ class YotoAPI:
             library[get_child_value(item, "cardId")].author = get_child_value(
                 item, "card.metadata.author"
             )
-            library[cardId].category = get_child_value(
-                item, "card.metadata.stories"
-            )
+            library[cardId].category = get_child_value(item, "card.metadata.stories")
             library[cardId].coverImageL = get_child_value(
                 item, "card.metadata.cover.imageL"
             )

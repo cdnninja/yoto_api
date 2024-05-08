@@ -1,21 +1,16 @@
 """MQTT Client for Yoto"""
 
-import requests
 import logging
-import datetime
-import re
 import paho.mqtt.client as mqtt
 import json
 
-from datetime import timedelta
-import pytz
-from .const import DOMAIN, LIGHT_COLORS, POWER_SOURCE
+from .const import DOMAIN
 from .Token import Token
-from .Card import Card
 from .YotoPlayer import YotoPlayer
 from .utils import get_child_value
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class YotoMQTTClient:
     def __init__(self, players: dict[YotoPlayer]) -> None:
@@ -25,7 +20,6 @@ class YotoMQTTClient:
         self.players = players
         self.client = None
 
-        
     def connect_mqtt(self, token: Token):
         #             mqtt.CallbackAPIVersion.VERSION1,
         self.client = mqtt.Client(
@@ -33,7 +27,9 @@ class YotoMQTTClient:
             transport="websockets",
         )
         self.client.username_pw_set(
-            username=self.player.id + "?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,
+            username=self.player.id
+            + "?x-amz-customauthorizer-name="
+            + self.MQTT_AUTH_NAME,
             password=token.access_token,
         )
         # client.on_connect = on_message
@@ -69,20 +65,19 @@ class YotoMQTTClient:
 
     def _parse_events_message(self, message):
         _LOGGER.debug(f"{DOMAIN} - Parsing Event: {message}")
-        self.player.repeat_all = get_child_value(
-                message, "repeatAll"
-        )
+        self.player.repeat_all = get_child_value(message, "repeatAll")
         _LOGGER.debug(f"{DOMAIN} - Player: {self.player.repeat_all}")
+
     # {"repeatAll":true,"volume":6,"volumeMax":6,"cardId":"none","playbackStatus":"stopped","streaming":false,"playbackWait":false,"sleepTimerActive":false,"eventUtc":1714960275}
 
-    def _on_message(self,client, userdata, message):
+    def _on_message(self, client, userdata, message):
         # Process MQTT Message
         _LOGGER.debug(
             f"{DOMAIN} - MQTT Message: {str(message.payload.decode('utf-8'))}"
         )
         _LOGGER.debug(f"{DOMAIN} - MQTT Topic: {message.topic}")
-        #_LOGGER.debug(f"{DOMAIN} - MQTT QOS: {message.qos}")
-        #_LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
+        # _LOGGER.debug(f"{DOMAIN} - MQTT QOS: {message.qos}")
+        # _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
         parts = message.topic.split("/")
         base, device, topic = parts
         _LOGGER.debug(f"{DOMAIN} - MQTT Topic: {topic}")

@@ -3,6 +3,7 @@
 import datetime
 import re
 
+
 def get_child_value(data, key):
     value = data
     for x in key.split("."):
@@ -15,13 +16,12 @@ def get_child_value(data, key):
                 value = None
     return value
 
+
 def parse_datetime(value, timezone) -> datetime.datetime:
     if value is None:
         return datetime.datetime(2000, 1, 1, tzinfo=timezone)
 
-    value = (
-        value.replace("-", "").replace("T", "").replace(":", "").replace("Z", "")
-    )
+    value = value.replace("-", "").replace("T", "").replace(":", "").replace("Z", "")
     m = re.match(r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})", value)
     return datetime.datetime(
         year=int(m.group(1)),
