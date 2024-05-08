@@ -56,10 +56,9 @@ class YotoMQTTClient:
         self.client.publish(topic, payload)
 
     def _parse_status_message(self, message, player):
-        _LOGGER.debug(f"{DOMAIN} - Parsing Status: {message}")
+        pass
 
     def _parse_events_message(self, message, player):
-        _LOGGER.debug(f"{DOMAIN} - Parsing Event: {message}")
         player.repeat_all = get_child_value(message, "repeatAll")
         player.volume = get_child_value(message, "volume")
         player.volume_max = get_child_value(message, "volumeMax")
