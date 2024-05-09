@@ -84,7 +84,6 @@ class YotoMQTTClient:
         # _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
         parts = message.topic.split("/")
         base, device, topic = parts
-        _LOGGER.debug(f"{DOMAIN} - UserData: {player}")
         if topic == "status":
             self._parse_status_message(
                 json.loads(str(message.payload.decode("utf-8"))), player
