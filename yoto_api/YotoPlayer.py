@@ -32,10 +32,17 @@ class YotoPlayer:
     power_source: str = None
 
     # MQTT
+    card_id: str = None
     repeat_all: bool = None
     volume_max: int = None
     volume: int = None
     chapter_title: str = None
+    source: str = None
+    track_title: str = None
+    track_length: int = None
+    track_position: int = None
+    playback_status: str = None
+    sleep_timer_active: bool = None
 
 
 # {'devices': [{'deviceId': 'XXXX', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}

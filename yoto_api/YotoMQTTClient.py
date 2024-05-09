@@ -64,15 +64,21 @@ class YotoMQTTClient:
         player.volume_max = get_child_value(message, "volumeMax")
         player.online = get_child_value(message, "online")
         player.chapter_title = get_child_value(message, "chapterTitle")
-
-    # {"repeatAll":true,"volume":6,"volumeMax":6,"cardId":"none","playbackStatus":"stopped","streaming":false,"playbackWait":false,"sleepTimerActive":false,"eventUtc":1714960275}
+        player.track_title = get_child_value(message, "trackTitle")
+        player.track_length = get_child_value(message, "trackLength")
+        player.track_position = get_child_value(message, "position")
+        player.source = get_child_value(message, "source")
+        player.playback_status = get_child_value(message, "playbackStatus")
+        player.sleep_timer_active = get_child_value(message, "sleepTimerActive")
+        player.card_id = get_child_value(message, "cardId")
+# {"trackLength":315,"position":0,"cardId":"7JtVV","repeatAll":true,"source":"remote","cardUpdatedAt":"2021-07-13T14:51:26.576Z","chapterTitle":"Snow and Tell","chapterKey":"03","trackTitle":"Snow and Tell","trackKey":"03","streaming":false,"volume":5,"volumeMax":8,"playbackStatus":"playing","playbackWait":false,"sleepTimerActive":false,"eventUtc":1715133271}
 
     def _on_message(self, client, player, message):
         # Process MQTT Message
+        _LOGGER.debug(f"{DOMAIN} - MQTT Topic: {message.topic}")
         _LOGGER.debug(
             f"{DOMAIN} - MQTT Message: {str(message.payload.decode('utf-8'))}"
         )
-        _LOGGER.debug(f"{DOMAIN} - MQTT Topic: {message.topic}")
         # _LOGGER.debug(f"{DOMAIN} - MQTT QOS: {message.qos}")
         # _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
         parts = message.topic.split("/")
