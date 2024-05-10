@@ -46,6 +46,9 @@ class YotoManager:
     def pause_player(self, player_id: str):
         self.api.card_pause(client=self.mqtt_client, deviceId=player_id)
 
+    def resume_player(self, player_id: str):
+        self.api.card_resume(client=self.mqtt_client, deviceId=player_id)
+
     def check_and_refresh_token(self) -> bool:
         if self.token is None:
             self.initialize()
