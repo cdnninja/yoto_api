@@ -152,13 +152,13 @@ class YotoAPI:
                 item, "card.metadata.author"
             )
             library[cardId].category = get_child_value(item, "card.metadata.stories")
-            library[cardId].coverImageL = get_child_value(
+            library[cardId].cover_image_large = get_child_value(
                 item, "card.metadata.cover.imageL"
             )
-            library[cardId].seriesOrder = get_child_value(
+            library[cardId].series_order = get_child_value(
                 item, "card.metadata.cover.seriesorder"
             )
-            library[cardId].seriesTitle = get_child_value(
+            library[cardId].series_title = get_child_value(
                 item, "card.metadata.cover.seriestitle"
             )
 

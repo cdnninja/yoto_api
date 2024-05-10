@@ -31,9 +31,9 @@ class Card:
     description: str = None  # $.card.metadata.description e.g. "The sky’s the limit for imaginations when it comes to..."
     category: str = None  # $.card.metadata.category e.g. "stories"
     author: str = None  # $.card.metadata.author e.g. "Ladybird Audio Adventures"
-    coverImageL: str = None  # $.card.metadata.cover.imageL e.g. "https://card-content.yotoplay.com/yoto/pub/WgoJMZ..."
-    seriesTitle: str = (
+    cover_image_large: str = None  # $.card.metadata.cover.imageL e.g. "https://card-content.yotoplay.com/yoto/pub/WgoJMZ..."
+    series_title: str = (
         None  # $.card.metadata.seriestitle e.g. "Ladybird Audio Adventures Volume 1"
     )
-    seriesOrder: int = None  # $.card.metadata.seriesorder e.g. 4
+    series_order: int = None  # $.card.metadata.seriesorder e.g. 4
     chapters: list[Chapter] = None  # $.card.content.chapters
