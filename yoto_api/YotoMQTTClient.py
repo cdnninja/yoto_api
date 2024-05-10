@@ -45,6 +45,11 @@ class YotoMQTTClient:
         topic = "device/" + deviceId + "/command/card-pause"
         payload = ""
         self._publish_command(self.client, topic, payload)
+
+    def card_resume(self, deviceId):
+        topic = "device/" + deviceId + "/command/card-resume"
+        payload = ""
+        self._publish_command(self.client, topic, payload)
         # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}
 
     def card_play(self, deviceId):
