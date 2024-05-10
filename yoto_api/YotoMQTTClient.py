@@ -45,6 +45,11 @@ class YotoMQTTClient:
         topic = "device/" + deviceId + "/command/card-pause"
         payload = ""
         self._publish_command(self.client, topic, payload)
+
+    def card_resume(self, deviceId):
+        topic = "device/" + deviceId + "/command/card-resume"
+        payload = ""
+        self._publish_command(self.client, topic, payload)
         # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}
 
     def card_play(self, deviceId):
@@ -84,7 +89,6 @@ class YotoMQTTClient:
         # _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
         parts = message.topic.split("/")
         base, device, topic = parts
-        _LOGGER.debug(f"{DOMAIN} - UserData: {player}")
         if topic == "status":
             self._parse_status_message(
                 json.loads(str(message.payload.decode("utf-8"))), player

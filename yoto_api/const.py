@@ -9,7 +9,7 @@ DOMAIN: str = "yoto_api"
 LIGHT_COLORS = {
     None: None,
     "0x000000": "Off",
-    "0x194a55": "On Night",
+    "0x194a55": "On",
     "0x643600": "On Day",
     "off": "Off",
     "0x5a6400": "On Night",
