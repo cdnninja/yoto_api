@@ -49,7 +49,9 @@ class YotoManager:
     def resume_player(self, player_id: str):
         self.mqtt_client.card_resume(deviceId=player_id)
 
-    def play_card(self, player_id: str, card: str, secondsIn: int, cutoff: int, chapterKey: int):
+    def play_card(
+        self, player_id: str, card: str, secondsIn: int, cutoff: int, chapterKey: int
+    ):
         self.mqtt_client.card_play(deviceId=player_id)
 
     def check_and_refresh_token(self) -> bool:
