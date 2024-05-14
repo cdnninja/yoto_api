@@ -18,6 +18,7 @@ class YotoMQTTClient:
         self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
         self.MQTT_URL: str = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
         self.client = None
+        self.flag_connected = 0
 
     def connect_mqtt(self, token: Token, player: YotoPlayer):
         #             mqtt.CallbackAPIVersion.VERSION1,
@@ -30,7 +31,9 @@ class YotoMQTTClient:
         )
         # client.on_connect = on_message
         self.client.on_message = self._on_message
-        self.client.tls_set()
+        self.client.on_connect = self._on_connect
+        self.client.on_disconnect = self._on_disconnect
+        self.client.tls_set()    
         self.client.connect(host=self.MQTT_URL, port=443)
         self.client.loop_start()
         self.client.subscribe("device/" + player.id + "/events")
@@ -41,6 +44,13 @@ class YotoMQTTClient:
         # time.sleep(60)
         # client.loop_stop()
 
+    def _on_connect(self, client, userdata, flags, rc):
+        self.flag_connected = 1
+        # _LOGGER.debug(f"{DOMAIN} - MQTT connected")
+
+    def _on_disconnect(self, client, userdata, rc):
+        self.flag_connected = 0
+        _LOGGER.debug(f"{DOMAIN} - MQTT Disconnected")
     def card_pause(self, deviceId):
         topic = "device/" + deviceId + "/command/card-pause"
         payload = ""
@@ -50,6 +60,12 @@ class YotoMQTTClient:
         topic = "device/" + deviceId + "/command/events"
         payload = ""
         self._publish_command(topic, payload)
+
+    def set_volume(self, deviceId):
+        topic = "device/" + deviceId + "/command/set-volume"
+        payload = ""
+        self._publish_command(topic, payload)
+        # {"status":{"set-volume":"OK","req_body":"{\"volume\":25,\"requestId\":\"39804a13-988d-43d2-b30f-1f3b9b5532f0\"}"}}
 
     def card_resume(self, deviceId):
         topic = "device/" + deviceId + "/command/card-resume"
