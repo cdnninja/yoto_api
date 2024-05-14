@@ -73,7 +73,9 @@ class YotoMQTTClient:
         self._publish_command(topic, payload)
         # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}
 
-    def card_play(self, deviceId, card: str, secondsIn: int, cutoff: int, chapterKey: int):
+    def card_play(
+        self, deviceId, card: str, secondsIn: int, cutoff: int, chapterKey: int
+    ):
         topic = "device/" + deviceId + "/command/card-play"
         self._publish_command(topic, "card-play")
         # MQTT Message: {"status":{"card-play":"OK","req_body":"{\"uri\":\"https://yoto.io/7JtVV\",\"secondsIn\":0,\"cutOff\":0,\"chapterKey\":\"01\",\"trackKey\":\"01\",\"requestId\":\"5385910e-f853-4f34-99a4-d2ed94f02f6d\"}"}}
