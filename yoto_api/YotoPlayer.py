@@ -31,6 +31,19 @@ class YotoPlayer:
     wifi_strength: int = None
     power_source: str = None
 
+    # Device Config
+    day_mode_time: datetime.time = None
+    day_dayDisplayBrightness: int = None
+    day_ambientColour: str = None
+    day_max_volume_limit: int = None
+    day_display_brightness: int = None
+
+    night_mode_time: datetime.time = None
+    night_dayDisplayBrightness: int = None
+    night_ambientColour: str = None
+    night_max_volume_limit: int = None
+    night_display_brightness: int = None
+
     # MQTT
     card_id: str = None
     repeat_all: bool = None
