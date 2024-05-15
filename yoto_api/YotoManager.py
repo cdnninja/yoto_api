@@ -32,11 +32,16 @@ class YotoManager:
         # Updates the data with current player data.
         self.api.update_players(self.token, self.players)
 
-    def connect_to_events(self) -> None:
+    def connect_to_events(self, callback) -> None:
         for player in self.players.values():
             # Needs to be correct to handle multiple devices. 1 client per device
             self.mqtt_client: YotoMQTTClient = YotoMQTTClient()
-            self.mqtt_client.connect_mqtt(self.token, player)
+            self.mqtt_client.connect_mqtt(self.token, player, callback)
+        callback()
+
+    def disconnect(self) -> None:
+        # Should be used when shutting down
+        self.mqtt_client.disconnect_mqtt()
 
     def update_cards(self) -> None:
         # Updates library and all card data.  Typically only required on startup.
@@ -53,6 +58,11 @@ class YotoManager:
         self, player_id: str, card: str, secondsIn: int, cutoff: int, chapterKey: int
     ):
         self.mqtt_client.card_play(deviceId=player_id)
+
+    def set_volume(
+        self, player_id: str, volume: int
+    ):
+        self.mqtt_client.set_volume(deviceId=player_id, volume=volume)
 
     def check_and_refresh_token(self) -> bool:
         if self.token is None:
