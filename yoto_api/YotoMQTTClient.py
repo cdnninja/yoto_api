@@ -129,5 +129,6 @@ class YotoMQTTClient:
             self._parse_events_message(
                 json.loads(str(message.payload.decode("utf-8"))), player
             )
-        callback()
+        if callback:
+            callback()
         

@@ -32,12 +32,11 @@ class YotoManager:
         # Updates the data with current player data.
         self.api.update_players(self.token, self.players)
 
-    def connect_to_events(self, callback) -> None:
+    def connect_to_events(self, callback=None) -> None:
         for player in self.players.values():
             # Needs to be correct to handle multiple devices. 1 client per device
             self.mqtt_client: YotoMQTTClient = YotoMQTTClient()
             self.mqtt_client.connect_mqtt(self.token, player, callback)
-        callback()
 
     def disconnect(self) -> None:
         # Should be used when shutting down
