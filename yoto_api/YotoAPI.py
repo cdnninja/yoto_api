@@ -128,16 +128,17 @@ class YotoAPI:
             players[deviceId].playing_source = get_child_value(
                 player_status_response, "playingSource"
             )
-            players[deviceId].night_light_mode = LIGHT_COLORS[
-                get_child_value(player_status_response, "nightlightMode")
-            ]
+            players[deviceId].night_light_mode = get_child_value(player_status_response, "nightlightMode")
+            
             players[deviceId].power_source = POWER_SOURCE[
                 get_child_value(player_status_response, "powerSource")
             ]
             player_config = self._get_device_config(token, deviceId)
-            players[deviceId].day_mode_time = get_child_value(
+
+            time = get_child_value(
                 player_config, "device.config.dayTime"
             )
+            players[deviceId].day_mode_time = datetime.datetime.strptime(time, "%H:%M").time()
             players[deviceId].day_dayDisplayBrightness = get_child_value(
                 player_config, "device.config.playingSource"
             )
@@ -150,9 +151,10 @@ class YotoAPI:
             players[deviceId].day_display_brightness = get_child_value(     
                 player_config, "device.config.dayDisplayBrightness"
             )
-            players[deviceId].night_mode_time = get_child_value(
+            time = get_child_value(
                 player_config, "device.config.dayTime"
             )
+            players[deviceId].night_mode_time = datetime.datetime.strptime(time, "%H:%M").time()
             players[deviceId].night_dayDisplayBrightness = get_child_value(
                 player_config, "device.config.playingSource"
             )
@@ -165,8 +167,6 @@ class YotoAPI:
             players[deviceId].night_display_brightness = get_child_value(     
                 player_config, "device.config.dayDisplayBrightness"
             )
-            print(players[deviceId].night_ambientColour)
-
 
     def update_library(self, token: Token, library: dict[Card]) -> list[Card]:
         response = self._get_cards(token)
