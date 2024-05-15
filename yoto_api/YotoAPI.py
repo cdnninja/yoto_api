@@ -187,6 +187,9 @@ class YotoAPI:
             scope=token.scope,
             valid_until=valid_until,
         )
+    
+    def set_player_config(self, player, settings):
+        pass
 
     def _get_devices(self, token: Token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
