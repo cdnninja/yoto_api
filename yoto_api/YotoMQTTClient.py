@@ -51,11 +51,11 @@ class YotoMQTTClient:
 
     def _on_connect(self, client, userdata, flags, rc):
         self.flag_connected = 1
-        _LOGGER.debug(f"{DOMAIN} - MQTT connected")
+        _LOGGER.debug(f"{DOMAIN} - MQTT connected: {rc}")
 
     def _on_disconnect(self, client, userdata, rc):
         self.flag_connected = 0
-        _LOGGER.debug(f"{DOMAIN} - MQTT Disconnected")
+        _LOGGER.debug(f"{DOMAIN} - MQTT Disconnected: {rc}")
     def card_pause(self, deviceId):
         topic = "device/" + deviceId + "/command/card-pause"
         payload = ""
