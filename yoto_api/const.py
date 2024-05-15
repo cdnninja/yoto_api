@@ -16,7 +16,7 @@ LIGHT_COLORS = {
     "0x640000": "Orange Peel",
     "0x602d3c": "Lilac",
     "0x641600": "",
-    "0x646464": "White"
+    "0x646464": "White",
 }
 
 HEX_COLORS = {

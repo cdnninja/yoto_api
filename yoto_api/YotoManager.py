@@ -62,9 +62,7 @@ class YotoManager:
     ):
         self.mqtt_client.card_play(deviceId=player_id)
 
-    def set_volume(
-        self, player_id: str, volume: int
-    ):
+    def set_volume(self, player_id: str, volume: int):
         self.mqtt_client.set_volume(deviceId=player_id, volume=volume)
 
     def check_and_refresh_token(self) -> bool:
