@@ -23,6 +23,10 @@ HEX_COLORS = {
     None: None,
 }
 
+HEX_COLORS = {
+    None: None,
+}
+
 POWER_SOURCE = {
     # Guessing on this.
     0: "Battery Power",
