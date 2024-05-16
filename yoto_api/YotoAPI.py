@@ -139,33 +139,27 @@ class YotoAPI:
                 player_config, "device.config.dayTime"
             )
             players[deviceId].day_mode_time = datetime.datetime.strptime(time, "%H:%M").time()
-            players[deviceId].day_dayDisplayBrightness = get_child_value(
+            players[deviceId].day_display_brightness = get_child_value(
                 player_config, "device.config.playingSource"
             )
-            players[deviceId].day_ambientColour = get_child_value(
+            players[deviceId].day_ambient_colour = get_child_value(
                 player_config, "device.config.ambientColour"
             )
             players[deviceId].day_max_volume_limit = get_child_value(
                 player_config, "device.config.maxVolumeLimit"
             )
-            players[deviceId].day_display_brightness = get_child_value(     
-                player_config, "device.config.dayDisplayBrightness"
-            )
             time = get_child_value(
-                player_config, "device.config.dayTime"
+                player_config, "device.config.nightTime"
             )
             players[deviceId].night_mode_time = datetime.datetime.strptime(time, "%H:%M").time()
-            players[deviceId].night_dayDisplayBrightness = get_child_value(
-                player_config, "device.config.playingSource"
-            )
-            players[deviceId].night_ambientColour = get_child_value(
-                player_config, "device.config.ambientColour"
+            players[deviceId].night_ambient_colour = get_child_value(
+                player_config, "device.config.nightAmbientColour"
             )
             players[deviceId].night_max_volume_limit = get_child_value(
-                player_config, "device.config.maxVolumeLimit"
+                player_config, "device.config.nightMaxVolumeLimit"
             )
             players[deviceId].night_display_brightness = get_child_value(     
-                player_config, "device.config.dayDisplayBrightness"
+                player_config, "device.config.nightDisplayBrightness"
             )
 
     def update_library(self, token: Token, library: dict[Card]) -> list[Card]:
