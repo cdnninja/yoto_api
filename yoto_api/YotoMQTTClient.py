@@ -63,9 +63,7 @@ class YotoMQTTClient:
 
     def set_volume(self, deviceId: str, volume: int):
         topic = f"device/{deviceId}/command/set-volume"
-        payload = {
-            "volume": volume
-        }
+        payload = {"volume": volume}
         self.client.publish(topic, str(payload))
         # {"status":{"set-volume":"OK","req_body":"{\"volume\":25,\"requestId\":\"39804a13-988d-43d2-b30f-1f3b9b5532f0\"}"}}
 
@@ -80,10 +78,16 @@ class YotoMQTTClient:
     def card_resume(self, deviceId):
         topic = f"device/{deviceId}/command/card-resume"
         self.client.publish(topic)
-        # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}  
+        # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}
 
     def card_play(
-        self, deviceId, cardId: str, secondsIn: int, cutoff: int, chapterKey: str, trackKey: str
+        self,
+        deviceId,
+        cardId: str,
+        secondsIn: int,
+        cutoff: int,
+        chapterKey: str,
+        trackKey: str,
     ):
         topic = f"device/{deviceId}/command/card-play"
         payload = {
@@ -101,14 +105,10 @@ class YotoMQTTClient:
         topic = f"device/{deviceId}/command/restart"
         self.client.publish(topic)
 
-     # set the ambient light of the player
+    # set the ambient light of the player
     def ambients(self, deviceId, r: int, g: int, b: int):
         topic = f"device/{deviceId}/command/ambients"
-        payload = {
-            "r": r,
-            "g": g,
-            "b": b
-        }
+        payload = {"r": r, "g": g, "b": b}
         self.client.publish(topic, str(payload))
 
     def _parse_status_message(self, message, player):

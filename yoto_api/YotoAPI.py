@@ -32,21 +32,21 @@ class YotoAPI:
             "username": username,
             "scope": "openid email profile offline_access",
         }
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         response = requests.post(url, data=data, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response}")
 
-        valid_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(seconds=response["expires_in"])
+        valid_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(
+            seconds=response["expires_in"]
+        )
 
         return Token(
             access_token=response["access_token"],
             refresh_token=response["refresh_token"],
             token_type=response["token_type"],
             scope=response["scope"],
-            valid_until=valid_until
+            valid_until=valid_until,
         )
 
     # https://api.yoto.dev/#644d0b20-0b27-4b34-bbfa-bdffb96ec672
@@ -57,15 +57,15 @@ class YotoAPI:
             "grant_type": "refresh_token",
             "refresh_token": token.refresh_token,
         }
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         response = requests.post(url, data=data, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Refresh TokenResponse {response}")
-        
-        valid_until = datetime.datetime.now(pytz.utc) + timedelta(seconds=response["expires_in"])
-        
+
+        valid_until = datetime.datetime.now(pytz.utc) + timedelta(
+            seconds=response["expires_in"]
+        )
+
         return Token(
             access_token=response["access_token"],
             refresh_token=token.refresh_token,
