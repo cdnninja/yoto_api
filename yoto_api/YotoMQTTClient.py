@@ -57,39 +57,59 @@ class YotoMQTTClient:
         self.flag_connected = 0
         _LOGGER.debug(f"{DOMAIN} - MQTT Disconnected: {rc}")
 
-    def card_pause(self, deviceId):
-        topic = "device/" + deviceId + "/command/card-pause"
-        payload = ""
-        self._publish_command(topic, payload)
-
     def update_status(self, deviceId):
-        topic = "device/" + deviceId + "/command/events"
-        payload = ""
-        self._publish_command(topic, payload)
+        topic = f"device/{deviceId}/command/events"
+        self.client.publish(topic)
 
     def set_volume(self, deviceId: str, volume: int):
-        topic = "device/" + deviceId + "/command/set-volume"
-        payload = {}
-        payload["volume"] = volume
-        payload = str(payload)
-        self._publish_command(topic, payload)
+        topic = f"device/{deviceId}/command/set-volume"
+        payload = {
+            "volume": volume
+        }
+        self.client.publish(topic, str(payload))
         # {"status":{"set-volume":"OK","req_body":"{\"volume\":25,\"requestId\":\"39804a13-988d-43d2-b30f-1f3b9b5532f0\"}"}}
 
+    def card_stop(self, deviceId):
+        topic = f"device/{deviceId}/command/card-stop"
+        self.client.publish(topic)
+
+    def card_pause(self, deviceId):
+        topic = f"device/{deviceId}/command/card-pause"
+        self.client.publish(topic)
+
     def card_resume(self, deviceId):
-        topic = "device/" + deviceId + "/command/card-resume"
-        payload = ""
-        self._publish_command(topic, payload)
-        # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}
+        topic = f"device/{deviceId}/command/card-resume"
+        self.client.publish(topic)
+        # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}  
 
     def card_play(
-        self, deviceId, card: str, secondsIn: int, cutoff: int, chapterKey: int
+        self, deviceId, cardId: str, secondsIn: int, cutoff: int, chapterKey: str, trackKey: str
     ):
-        topic = "device/" + deviceId + "/command/card-play"
-        self._publish_command(topic, "card-play")
+        topic = f"device/{deviceId}/command/card-play"
+        payload = {
+            "uri": f"https://yoto.io/{cardId}",
+            "chapterKey": chapterKey,
+            "trackKey": trackKey,
+            "secondsIn": secondsIn,
+            "cutOff": cutoff,
+        }
+        self.client.publish(topic, str(payload))
         # MQTT Message: {"status":{"card-play":"OK","req_body":"{\"uri\":\"https://yoto.io/7JtVV\",\"secondsIn\":0,\"cutOff\":0,\"chapterKey\":\"01\",\"trackKey\":\"01\",\"requestId\":\"5385910e-f853-4f34-99a4-d2ed94f02f6d\"}"}}
 
-    def _publish_command(self, topic, payload):
-        self.client.publish(topic, payload)
+    # restart the player
+    def restart(self, deviceId):
+        topic = f"device/{deviceId}/command/restart"
+        self.client.publish(topic)
+
+     # set the ambient light of the player
+    def ambients(self, deviceId, r: int, g: int, b: int):
+        topic = f"device/{deviceId}/command/ambients"
+        payload = {
+            "r": r,
+            "g": g,
+            "b": b
+        }
+        self.client.publish(topic, str(payload))
 
     def _parse_status_message(self, message, player):
         pass
