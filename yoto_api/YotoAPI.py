@@ -20,52 +20,59 @@ class YotoAPI:
         self.BASE_URL: str = "https://api.yotoplay.com"
         self.CLIENT_ID: str = "4P2do5RhHDXvCDZDZ6oti27Ft2XdRrzr"
         self.LOGIN_URL: str = "login.yotoplay.com"
-        self.TOKEN_URL: str = "https://api.yotoplay.com/auth/token"
 
+    # https://api.yoto.dev/#75c77d23-397f-47f9-b76c-ce3c647b11d5
     def login(self, username: str, password: str) -> Token:
-        url = self.TOKEN_URL
-        payload = {}
-        payload["audience"] = self.BASE_URL
-        payload["client_id"] = self.CLIENT_ID
-        payload["grant_type"] = "password"
-        payload["password"] = password
-        payload["scope"] = "openid email profile offline_access"
-        payload["username"] = username
-        headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        response = requests.post(url, data=payload, headers=headers).json()
+        url = f"{self.BASE_URL}/auth/token"
+        data = {
+            "audience": self.BASE_URL,
+            "client_id": self.CLIENT_ID,
+            "grant_type": "password",
+            "password": password,
+            "username": username,
+            "scope": "openid email profile offline_access",
+        }
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+
+        response = requests.post(url, data=data, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response}")
-        valid_until = datetime.datetime.now(pytz.utc) + timedelta(
-            seconds=response["expires_in"]
-        )
+
+        valid_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(seconds=response["expires_in"])
 
         return Token(
-            username=username,
-            password=password,
             access_token=response["access_token"],
             refresh_token=response["refresh_token"],
             token_type=response["token_type"],
             scope=response["scope"],
+            valid_until=valid_until
+        )
+
+    # https://api.yoto.dev/#644d0b20-0b27-4b34-bbfa-bdffb96ec672
+    def refresh_token(self, token: Token) -> Token:
+        url = f"{self.BASE_URL}/auth/token"
+        data = {
+            "client_id": self.CLIENT_ID,
+            "grant_type": "refresh_token",
+            "refresh_token": token.refresh_token,
+        }
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+
+        response = requests.post(url, data=data, headers=headers).json()
+        _LOGGER.debug(f"{DOMAIN} - Refresh TokenResponse {response}")
+        
+        valid_until = datetime.datetime.now(pytz.utc) + timedelta(seconds=response["expires_in"])
+        
+        return Token(
+            access_token=response["access_token"],
+            refresh_token=token.refresh_token,
+            token_type=response["token_type"],
+            scope=token.scope,
             valid_until=valid_until,
         )
-        ############## ${BASE_URL}/auth/token #############
-        # Request POST contents:
-        # audience=https%3A//api.yotoplay.com&client_id=i42noid4b2oiboi4bo&grant_type=password&password=sndoinoinscoif&scope=openid%20email%20profile%20offline_access&username=anonymous%40gmail.com
-        #
-        # Response to above:
-        # {
-        #    "access_token": "kalfkbalsbljagsl",
-        #    "refresh_token":"akklabflkablksf",
-        #    "id_token":"klasblgkablksgb",
-        #    "scope":"openid email profile user-cards users offline_access",
-        #    "expires_in":86400,
-        #    "token_type":"Bearer"
-        # }
-        # Requests to endpoints below use contents of "access_token" in the header ->
-        # Authorization: Bearer access_token
-        # User-Agent: Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4
-
-    # pass='audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=password&password=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access&username=FILL_THIS_IN%40gmail.com'
-    # curl -d "$pass" https://api.yotoplay.com/auth/token | jq '.access_token'
 
     def update_players(self, token: Token, players: list[YotoPlayer]) -> None:
         response = self._get_devices(token)
@@ -190,31 +197,6 @@ class YotoAPI:
             library[cardId].series_title = get_child_value(
                 item, "card.metadata.cover.seriestitle"
             )
-
-    def refresh_token(self, token: Token) -> Token:
-        # audience=https%3A//api.yotoplay.com&client_id=FILL_THIS_IN&grant_type=refresh_token&refresh_token=FILL_THIS_IN&scope=openid%20email%20profile%20offline_access
-        url = self.TOKEN_URL
-        payload = {}
-        payload["audience"] = self.BASE_URL
-        payload["client_id"] = self.CLIENT_ID
-        payload["grant_type"] = "refresh_token"
-        payload["refresh_token"] = token.refresh_token
-        payload["scope"] = "openid email profile offline_access"
-        headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        response = requests.post(url, data=payload, headers=headers).json()
-        _LOGGER.debug(f"{DOMAIN} - Refresh TokenResponse {response}")
-        valid_until = datetime.datetime.now(pytz.utc) + timedelta(
-            seconds=response["expires_in"]
-        )
-        return Token(
-            username=token.username,
-            password=token.password,
-            access_token=response["access_token"],
-            refresh_token=token.refresh_token,
-            token_type=response["token_type"],
-            scope=token.scope,
-            valid_until=valid_until,
-        )
 
     def set_player_config(self, player, settings):
         pass

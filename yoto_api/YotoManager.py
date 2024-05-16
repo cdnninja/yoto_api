@@ -71,7 +71,7 @@ class YotoManager:
             return True
         # Check if valid and correct if not
         if self.token.valid_until <= datetime.datetime.now(pytz.utc):
-            _LOGGER.debug(f"{DOMAIN} - Refresh token expired")
+            _LOGGER.debug(f"{DOMAIN} - access token expired")
             self.token: Token = self.api.refresh_token(self.token)
             return True
         return False
