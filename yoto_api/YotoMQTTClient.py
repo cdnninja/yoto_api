@@ -34,7 +34,7 @@ class YotoMQTTClient:
         self.client.on_message = self._on_message
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
-        self.client.tls_set()    
+        self.client.tls_set()
         self.client.connect(host=self.MQTT_URL, port=443)
         self.client.loop_start()
         self.client.subscribe("device/" + player.id + "/events")
@@ -56,6 +56,7 @@ class YotoMQTTClient:
     def _on_disconnect(self, client, userdata, rc):
         self.flag_connected = 0
         _LOGGER.debug(f"{DOMAIN} - MQTT Disconnected: {rc}")
+
     def card_pause(self, deviceId):
         topic = "device/" + deviceId + "/command/card-pause"
         payload = ""
@@ -131,4 +132,3 @@ class YotoMQTTClient:
             )
         if callback:
             callback()
-        
