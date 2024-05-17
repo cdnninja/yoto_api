@@ -20,12 +20,21 @@ LIGHT_COLORS = {
 }
 
 HEX_COLORS = {
-    None: None,
+    "#40bfd9": "Sky Blue",
+    "#41c0f0": "Sky Blue",
+    "#9eff00": "Apple Green",
+    "#e6ff00": "Apple Green",
+    "#f57399": "Lilac",
+    "#f72a69": "Lilac",
+    "#ff0000": "Tambourine Red",
+    "#ff3900": "Orange Peel",
+    "#ff8500": "Bumblebee Yellow",
+    "#ff8c00": "Orange Peel",
+    "#ffb800": "Bumblebee Yellow",
+    "#ffffff": "white",
+    "#0": "Off",
 }
 
-HEX_COLORS = {
-    None: None,
-}
 
 POWER_SOURCE = {
     # Guessing on this.

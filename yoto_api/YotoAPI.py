@@ -6,7 +6,7 @@ import datetime
 
 from datetime import timedelta
 import pytz
-from .const import DOMAIN, POWER_SOURCE
+from .const import DOMAIN, POWER_SOURCE, HEX_COLORS
 from .Token import Token
 from .Card import Card
 from .YotoPlayer import YotoPlayer
@@ -148,12 +148,12 @@ class YotoAPI:
             players[deviceId].day_mode_time = datetime.datetime.strptime(
                 time, "%H:%M"
             ).time()
-            players[deviceId].day_dayDisplayBrightness = get_child_value(
+            players[deviceId].day_display_brightness = get_child_value(
                 player_config, "device.config.playingSource"
             )
-            players[deviceId].day_ambientColour = get_child_value(
-                player_config, "device.config.ambientColour"
-            )
+            players[deviceId].day_ambient_colour = HEX_COLORS[
+                get_child_value(player_config, "device.config.ambientColour")
+            ]
             players[deviceId].day_max_volume_limit = get_child_value(
                 player_config, "device.config.maxVolumeLimit"
             )
@@ -161,9 +161,9 @@ class YotoAPI:
             players[deviceId].night_mode_time = datetime.datetime.strptime(
                 time, "%H:%M"
             ).time()
-            players[deviceId].night_ambient_colour = get_child_value(
-                player_config, "device.config.nightAmbientColour"
-            )
+            players[deviceId].night_ambient_colour = HEX_COLORS[
+                get_child_value(player_config, "device.config.nightAmbientColour")
+            ]
             players[deviceId].night_max_volume_limit = get_child_value(
                 player_config, "device.config.nightMaxVolumeLimit"
             )
