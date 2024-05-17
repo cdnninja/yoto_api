@@ -39,7 +39,7 @@ class YotoPlayer:
 
     night_mode_time: datetime.time = None
     night_display_brightness: int = None
-    night_ambientColour: str = None
+    night_ambient_colour: str = None
     night_max_volume_limit: int = None
 
     # MQTT
