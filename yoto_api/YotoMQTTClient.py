@@ -63,7 +63,7 @@ class YotoMQTTClient:
 
     def set_volume(self, deviceId: str, volume: int):
         topic = f"device/{deviceId}/command/set-volume"
-        payload = {"volume": volume}
+        payload = json.dumps({"volume": volume})
         self.client.publish(topic, str(payload))
         # {"status":{"set-volume":"OK","req_body":"{\"volume\":25,\"requestId\":\"39804a13-988d-43d2-b30f-1f3b9b5532f0\"}"}}
 
@@ -90,13 +90,15 @@ class YotoMQTTClient:
         trackKey: str,
     ):
         topic = f"device/{deviceId}/command/card-play"
-        payload = {
-            "uri": f"https://yoto.io/{cardId}",
-            "chapterKey": chapterKey,
-            "trackKey": trackKey,
-            "secondsIn": secondsIn,
-            "cutOff": cutoff,
-        }
+        payload = json.dumps(
+            {
+                "uri": f"https://yoto.io/{cardId}",
+                "chapterKey": chapterKey,
+                "trackKey": trackKey,
+                "secondsIn": secondsIn,
+                "cutOff": cutoff,
+            }
+        )
         self.client.publish(topic, str(payload))
         # MQTT Message: {"status":{"card-play":"OK","req_body":"{\"uri\":\"https://yoto.io/7JtVV\",\"secondsIn\":0,\"cutOff\":0,\"chapterKey\":\"01\",\"trackKey\":\"01\",\"requestId\":\"5385910e-f853-4f34-99a4-d2ed94f02f6d\"}"}}
 
@@ -108,7 +110,7 @@ class YotoMQTTClient:
     # set the ambient light of the player
     def set_ambients(self, deviceId, r: int, g: int, b: int):
         topic = f"device/{deviceId}/command/ambients"
-        payload = {"r": r, "g": g, "b": b}
+        payload = json.dumps({"r": r, "g": g, "b": b})
         self.client.publish(topic, str(payload))
 
     def _parse_status_message(self, message, player):
