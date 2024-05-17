@@ -106,10 +106,24 @@ class YotoMQTTClient:
         self.client.publish(topic)
 
     # set the ambient light of the player
+    # red, blue, green values of intensity from 0-255
     def ambients(self, deviceId, r: int, g: int, b: int):
         topic = f"device/{deviceId}/command/ambients"
         payload = {"r": r, "g": g, "b": b}
         self.client.publish(topic, str(payload))
+
+    # control bluetooth on the player
+    # action: "on" (turn on), "off" (turn off), "is-on" (check if bluetooth is on)
+    # name: (optional) the name of the target device to connect to when action is "on"
+    # mac: (optional) the MAC address of the target device to connect to when action is "on"
+    def bluetooth(self, deviceId, action: str, name: str, mac: str):
+        topic = f"device/{deviceId}/command/bt"
+        payload = {
+            "action": action,
+            "name": name,
+            "mac": mac,
+        }
+        self.client.publish(topic)
 
     def _parse_status_message(self, message, player):
         pass
