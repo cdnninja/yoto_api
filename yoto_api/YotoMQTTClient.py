@@ -106,7 +106,7 @@ class YotoMQTTClient:
         self.client.publish(topic)
 
     # set the ambient light of the player
-    def ambients(self, deviceId, r: int, g: int, b: int):
+    def set_ambients(self, deviceId, r: int, g: int, b: int):
         topic = f"device/{deviceId}/command/ambients"
         payload = {"r": r, "g": g, "b": b}
         self.client.publish(topic, str(payload))

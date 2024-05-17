@@ -65,6 +65,9 @@ class YotoManager:
     def set_volume(self, player_id: str, volume: int):
         self.mqtt_client.set_volume(deviceId=player_id, volume=volume)
 
+    def set_ambients_color(self, player_id: str, r: int, g: int, b: int):
+        self.mqtt_client.set_ambients(self, deviceId=player_id, r=r, g=g, b=b)
+
     def check_and_refresh_token(self) -> bool:
         if self.token is None:
             self.initialize()
