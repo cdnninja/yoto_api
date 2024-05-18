@@ -113,12 +113,12 @@ class YotoMQTTClient:
     # mac: (optional) the MAC address of the target device to connect to when action is "on"
     def bluetooth(self, deviceId, action: str, name: str, mac: str):
         topic = f"device/{deviceId}/command/bt"
-        payload = {
+        payload = json.dumps({
             "action": action,
             "name": name,
             "mac": mac,
-        }
-        self.client.publish(topic)
+        })
+        self.client.publish(topic, str(payload))
 
     # set the ambient light of the player
     # red, blue, green values of intensity from 0-255
