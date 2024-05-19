@@ -58,9 +58,22 @@ class YotoManager:
         self.mqtt_client.card_resume(deviceId=player_id)
 
     def play_card(
-        self, player_id: str, card: str, secondsIn: int, cutoff: int, chapterKey: int, trackKey: int
+        self,
+        player_id: str,
+        card: str,
+        secondsIn: int,
+        cutoff: int,
+        chapterKey: int,
+        trackKey: int,
     ):
-        self.mqtt_client.card_play(deviceId=player_id, card=card, secondsIn=secondsIn, cutoff=cutoff, chapterKey=chapterKey, trackKey=trackKey, )
+        self.mqtt_client.card_play(
+            deviceId=player_id,
+            card=card,
+            secondsIn=secondsIn,
+            cutoff=cutoff,
+            chapterKey=chapterKey,
+            trackKey=trackKey,
+        )
 
     def set_volume(self, player_id: str, volume: int):
         self.mqtt_client.set_volume(deviceId=player_id, volume=volume)
