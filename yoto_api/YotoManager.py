@@ -54,6 +54,9 @@ class YotoManager:
     def pause_player(self, player_id: str):
         self.mqtt_client.card_pause(deviceId=player_id)
 
+    def stop_player(self, player_id: str):
+        self.mqtt_client.card_stop(deviceId=player_id)
+
     def resume_player(self, player_id: str):
         self.mqtt_client.card_resume(deviceId=player_id)
 
