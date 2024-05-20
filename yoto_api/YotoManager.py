@@ -71,7 +71,7 @@ class YotoManager:
     ):
         self.mqtt_client.card_play(
             deviceId=player_id,
-            card=card,
+            cardId=card,
             secondsIn=secondsIn,
             cutoff=cutoff,
             chapterKey=chapterKey,
