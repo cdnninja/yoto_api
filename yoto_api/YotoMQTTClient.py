@@ -24,7 +24,7 @@ class YotoMQTTClient:
         #             mqtt.CallbackAPIVersion.VERSION1,
         userdata = (player, callback)
         self.client = mqtt.Client(
-            client_id="DASH" + player.id, transport="websockets", userdata=userdata
+            client_id="DASH2" + player.id, transport="websockets", userdata=userdata
         )
         self.client.username_pw_set(
             username=player.id + "?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,
@@ -42,6 +42,7 @@ class YotoMQTTClient:
         self.client.subscribe("device/" + player.id + "/response")
         # Command not needed but helps sniffing traffic
         self.client.subscribe("device/" + player.id + "/command")
+        self.update_status(player.id)
         # time.sleep(60)
         # client.loop_stop()
 
