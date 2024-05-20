@@ -35,7 +35,7 @@ class YotoAPI:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         response = requests.post(url, data=data, headers=headers).json()
-        _LOGGER.debug(f"{DOMAIN} - Sign In Response {response}")
+        _LOGGER.debug(f"{DOMAIN} - Sign In Response {response.keys()}")
 
         valid_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(
             seconds=response["expires_in"]
@@ -60,7 +60,7 @@ class YotoAPI:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         response = requests.post(url, data=data, headers=headers).json()
-        _LOGGER.debug(f"{DOMAIN} - Refresh TokenResponse {response}")
+        _LOGGER.debug(f"{DOMAIN} - Refresh TokenResponse {response.keys()}")
 
         valid_until = datetime.datetime.now(pytz.utc) + timedelta(
             seconds=response["expires_in"]
