@@ -20,7 +20,7 @@ class YotoManager:
         self.players: dict = {}
         self.token: Token = None
         self.library: list = {}
-        self.mqtt_client = None
+        self.mqtt_client: dict = {}
 
     def initialize(self) -> None:
         self.token: Token = self.api.login(self.username, self.password)
@@ -36,15 +36,16 @@ class YotoManager:
         # Starts and connects to MQTT.  Runs a loop to receive events. Callback is called when event has been processed and player updated.
         for player in self.players.values():
             # Needs to be correct to handle multiple devices. 1 client per device
-            self.mqtt_client: YotoMQTTClient = YotoMQTTClient()
-            self.mqtt_client.connect_mqtt(self.token, player, callback)
+            self.mqtt_client[player.id]: YotoMQTTClient = YotoMQTTClient()
+            self.mqtt_client[player.id].connect_mqtt(self.token, player, callback)
 
     def set_player_config(self, player, settings):
         self.api.set_player_config(self.token, player, settings)
 
     def disconnect(self) -> None:
         # Should be used when shutting down
-        self.mqtt_client.disconnect_mqtt()
+        for mqtt in self.mqtt_client.values():
+            mqtt.disconnect_mqtt()
 
     def update_cards(self) -> None:
         # Updates library and all card data.  Typically only required on startup.
@@ -52,13 +53,13 @@ class YotoManager:
         self.api.update_library(self.token, self.library)
 
     def pause_player(self, player_id: str):
-        self.mqtt_client.card_pause(deviceId=player_id)
+        self.mqtt_client[player_id].card_pause(deviceId=player_id)
 
     def stop_player(self, player_id: str):
-        self.mqtt_client.card_stop(deviceId=player_id)
+        self.mqtt_client[player_id].card_stop(deviceId=player_id)
 
     def resume_player(self, player_id: str):
-        self.mqtt_client.card_resume(deviceId=player_id)
+        self.mqtt_client[player_id].card_resume(deviceId=player_id)
 
     def play_card(
         self,
@@ -69,7 +70,7 @@ class YotoManager:
         chapterKey: int,
         trackKey: int,
     ):
-        self.mqtt_client.card_play(
+        self.mqtt_client[player_id].card_play(
             deviceId=player_id,
             cardId=card,
             secondsIn=secondsIn,
@@ -79,10 +80,10 @@ class YotoManager:
         )
 
     def set_volume(self, player_id: str, volume: int):
-        self.mqtt_client.set_volume(deviceId=player_id, volume=volume)
+        self.mqtt_client[player_id].set_volume(deviceId=player_id, volume=volume)
 
     def set_ambients_color(self, player_id: str, r: int, g: int, b: int):
-        self.mqtt_client.set_ambients(self, deviceId=player_id, r=r, g=g, b=b)
+        self.mqtt_client[player_id].set_ambients(self, deviceId=player_id, r=r, g=g, b=b)
 
     def check_and_refresh_token(self) -> bool:
         if self.token is None:
