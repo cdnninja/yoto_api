@@ -131,8 +131,8 @@ class YotoMQTTClient:
         self.client.publish(topic, str(payload))
 
     def _parse_status_message(self, message, player):
-        player.night_light_mode = get_child_value(message, "nightlightMode")
-        player.battery_level_percentage = get_child_value(message, "batteryLevel")
+        player.night_light_mode = get_child_value(message, "nightlightMode") or player.night_light_mode
+        player.battery_level_percentage = get_child_value(message, "batteryLevel") or player.battery_level_percentage
 
     def _parse_events_message(self, message, player):
         player.repeat_all = get_child_value(message, "repeatAll") or player.repeat_all
