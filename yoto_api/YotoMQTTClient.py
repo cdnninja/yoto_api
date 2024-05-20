@@ -144,7 +144,7 @@ class YotoMQTTClient:
         player.track_position = get_child_value(message, "position") or player.track_position
         player.source = get_child_value(message, "source") or player.source
         player.playback_status = get_child_value(message, "playbackStatus") or player.playback_status
-        player.sleep_timer_active = get_child_value(message, "sleepTimerActive") or player.sleep_time_active
+        player.sleep_timer_active = get_child_value(message, "sleepTimerActive") or player.sleep_timer_active
         player.card_id = get_child_value(message, "cardId") or player.card_id
 
     # {"trackLength":315,"position":0,"cardId":"7JtVV","repeatAll":true,"source":"remote","cardUpdatedAt":"2021-07-13T14:51:26.576Z","chapterTitle":"Snow and Tell","chapterKey":"03","trackTitle":"Snow and Tell","trackKey":"03","streaming":false,"volume":5,"volumeMax":8,"playbackStatus":"playing","playbackWait":false,"sleepTimerActive":false,"eventUtc":1715133271}
