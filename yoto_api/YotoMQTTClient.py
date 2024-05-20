@@ -66,19 +66,23 @@ class YotoMQTTClient:
         topic = f"device/{deviceId}/command/set-volume"
         payload = json.dumps({"volume": volume})
         self.client.publish(topic, str(payload))
+        self.update_status(deviceId)
         # {"status":{"set-volume":"OK","req_body":"{\"volume\":25,\"requestId\":\"39804a13-988d-43d2-b30f-1f3b9b5532f0\"}"}}
 
     def card_stop(self, deviceId):
         topic = f"device/{deviceId}/command/card-stop"
         self.client.publish(topic)
+        self.update_status(deviceId)
 
     def card_pause(self, deviceId):
         topic = f"device/{deviceId}/command/card-pause"
         self.client.publish(topic)
+        self.update_status(deviceId)
 
     def card_resume(self, deviceId):
         topic = f"device/{deviceId}/command/card-resume"
         self.client.publish(topic)
+        self.update_status(deviceId)
         # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}
 
     def card_play(
@@ -101,6 +105,7 @@ class YotoMQTTClient:
             }
         )
         self.client.publish(topic, str(payload))
+        self.update_status(deviceId)
         # MQTT Message: {"status":{"card-play":"OK","req_body":"{\"uri\":\"https://yoto.io/7JtVV\",\"secondsIn\":0,\"cutOff\":0,\"chapterKey\":\"01\",\"trackKey\":\"01\",\"requestId\":\"5385910e-f853-4f34-99a4-d2ed94f02f6d\"}"}}
 
     # restart the player
