@@ -42,6 +42,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/cdnninja/yoto_api",
-    version="1.15.11",
+    version="1.15.12",
     zip_safe=False,
 )
