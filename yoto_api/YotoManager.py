@@ -31,6 +31,8 @@ class YotoManager:
     def update_players_status(self) -> None:
         # Updates the data with current player data.
         self.api.update_players(self.token, self.players)
+        for mqtt in self.mqtt_client.values():
+            mqtt.update_status()
 
     def connect_to_events(self, callback=None) -> None:
         # Starts and connects to MQTT.  Runs a loop to receive events. Callback is called when event has been processed and player updated.
@@ -83,9 +85,7 @@ class YotoManager:
         self.mqtt_client[player_id].set_volume(deviceId=player_id, volume=volume)
 
     def set_ambients_color(self, player_id: str, r: int, g: int, b: int):
-        self.mqtt_client[player_id].set_ambients(
-            self, deviceId=player_id, r=r, g=g, b=b
-        )
+        self.mqtt_client[player_id].set_ambients(deviceId=player_id, r=r, g=g, b=b)
 
     def check_and_refresh_token(self) -> bool:
         if self.token is None:
