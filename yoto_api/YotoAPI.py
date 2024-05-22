@@ -14,7 +14,6 @@ from .utils import get_child_value, parse_datetime
 
 _LOGGER = logging.getLogger(__name__)
 
-
 class YotoAPI:
     def __init__(self) -> None:
         self.BASE_URL: str = "https://api.yotoplay.com"
@@ -204,9 +203,6 @@ class YotoAPI:
     def set_player_config(self, player, settings):
         pass
 
-    def set_player_config(self, player, settings):
-        pass
-
     def _get_devices(self, token: Token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
 
@@ -240,7 +236,7 @@ class YotoAPI:
 
         headers = self._get_authenticated_headers(token)
 
-        response = requests.post(url, headers=headers).json()
+        response = requests.put(url, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Response: {response}")
         return response
 
