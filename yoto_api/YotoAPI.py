@@ -14,6 +14,7 @@ from .utils import get_child_value, parse_datetime
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class YotoAPI:
     def __init__(self) -> None:
         self.BASE_URL: str = "https://api.yotoplay.com"
@@ -113,9 +114,7 @@ class YotoAPI:
             players[deviceId].system_volume = get_child_value(
                 player_status_response, "systemVolumePercentage"
             )
-            if get_child_value(
-                player_status_response, "temperatureCelcius"
-            ) != 0:
+            if get_child_value(player_status_response, "temperatureCelcius") != 0:
                 players[deviceId].temperature_celcius = get_child_value(
                     player_status_response, "temperatureCelcius"
                 )
