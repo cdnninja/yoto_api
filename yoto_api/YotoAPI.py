@@ -114,9 +114,12 @@ class YotoAPI:
             players[deviceId].system_volume = get_child_value(
                 player_status_response, "systemVolumePercentage"
             )
-            players[deviceId].temperature_celcius = get_child_value(
+            if get_child_value(
                 player_status_response, "temperatureCelcius"
-            )
+            ) != 0:
+                players[deviceId].temperature_celcius = get_child_value(
+                    player_status_response, "temperatureCelcius"
+                )
             players[deviceId].bluetooth_audio_connected = get_child_value(
                 player_status_response, "isBluetoothAudioConnected"
             )
