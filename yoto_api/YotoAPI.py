@@ -114,9 +114,7 @@ class YotoAPI:
             players[deviceId].system_volume = get_child_value(
                 player_status_response, "systemVolumePercentage"
             )
-            if get_child_value(
-                player_status_response, "temperatureCelcius"
-            ) != 0:
+            if get_child_value(player_status_response, "temperatureCelcius") != 0:
                 players[deviceId].temperature_celcius = get_child_value(
                     player_status_response, "temperatureCelcius"
                 )
@@ -204,9 +202,6 @@ class YotoAPI:
     def set_player_config(self, player, settings):
         pass
 
-    def set_player_config(self, player, settings):
-        pass
-
     def _get_devices(self, token: Token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
 
@@ -240,7 +235,7 @@ class YotoAPI:
 
         headers = self._get_authenticated_headers(token)
 
-        response = requests.post(url, headers=headers).json()
+        response = requests.put(url, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Response: {response}")
         return response
 
