@@ -136,21 +136,37 @@ class YotoMQTTClient:
         self.client.publish(topic, str(payload))
 
     def _parse_status_message(self, message, player):
-        player.night_light_mode = get_child_value(message, "nightlightMode") or player.night_light_mode
-        player.battery_level_percentage = get_child_value(message, "batteryLevel") or player.battery_level_percentage
+        player.night_light_mode = (
+            get_child_value(message, "nightlightMode") or player.night_light_mode
+        )
+        player.battery_level_percentage = (
+            get_child_value(message, "batteryLevel") or player.battery_level_percentage
+        )
 
     def _parse_events_message(self, message, player):
         player.repeat_all = get_child_value(message, "repeatAll") or player.repeat_all
         player.volume = get_child_value(message, "volume") or player.volume
         player.volume_max = get_child_value(message, "volumeMax") or player.volume_max
         player.online = get_child_value(message, "online") or player.online
-        player.chapter_title = get_child_value(message, "chapterTitle") or player.chapter_title
-        player.track_title = get_child_value(message, "trackTitle") or player.track_title
-        player.track_length = get_child_value(message, "trackLength") or player.track_length
-        player.track_position = get_child_value(message, "position") or player.track_position
+        player.chapter_title = (
+            get_child_value(message, "chapterTitle") or player.chapter_title
+        )
+        player.track_title = (
+            get_child_value(message, "trackTitle") or player.track_title
+        )
+        player.track_length = (
+            get_child_value(message, "trackLength") or player.track_length
+        )
+        player.track_position = (
+            get_child_value(message, "position") or player.track_position
+        )
         player.source = get_child_value(message, "source") or player.source
-        player.playback_status = get_child_value(message, "playbackStatus") or player.playback_status
-        player.sleep_timer_active = get_child_value(message, "sleepTimerActive") or player.sleep_timer_active
+        player.playback_status = (
+            get_child_value(message, "playbackStatus") or player.playback_status
+        )
+        player.sleep_timer_active = (
+            get_child_value(message, "sleepTimerActive") or player.sleep_timer_active
+        )
         player.card_id = get_child_value(message, "cardId") or player.card_id
 
     # {"trackLength":315,"position":0,"cardId":"7JtVV","repeatAll":true,"source":"remote","cardUpdatedAt":"2021-07-13T14:51:26.576Z","chapterTitle":"Snow and Tell","chapterKey":"03","trackTitle":"Snow and Tell","trackKey":"03","streaming":false,"volume":5,"volumeMax":8,"playbackStatus":"playing","playbackWait":false,"sleepTimerActive":false,"eventUtc":1715133271}
