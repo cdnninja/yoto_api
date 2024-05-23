@@ -69,6 +69,12 @@ class YotoMQTTClient:
         self.update_status(deviceId)
         # {"status":{"set-volume":"OK","req_body":"{\"volume\":25,\"requestId\":\"39804a13-988d-43d2-b30f-1f3b9b5532f0\"}"}}
 
+    def set_sleep(self, deviceId: str, seconds: int):
+        topic = f"device/{deviceId}/command/sleep"
+        payload = json.dumps({"seconds": seconds})
+        self.client.publish(topic, str(payload))
+        self.update_status(deviceId)
+
     def card_stop(self, deviceId):
         topic = f"device/{deviceId}/command/card-stop"
         self.client.publish(topic)
@@ -161,12 +167,9 @@ class YotoMQTTClient:
             get_child_value(message, "position") or player.track_position
         )
         player.source = get_child_value(message, "source") or player.source
-        player.playback_status = (
-            get_child_value(message, "playbackStatus") or player.playback_status
-        )
-        player.sleep_timer_active = (
-            get_child_value(message, "sleepTimerActive") or player.sleep_timer_active
-        )
+        player.playback_status = get_child_value(message, "playbackStatus") or player.playback_status
+        player.sleep_timer_active = get_child_value(message, "sleepTimerActive") or player.sleep_timer_active
+        player.sleep_timer_seconds_remaining = get_child_value(message, "sleepTimerSeconds") or player.sleep_timer_seconds_remaining
         player.card_id = get_child_value(message, "cardId") or player.card_id
 
     # {"trackLength":315,"position":0,"cardId":"7JtVV","repeatAll":true,"source":"remote","cardUpdatedAt":"2021-07-13T14:51:26.576Z","chapterTitle":"Snow and Tell","chapterKey":"03","trackTitle":"Snow and Tell","trackKey":"03","streaming":false,"volume":5,"volumeMax":8,"playbackStatus":"playing","playbackWait":false,"sleepTimerActive":false,"eventUtc":1715133271}
