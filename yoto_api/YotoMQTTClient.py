@@ -69,6 +69,12 @@ class YotoMQTTClient:
         self.update_status(deviceId)
         # {"status":{"set-volume":"OK","req_body":"{\"volume\":25,\"requestId\":\"39804a13-988d-43d2-b30f-1f3b9b5532f0\"}"}}
 
+    def set_sleep(self, deviceId: str, seconds: int):
+        topic = f"device/{deviceId}/command/sleep"
+        payload = json.dumps({"seconds": seconds})
+        self.client.publish(topic, str(payload))
+        self.update_status(deviceId)
+
     def card_stop(self, deviceId):
         topic = f"device/{deviceId}/command/card-stop"
         self.client.publish(topic)
@@ -166,6 +172,10 @@ class YotoMQTTClient:
         )
         player.sleep_timer_active = (
             get_child_value(message, "sleepTimerActive") or player.sleep_timer_active
+        )
+        player.sleep_timer_seconds_remaining = (
+            get_child_value(message, "sleepTimerSeconds")
+            or player.sleep_timer_seconds_remaining
         )
         player.card_id = get_child_value(message, "cardId") or player.card_id
 
