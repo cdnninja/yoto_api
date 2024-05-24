@@ -98,7 +98,7 @@ class YotoMQTTClient:
         secondsIn: int,
         cutoff: int,
         chapterKey: str,
-        trackKey: str,
+        trackKey: int,
     ):
         topic = f"device/{deviceId}/command/card-play"
         payload = json.dumps(

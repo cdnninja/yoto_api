@@ -68,7 +68,7 @@ class YotoManager:
         card: str,
         secondsIn: int,
         cutoff: int,
-        chapterKey: int,
+        chapterKey: str,
         trackKey: int,
     ):
         self.mqtt_client[player_id].card_play(
