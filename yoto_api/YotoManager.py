@@ -87,6 +87,10 @@ class YotoManager:
     def set_ambients_color(self, player_id: str, r: int, g: int, b: int):
         self.mqtt_client[player_id].set_ambients(deviceId=player_id, r=r, g=g, b=b)
 
+    def set_sleep(self, player_id: str, seconds: int):
+        # Set sleep time for playback.  0 Disables sleep.
+        self.mqtt_client[player_id].set_sleep(deviceId=player_id, seconds=seconds)
+
     def check_and_refresh_token(self) -> bool:
         if self.token is None:
             self.initialize()
