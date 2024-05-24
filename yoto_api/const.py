@@ -62,5 +62,6 @@ POWER_SOURCE = {
     1: "Battery Power",
     2: "USB Power",
     3: "USB Power",
+    4: "USB Power",
     5: "USB Power",
 }
