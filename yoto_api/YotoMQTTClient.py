@@ -52,11 +52,11 @@ class YotoMQTTClient:
 
     def _on_connect(self, client, userdata, flags, rc):
         self.flag_connected = 1
-        _LOGGER.debug(f"{DOMAIN} - MQTT connected: {rc}")
+        _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT connected: {rc}")
 
     def _on_disconnect(self, client, userdata, rc):
         self.flag_connected = 0
-        _LOGGER.debug(f"{DOMAIN} - MQTT Disconnected: {rc}")
+        _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT Disconnected: {rc}")
 
     def update_status(self, deviceId):
         topic = f"device/{deviceId}/command/events"
@@ -173,13 +173,14 @@ class YotoMQTTClient:
 
     def _on_message(self, client, userdata, message):
         # Process MQTT Message
+        player = userdata[0]
+
         _LOGGER.debug(f"{DOMAIN} - MQTT Topic: {message.topic}")
         _LOGGER.debug(
             f"{DOMAIN} - MQTT Message: {str(message.payload.decode('utf-8'))}"
         )
         # _LOGGER.debug(f"{DOMAIN} - MQTT QOS: {message.qos}")
         # _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
-        player = userdata[0]
         callback = userdata[1]
         parts = message.topic.split("/")
         base, device, topic = parts
