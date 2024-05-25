@@ -242,7 +242,7 @@ class YotoAPI:
         payload = config
         response = requests.put(url, headers=headers, data=data).json()
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Payload: {data}")
-        # _LOGGER.debug(f"{DOMAIN} - Set Device Config Response: {response}")
+        _LOGGER.debug(f"{DOMAIN} - Set Device Config Response: {response}")
         return response
 
     def _get_device_config(self, token: Token, player_id: str) -> None:
