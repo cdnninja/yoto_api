@@ -242,7 +242,6 @@ class YotoAPI:
             }
 
         headers = self._get_authenticated_headers(token)
-        payload = config
         response = requests.put(url, headers=headers, data=data).json()
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Payload: {data}")
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Response: {response}")
