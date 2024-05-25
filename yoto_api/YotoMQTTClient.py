@@ -4,9 +4,9 @@ import logging
 import paho.mqtt.client as mqtt
 import json
 
-from .const import DOMAIN
+from .const import DOMAIN, VOLUME_MAPPING_INVERTED
 from .Token import Token
-from .utils import get_child_value
+from .utils import get_child_value, take_closest
 from .YotoPlayer import YotoPlayer
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,8 +63,9 @@ class YotoMQTTClient:
         self.client.publish(topic)
 
     def set_volume(self, deviceId: str, volume: int):
+        closest_volume =  take_closest(VOLUME_MAPPING_INVERTED, volume)
         topic = f"device/{deviceId}/command/set-volume"
-        payload = json.dumps({"volume": volume})
+        payload = json.dumps({"volume": closest_volume})
         self.client.publish(topic, str(payload))
         self.update_status(deviceId)
         # {"status":{"set-volume":"OK","req_body":"{\"volume\":25,\"requestId\":\"39804a13-988d-43d2-b30f-1f3b9b5532f0\"}"}}

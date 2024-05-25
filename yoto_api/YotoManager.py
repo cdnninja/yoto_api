@@ -81,6 +81,7 @@ class YotoManager:
         )
 
     def set_volume(self, player_id: str, volume: int):
+        # Takes a range from 0-100.  Maps it to the nearest 0-16 value from the constant file and sends that
         self.mqtt_client[player_id].set_volume(deviceId=player_id, volume=volume)
 
     def set_ambients_color(self, player_id: str, r: int, g: int, b: int):
