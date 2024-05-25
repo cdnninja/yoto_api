@@ -198,6 +198,8 @@ class YotoMQTTClient:
             self._parse_status_message(
                 json.loads(str(message.payload.decode("utf-8"))), player
             )
+            if callback:
+                callback()
         elif topic == "events":
             self._parse_events_message(
                 json.loads(str(message.payload.decode("utf-8"))), player
