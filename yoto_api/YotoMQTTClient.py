@@ -63,7 +63,7 @@ class YotoMQTTClient:
         self.client.publish(topic)
 
     def set_volume(self, deviceId: str, volume: int):
-        closest_volume =  take_closest(VOLUME_MAPPING_INVERTED, volume)
+        closest_volume = take_closest(VOLUME_MAPPING_INVERTED, volume)
         topic = f"device/{deviceId}/command/set-volume"
         payload = json.dumps({"volume": closest_volume})
         self.client.publish(topic, str(payload))
