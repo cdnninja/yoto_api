@@ -35,19 +35,19 @@ def parse_datetime(value, timezone) -> datetime.datetime:
     )
 
 
-def take_closest(dict, number):
+def take_closest(list, number):
     """
-    Assumes myList is sorted. Returns closest value to myNumber.
+    Assumes list is sorted. Returns closest value to number. Used for volume mapping.
 
     If two numbers are equally close, return the smallest number.
     """
-    pos = bisect_left(dict, number)
+    pos = bisect_left(list, number)
     if pos == 0:
-        return dict[0]
-    if pos == len(dict):
-        return dict[-1]
-    before = dict[pos - 1]
-    after = dict[pos]
+        return list[0]
+    if pos == len(list):
+        return list[-1]
+    before = list[pos - 1]
+    after = list[pos]
     if after - number < number - before:
         return after
     else:
