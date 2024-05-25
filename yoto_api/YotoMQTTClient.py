@@ -18,7 +18,6 @@ class YotoMQTTClient:
         self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
         self.MQTT_URL: str = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
         self.client = None
-        self.flag_connected = 0
 
     def connect_mqtt(self, token: Token, player: YotoPlayer, callback):
         #             mqtt.CallbackAPIVersion.VERSION1,
@@ -51,11 +50,9 @@ class YotoMQTTClient:
         self.client.disconnect()
 
     def _on_connect(self, client, userdata, flags, rc):
-        self.flag_connected = 1
         _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT connected: {rc}")
 
     def _on_disconnect(self, client, userdata, rc):
-        self.flag_connected = 0
         _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT Disconnected: {rc}")
 
     def update_status(self, deviceId):
