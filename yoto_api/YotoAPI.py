@@ -236,10 +236,7 @@ class YotoAPI:
         config = {
             "nightTime": "20:00",
         }
-        data = {
-            "deviceId": player_id,
-            "config": config
-            }
+        data = {"deviceId": player_id, "config": config}
 
         headers = self._get_authenticated_headers(token)
         response = requests.put(url, headers=headers, data=data).json()
