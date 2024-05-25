@@ -2,6 +2,7 @@
 
 import datetime
 import re
+from bisect import bisect_left
 
 
 def get_child_value(data, key):
@@ -32,3 +33,22 @@ def parse_datetime(value, timezone) -> datetime.datetime:
         second=int(m.group(6)),
         tzinfo=timezone,
     )
+
+
+def take_closest(dict, number):
+    """
+    Assumes myList is sorted. Returns closest value to myNumber.
+
+    If two numbers are equally close, return the smallest number.
+    """
+    pos = bisect_left(dict, number)
+    if pos == 0:
+        return dict[0]
+    if pos == len(dict):
+        return dict[-1]
+    before = dict[pos - 1]
+    after = dict[pos]
+    if after - number < number - before:
+        return after
+    else:
+        return before
