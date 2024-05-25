@@ -236,7 +236,10 @@ class YotoAPI:
         config = {
             "nightTime": "20:00",
         }
-        data = {"config": config}
+        data = {
+            "deviceId": player_id,
+            "config": config
+            }
 
         headers = self._get_authenticated_headers(token)
         payload = config
