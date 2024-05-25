@@ -200,8 +200,8 @@ class YotoAPI:
                 item, "card.metadata.cover.seriestitle"
             )
 
-    def set_player_config(self, player, settings):
-        pass
+    def set_player_config(self, token, player):
+        self._set_device_config(token=token, player_id=player)
 
     def _get_devices(self, token: Token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
@@ -231,13 +231,21 @@ class YotoAPI:
         return response
         #  2024-05-15 17:25:48,604 yoto_api.YotoAPI DEBUG:yoto_api - Get Device Config Response: {'device': {'deviceId': 'y23IBS76kCaOSrGlz29XhIFO', 'name': '', 'errorCode': None, 'fwVersion': 'v2.17.5-5', 'popCode': 'FAJKEH', 'releaseChannelId': 'prerelease', 'releaseChannelVersion': 'v2.17.5-5', 'activationPopCode': 'IBSKCAAA', 'registrationCode': 'IBSKCAAA', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'mac': 'b4:8a:0a:92:7a:f4', 'online': True, 'geoTimezone': 'America/Edmonton', 'getPosix': 'MST7MDT,M3.2.0,M11.1.0', 'status': {'activeCard': 'none', 'aliveTime': None, 'als': 0, 'battery': None, 'batteryLevel': 100, 'batteryRemaining': None, 'bgDownload': 0, 'bluetoothHp': 0, 'buzzErrors': 0, 'bytesPS': 0, 'cardInserted': 0, 'chgStatLevel': None, 'charging': 0, 'day': 1, 'dayBright': None, 'dbatTimeout': None, 'dnowBrightness': None, 'deviceId': 'y23IBS76kCaOSrGlz29XhIFO', 'errorsLogged': 164, 'failData': None, 'failReason': None, 'free': None, 'free32': None, 'freeDisk': 30219824, 'freeDMA': None, 'fwVersion': 'v2.17.5-5', 'headphones': 0, 'lastSeenAt': None, 'missedLogs': None, 'nfcErrs': 'n/a', 'nightBright': None, 'nightlightMode': '0x194a55', 'playingStatus': 0, 'powerCaps': '0x02', 'powerSrc': 2, 'qiOtp': None, 'sd_info': None, 'shutDown': None, 'shutdownTimeout': None, 'ssid': 'speed', 'statusVersion': None, 'temp': '0:24', 'timeFormat': None, 'totalDisk': 31385600, 'twdt': 0, 'updatedAt': '2024-05-15T23:23:45.284Z', 'upTime': 159925, 'userVolume': 31, 'utcOffset': -21600, 'utcTime': 1715815424, 'volume': 34, 'wifiRestarts': None, 'wifiStrength': -54}, 'config': {'locale': 'en', 'bluetoothEnabled': '1', 'repeatAll': True, 'showDiagnostics': True, 'btHeadphonesEnabled': True, 'pauseVolumeDown': False, 'pausePowerButton': True, 'displayDimTimeout': '60', 'shutdownTimeout': '3600', 'headphonesVolumeLimited': False, 'dayTime': '06:30', 'maxVolumeLimit': '16', 'ambientColour': '#40bfd9', 'dayDisplayBrightness': 'auto', 'dayYotoDaily': '3nC80/daily/<yyyymmdd>', 'dayYotoRadio': '3nC80/radio-day/01', 'daySoundsOff': '0', 'nightTime': '18:20', 'nightMaxVolumeLimit': '8', 'nightAmbientColour': '#f57399', 'nightDisplayBrightness': '100', 'nightYotoDaily': '0', 'nightYotoRadio': '0', 'nightSoundsOff': '1', 'hourFormat': '12', 'timezone': '', 'displayDimBrightness': '0', 'systemVolume': '87', 'volumeLevel': 'safe', 'clockFace': 'digital-sun', 'logLevel': 'none', 'alarms': []}, 'shortcuts': {'versionId': '36645a9463e038d6cb9923257b38d9d9df7a6509', 'modes': {'day': {'content': [{'cmd': 'track-play', 'params': {'card': '3nC80', 'chapter': 'daily', 'track': '<yyyymmdd>'}}, {'cmd': 'track-play', 'params': {'card': '3nC80', 'chapter': 'radio-day', 'track': '01'}}]}, 'night': {'content': [{'cmd': 'track-play', 'params': {'card': '3nC80', 'chapter': 'daily', 'track': '<yyyymmdd>'}}, {'cmd': 'track-play', 'params': {'card': '3nC80', 'chapter': 'radio-night', 'track': '01'}}]}}}}}
 
-    def _set_device_config(self, token: Token, player_id: str, config) -> None:
-        url = self.BASE_URL + "/device-v2/" + player_id + "/config"
+    def _set_device_config(self, token: Token, player_id: str) -> None:
+        url = self.BASE_URL + "/device-v2/" + player_id + "/config"        
+        config = {
+            "nightTime": "20:00",
+        }
+        data = {
+            "config": config
+        }
+
 
         headers = self._get_authenticated_headers(token)
         payload = config
-        response = requests.put(url, headers=headers, data=payload).json()
-        _LOGGER.debug(f"{DOMAIN} - Set Device Config Response: {response}")
+        response = requests.put(url, headers=headers, data=data).json()
+        _LOGGER.debug(f"{DOMAIN} - Set Device Config Payload: {data}")
+        #_LOGGER.debug(f"{DOMAIN} - Set Device Config Response: {response}")
         return response
 
     def _get_device_config(self, token: Token, player_id: str) -> None:
@@ -249,15 +257,6 @@ class YotoAPI:
         _LOGGER.debug(f"{DOMAIN} - Get Device Config Response: {response}")
         return response
         #  2024-05-15 17:25:48,604 yoto_api.YotoAPI DEBUG:yoto_api - Get Device Config Response: {'device': {'deviceId': 'y23IBS76kCaOSrGlz29XhIFO', 'name': '', 'errorCode': None, 'fwVersion': 'v2.17.5-5', 'popCode': 'FAJKEH', 'releaseChannelId': 'prerelease', 'releaseChannelVersion': 'v2.17.5-5', 'activationPopCode': 'IBSKCAAA', 'registrationCode': 'IBSKCAAA', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'mac': 'b4:8a:0a:92:7a:f4', 'online': True, 'geoTimezone': 'America/Edmonton', 'getPosix': 'MST7MDT,M3.2.0,M11.1.0', 'status': {'activeCard': 'none', 'aliveTime': None, 'als': 0, 'battery': None, 'batteryLevel': 100, 'batteryRemaining': None, 'bgDownload': 0, 'bluetoothHp': 0, 'buzzErrors': 0, 'bytesPS': 0, 'cardInserted': 0, 'chgStatLevel': None, 'charging': 0, 'day': 1, 'dayBright': None, 'dbatTimeout': None, 'dnowBrightness': None, 'deviceId': 'y23IBS76kCaOSrGlz29XhIFO', 'errorsLogged': 164, 'failData': None, 'failReason': None, 'free': None, 'free32': None, 'freeDisk': 30219824, 'freeDMA': None, 'fwVersion': 'v2.17.5-5', 'headphones': 0, 'lastSeenAt': None, 'missedLogs': None, 'nfcErrs': 'n/a', 'nightBright': None, 'nightlightMode': '0x194a55', 'playingStatus': 0, 'powerCaps': '0x02', 'powerSrc': 2, 'qiOtp': None, 'sd_info': None, 'shutDown': None, 'shutdownTimeout': None, 'ssid': 'speed', 'statusVersion': None, 'temp': '0:24', 'timeFormat': None, 'totalDisk': 31385600, 'twdt': 0, 'updatedAt': '2024-05-15T23:23:45.284Z', 'upTime': 159925, 'userVolume': 31, 'utcOffset': -21600, 'utcTime': 1715815424, 'volume': 34, 'wifiRestarts': None, 'wifiStrength': -54}, 'config': {'locale': 'en', 'bluetoothEnabled': '1', 'repeatAll': True, 'showDiagnostics': True, 'btHeadphonesEnabled': True, 'pauseVolumeDown': False, 'pausePowerButton': True, 'displayDimTimeout': '60', 'shutdownTimeout': '3600', 'headphonesVolumeLimited': False, 'dayTime': '06:30', 'maxVolumeLimit': '16', 'ambientColour': '#40bfd9', 'dayDisplayBrightness': 'auto', 'dayYotoDaily': '3nC80/daily/<yyyymmdd>', 'dayYotoRadio': '3nC80/radio-day/01', 'daySoundsOff': '0', 'nightTime': '18:20', 'nightMaxVolumeLimit': '8', 'nightAmbientColour': '#f57399', 'nightDisplayBrightness': '100', 'nightYotoDaily': '0', 'nightYotoRadio': '0', 'nightSoundsOff': '1', 'hourFormat': '12', 'timezone': '', 'displayDimBrightness': '0', 'systemVolume': '87', 'volumeLevel': 'safe', 'clockFace': 'digital-sun', 'logLevel': 'none', 'alarms': []}, 'shortcuts': {'versionId': '36645a9463e038d6cb9923257b38d9d9df7a6509', 'modes': {'day': {'content': [{'cmd': 'track-play', 'params': {'card': '3nC80', 'chapter': 'daily', 'track': '<yyyymmdd>'}}, {'cmd': 'track-play', 'params': {'card': '3nC80', 'chapter': 'radio-day', 'track': '01'}}]}, 'night': {'content': [{'cmd': 'track-play', 'params': {'card': '3nC80', 'chapter': 'daily', 'track': '<yyyymmdd>'}}, {'cmd': 'track-play', 'params': {'card': '3nC80', 'chapter': 'radio-night', 'track': '01'}}]}}}}}
-
-    def _set_device_config(self, token: Token, player_id: str) -> None:
-        url = self.BASE_URL + "/device-v2/" + player_id + "/config"
-
-        headers = self._get_authenticated_headers(token)
-
-        response = requests.post(url, headers=headers).json()
-        _LOGGER.debug(f"{DOMAIN} - Set Device Config Response: {response}")
-        return response
 
     def _get_cards(self, token: Token) -> dict:
         ############## ${BASE_URL}/card/family/library #############

@@ -41,7 +41,7 @@ class YotoManager:
             self.mqtt_client[player.id].connect_mqtt(self.token, player, callback)
 
     def set_player_config(self, player, settings):
-        self.api.set_player_config(self.token, player, settings)
+        self.api.set_player_config(self.token, player)
 
     def disconnect(self) -> None:
         # Should be used when shutting down
