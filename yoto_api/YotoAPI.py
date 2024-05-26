@@ -146,8 +146,8 @@ class YotoAPI:
             ]
 
             player_config = self._get_device_config(token, deviceId)
-            if player.config is None:
-                player.config = YotoPlayerConfig()
+            if players[deviceId].config is None:
+                players[deviceId].config = YotoPlayerConfig()
             time = get_child_value(player_config, "device.config.dayTime")
             players[deviceId].config.day_mode_time = datetime.datetime.strptime(
                 time, "%H:%M"
