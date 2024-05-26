@@ -238,10 +238,10 @@ class YotoAPI:
             "nightTime": "20:00",
         }
         data = {"deviceId": player_id, "config": config}
-        #data = self._get_device_config(token, player_id)["device"]
-        #data.pop("status", None)
-        #data.pop("shortcuts", None)
-        #data["config"]["nightTime"] = "20:00"
+        # data = self._get_device_config(token, player_id)["device"]
+        # data.pop("status", None)
+        # data.pop("shortcuts", None)
+        # data["config"]["nightTime"] = "20:00"
         headers = self._get_authenticated_headers(token)
         response = requests.put(url, headers=headers, data=json.dumps(data)).json()
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Payload: {data}")
