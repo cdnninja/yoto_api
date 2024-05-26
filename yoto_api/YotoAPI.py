@@ -202,16 +202,26 @@ class YotoAPI:
                 item, "card.metadata.cover.seriestitle"
             )
 
-    def set_player_config(self, token, player):
-        url = self.BASE_URL + "/device-v2/" + player + "/config"
-        config = {
-            "nightTime": "20:00",
-        }
-        data = {"deviceId": player, "config": config}
-        #data = self._get_device_config(token, player_id)["device"]
-        #data.pop("status", None)
-        #data.pop("shortcuts", None)
-        #data["config"]["nightTime"] = "20:00"
+    def set_player_config(self, token: Token, player_id: str, config: YotoPlayerConfig):
+        url = self.BASE_URL + "/device-v2/" + player_id + "/config"
+        config_payload = {}
+        if config.day_mode_time:
+            config_payload["dayTime"] = config.day_mode_time
+        if config.day_display_brightness:
+            config_payload["dayDisplayBrightness"] = config.day_display_brightness
+        if config.day_ambient_colour:
+            config_payload["ambientColour"] = config.day_ambient_colour
+        if config.day_max_volume_limit:
+            config_payload["maxVolumeLimit"] = config.day_max_volume_limit
+        if config.night_mode_time:
+            config_payload["nightTime"] = config.night_mode_time
+        if config.night_display_brightness:
+            config_payload["nightDisplayBrightness"] = config.night_display_brightness
+        if config.night_ambient_colour:
+            config_payload["nightAmbientColour"] = config.night_ambient_colour
+        if config.night_max_volume_limit:
+            config_payload["nightMaxVolumeLimit"] = config.night_max_volume_limit
+        data = {"deviceId": player_id, "config": config_payload}
         headers = self._get_authenticated_headers(token)
         response = requests.put(url, headers=headers, data=json.dumps(data)).json()
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Payload: {data}")

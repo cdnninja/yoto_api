@@ -5,14 +5,18 @@ import datetime
 
 @dataclass
 class YotoPlayerConfig:
-        # Device Config
+    # Device Config
     day_mode_time: datetime.time = None
+    # Auto, or value
     day_display_brightness: int = None
+    # Values in HEX_COLORS in const
     day_ambient_colour: str = None
     day_max_volume_limit: int = None
 
     night_mode_time: datetime.time = None
-    night_display_brightness: int = None
+    # Auto, or value
+    night_display_brightness: str = None
+    # Values in HEX_COLORS in const
     night_ambient_colour: str = None
     night_max_volume_limit: int = None
 
