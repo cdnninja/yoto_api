@@ -3,6 +3,9 @@
 import logging
 import paho.mqtt.client as mqtt
 import json
+import datetime
+import pytz
+
 
 from .const import DOMAIN, VOLUME_MAPPING_INVERTED
 from .Token import Token
@@ -36,12 +39,6 @@ class YotoMQTTClient:
         self.client.tls_set()
         self.client.connect(host=self.MQTT_URL, port=443)
         self.client.loop_start()
-        self.client.subscribe("device/" + player.id + "/events")
-        self.client.subscribe("device/" + player.id + "/status")
-        self.client.subscribe("device/" + player.id + "/response")
-        # Command not needed but helps sniffing traffic
-        self.client.subscribe("device/" + player.id + "/command")
-        self.update_status(player.id)
         # time.sleep(60)
         # client.loop_stop()
 
@@ -51,6 +48,11 @@ class YotoMQTTClient:
 
     def _on_connect(self, client, userdata, flags, rc):
         _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT connected: {rc}")
+        player = userdata[0]
+        self.client.subscribe("device/" + player.id + "/events")
+        self.client.subscribe("device/" + player.id + "/status")
+        self.client.subscribe("device/" + player.id + "/response")
+        self.update_status(player.id)
 
     def _on_disconnect(self, client, userdata, rc):
         _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT Disconnected: {rc}")
@@ -146,6 +148,7 @@ class YotoMQTTClient:
         player.battery_level_percentage = (
             get_child_value(message, "batteryLevel") or player.battery_level_percentage
         )
+        player.last_updated_at = datetime.datetime.now(pytz.utc)
 
     def _parse_events_message(self, message, player):
         player.repeat_all = get_child_value(message, "repeatAll") or player.repeat_all
@@ -176,6 +179,7 @@ class YotoMQTTClient:
             or player.sleep_timer_seconds_remaining
         )
         player.card_id = get_child_value(message, "cardId") or player.card_id
+        player.last_updated_at = datetime.datetime.now(pytz.utc)
 
     # {"trackLength":315,"position":0,"cardId":"7JtVV","repeatAll":true,"source":"remote","cardUpdatedAt":"2021-07-13T14:51:26.576Z","chapterTitle":"Snow and Tell","chapterKey":"03","trackTitle":"Snow and Tell","trackKey":"03","streaming":false,"volume":5,"volumeMax":8,"playbackStatus":"playing","playbackWait":false,"sleepTimerActive":false,"eventUtc":1715133271}
 
