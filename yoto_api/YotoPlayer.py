@@ -3,6 +3,18 @@
 from dataclasses import dataclass
 import datetime
 
+@dataclass
+class YotoPlayerConfig:
+        # Device Config
+    day_mode_time: datetime.time = None
+    day_display_brightness: int = None
+    day_ambient_colour: str = None
+    day_max_volume_limit: int = None
+
+    night_mode_time: datetime.time = None
+    night_display_brightness: int = None
+    night_ambient_colour: str = None
+    night_max_volume_limit: int = None
 
 @dataclass
 class YotoPlayer:
@@ -31,16 +43,8 @@ class YotoPlayer:
     wifi_strength: int = None
     power_source: str = None
 
-    # Device Config
-    day_mode_time: datetime.time = None
-    day_display_brightness: int = None
-    day_ambient_colour: str = None
-    day_max_volume_limit: int = None
-
-    night_mode_time: datetime.time = None
-    night_display_brightness: int = None
-    night_ambient_colour: str = None
-    night_max_volume_limit: int = None
+    # Config
+    config: YotoPlayerConfig = None
 
     # MQTT
     card_id: str = None
@@ -60,6 +64,7 @@ class YotoPlayer:
 # {'devices': [{'deviceId': 'XXXX', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}
 # Device Status API: {'activeCard': 'none', 'ambientLightSensorReading': 0, 'averageDownloadSpeedBytesSecond': 0, 'batteryLevelPercentage': 100, 'buzzErrors': 0, 'cardInsertionState': 2, 'dayMode': 0, 'deviceId': 'XXXX', 'errorsLogged': 210, 'firmwareVersion': 'v2.17.5', 'freeDiskSpaceBytes': 30250544, 'isAudioDeviceConnected': False, 'isBackgroundDownloadActive': False, 'isBluetoothAudioConnected': False, 'isCharging': False, 'isOnline': True, 'networkSsid': 'XXXX', 'nightlightMode': '0x000000', 'playingSource': 0, 'powerCapabilities': '0x02', 'powerSource': 2, 'systemVolumePercentage': 47, 'taskWatchdogTimeoutCount': 0, 'temperatureCelcius': '20', 'totalDiskSpaceBytes': 31385600, 'updatedAt': '2024-04-23T01:26:19.927Z', 'uptime': 252342, 'userVolumePercentage': 50, 'utcOffsetSeconds': -21600, 'utcTime': 1713835609, 'wifiStrength': -61}
 # Mqtt response:
+
 
 {
     "status": {

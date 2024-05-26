@@ -10,7 +10,7 @@ import pytz
 from .const import DOMAIN, POWER_SOURCE, HEX_COLORS
 from .Token import Token
 from .Card import Card
-from .YotoPlayer import YotoPlayer
+from .YotoPlayer import YotoPlayer, YotoPlayerConfig
 from .utils import get_child_value, parse_datetime
 
 _LOGGER = logging.getLogger(__name__)
@@ -146,31 +146,32 @@ class YotoAPI:
             ]
 
             player_config = self._get_device_config(token, deviceId)
-
+            if player.config is None:
+                player.config = YotoPlayerConfig()
             time = get_child_value(player_config, "device.config.dayTime")
-            players[deviceId].day_mode_time = datetime.datetime.strptime(
+            players[deviceId].config.day_mode_time = datetime.datetime.strptime(
                 time, "%H:%M"
             ).time()
-            players[deviceId].day_display_brightness = get_child_value(
-                player_config, "device.config.playingSource"
+            players[deviceId].config.day_display_brightness = get_child_value(
+                player_config, "device.config.dayDisplayBrightness"
             )
-            players[deviceId].day_ambient_colour = HEX_COLORS[
+            players[deviceId].config.day_ambient_colour = HEX_COLORS[
                 get_child_value(player_config, "device.config.ambientColour")
             ]
-            players[deviceId].day_max_volume_limit = get_child_value(
+            players[deviceId].config.day_max_volume_limit = get_child_value(
                 player_config, "device.config.maxVolumeLimit"
             )
             time = get_child_value(player_config, "device.config.nightTime")
-            players[deviceId].night_mode_time = datetime.datetime.strptime(
+            players[deviceId].config.night_mode_time = datetime.datetime.strptime(
                 time, "%H:%M"
             ).time()
-            players[deviceId].night_ambient_colour = HEX_COLORS[
+            players[deviceId].config.night_ambient_colour = HEX_COLORS[
                 get_child_value(player_config, "device.config.nightAmbientColour")
             ]
-            players[deviceId].night_max_volume_limit = get_child_value(
+            players[deviceId].config.night_max_volume_limit = get_child_value(
                 player_config, "device.config.nightMaxVolumeLimit"
             )
-            players[deviceId].night_display_brightness = get_child_value(
+            players[deviceId].config.night_display_brightness = get_child_value(
                 player_config, "device.config.nightDisplayBrightness"
             )
 
@@ -202,11 +203,11 @@ class YotoAPI:
             )
 
     def set_player_config(self, token, player):
-        url = self.BASE_URL + "/device-v2/" + player.id + "/config"
+        url = self.BASE_URL + "/device-v2/" + player + "/config"
         config = {
             "nightTime": "20:00",
         }
-        data = {"deviceId": player.id, "config": config}
+        data = {"deviceId": player, "config": config}
         #data = self._get_device_config(token, player_id)["device"]
         #data.pop("status", None)
         #data.pop("shortcuts", None)
