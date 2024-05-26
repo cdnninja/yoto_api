@@ -36,12 +36,6 @@ class YotoMQTTClient:
         self.client.tls_set()
         self.client.connect(host=self.MQTT_URL, port=443)
         self.client.loop_start()
-        self.client.subscribe("device/" + player.id + "/events")
-        self.client.subscribe("device/" + player.id + "/status")
-        self.client.subscribe("device/" + player.id + "/response")
-        # Command not needed but helps sniffing traffic
-        self.client.subscribe("device/" + player.id + "/command")
-        self.update_status(player.id)
         # time.sleep(60)
         # client.loop_stop()
 
@@ -51,6 +45,11 @@ class YotoMQTTClient:
 
     def _on_connect(self, client, userdata, flags, rc):
         _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT connected: {rc}")
+        player = userdata[0]
+        self.client.subscribe("device/" + player.id + "/events")
+        self.client.subscribe("device/" + player.id + "/status")
+        self.client.subscribe("device/" + player.id + "/response")
+        self.update_status(player.id)
 
     def _on_disconnect(self, client, userdata, rc):
         _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT Disconnected: {rc}")
