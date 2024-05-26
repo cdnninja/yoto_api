@@ -3,6 +3,9 @@
 import logging
 import paho.mqtt.client as mqtt
 import json
+import datetime
+import pytz
+
 
 from .const import DOMAIN, VOLUME_MAPPING_INVERTED
 from .Token import Token
@@ -145,6 +148,7 @@ class YotoMQTTClient:
         player.battery_level_percentage = (
             get_child_value(message, "batteryLevel") or player.battery_level_percentage
         )
+        player.last_updated_at = datetime.datetime.now(pytz.utc)
 
     def _parse_events_message(self, message, player):
         player.repeat_all = get_child_value(message, "repeatAll") or player.repeat_all
@@ -175,6 +179,7 @@ class YotoMQTTClient:
             or player.sleep_timer_seconds_remaining
         )
         player.card_id = get_child_value(message, "cardId") or player.card_id
+        player.last_updated_at = datetime.datetime.now(pytz.utc)
 
     # {"trackLength":315,"position":0,"cardId":"7JtVV","repeatAll":true,"source":"remote","cardUpdatedAt":"2021-07-13T14:51:26.576Z","chapterTitle":"Snow and Tell","chapterKey":"03","trackTitle":"Snow and Tell","trackKey":"03","streaming":false,"volume":5,"volumeMax":8,"playbackStatus":"playing","playbackWait":false,"sleepTimerActive":false,"eventUtc":1715133271}
 
