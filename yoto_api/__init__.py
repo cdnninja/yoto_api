@@ -1,7 +1,7 @@
 """Top-level package for Yoto API"""
 # flake8: noqa
 
-from .YotoPlayer import YotoPlayer
+from .YotoPlayer import YotoPlayer, YotoPlayerConfig
 from .YotoManager import YotoManager
 from .YotoAPI import YotoAPI
 from .Token import Token
