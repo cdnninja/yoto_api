@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import datetime
 
+
 @dataclass
 class YotoPlayerConfig:
     # Device Config
@@ -19,6 +20,7 @@ class YotoPlayerConfig:
     # Values in HEX_COLORS in const
     night_ambient_colour: str = None
     night_max_volume_limit: int = None
+
 
 @dataclass
 class YotoPlayer:
