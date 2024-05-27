@@ -43,6 +43,7 @@ class YotoManager:
 
     def set_player_config(self, player_id: str, config: YotoPlayerConfig):
         self.api.set_player_config(token=self.token, player_id=player_id, config=config)
+        self.update_players_status()
 
     def disconnect(self) -> None:
         # Should be used when shutting down
