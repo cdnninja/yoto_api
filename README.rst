@@ -36,6 +36,10 @@ To run this code for test I am doing::
 
 Usage
 =====
+
+For additional methods not mentioned below follow the file here for all functionality:
+https://github.com/cdnninja/yoto_api/blob/master/yoto_api/YotoManager.py
+
 Check and refresh token will pull the first set of data.   It also should be run regularly if you keep your code running for days.  It will check if the token is valid.  If it isn't it will refresh the token.  If this is first run of the command and no data has been pulled it will also run update_player_status() and update_cards() for you. ::
 
     ym.check_and_refresh_token()
