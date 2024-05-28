@@ -256,7 +256,7 @@ class YotoAPI:
         url = self.BASE_URL + "/device-v2/" + player_id + "/config"
         config_payload = {}
         if config.day_mode_time:
-            config_payload["dayTime"] = config.day_mode_time.strftime('%H:%M')
+            config_payload["dayTime"] = config.day_mode_time.strftime("%H:%M")
         if config.day_display_brightness:
             config_payload["dayDisplayBrightness"] = config.day_display_brightness
         if config.day_ambient_colour:
@@ -264,7 +264,7 @@ class YotoAPI:
         if config.day_max_volume_limit:
             config_payload["maxVolumeLimit"] = config.day_max_volume_limit
         if config.night_mode_time:
-            config_payload["nightTime"] = config.night_mode_time.strftime('%H:%M')
+            config_payload["nightTime"] = config.night_mode_time.strftime("%H:%M")
         if config.night_display_brightness:
             config_payload["nightDisplayBrightness"] = config.night_display_brightness
         if config.night_ambient_colour:
