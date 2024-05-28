@@ -100,7 +100,9 @@ class YotoManager:
             self.initialize()
             return True
         # Check if valid and correct if not
-        if self.token.valid_until - timedelta(hours=1) <= datetime.datetime.now(pytz.utc):
+        if self.token.valid_until - timedelta(hours=1) <= datetime.datetime.now(
+            pytz.utc
+        ):
             _LOGGER.debug(f"{DOMAIN} - access token expired")
             self.token: Token = self.api.refresh_token(self.token)
             if len(self.mqtt_client.keys()) != 0:
