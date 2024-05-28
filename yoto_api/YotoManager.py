@@ -22,6 +22,7 @@ class YotoManager:
         self.token: Token = None
         self.library: list = {}
         self.mqtt_client: dict = {}
+        self.callback: None
 
     def initialize(self) -> None:
         self.token: Token = self.api.login(self.username, self.password)
@@ -37,6 +38,7 @@ class YotoManager:
 
     def connect_to_events(self, callback=None) -> None:
         # Starts and connects to MQTT.  Runs a loop to receive events. Callback is called when event has been processed and player updated.
+        self.callback = callback
         for player in self.players.values():
             self.mqtt_client[player.id] = YotoMQTTClient()
             self.mqtt_client[player.id].connect_mqtt(self.token, player, callback)
@@ -101,5 +103,8 @@ class YotoManager:
         if self.token.valid_until <= datetime.datetime.now(pytz.utc):
             _LOGGER.debug(f"{DOMAIN} - access token expired")
             self.token: Token = self.api.refresh_token(self.token)
+            if len(self.mqtt_client.keys()) != 0:
+                self.disconnect()
+                self.connect_to_events(self.callback)
             return True
         return False
