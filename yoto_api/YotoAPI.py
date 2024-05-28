@@ -9,7 +9,7 @@ from datetime import timedelta
 import pytz
 from .const import DOMAIN, POWER_SOURCE, HEX_COLORS
 from .Token import Token
-from .Card import Card
+from .Card import Card, Chapter, Track
 from .YotoPlayer import YotoPlayer, YotoPlayerConfig
 from .utils import get_child_value, parse_datetime
 
@@ -188,9 +188,7 @@ class YotoAPI:
             library[cardId].description = get_child_value(
                 item, "card.metadata.description"
             )
-            library[get_child_value(item, "cardId")].author = get_child_value(
-                item, "card.metadata.author"
-            )
+            library[cardId].author = get_child_value(item, "card.metadata.author")
             library[cardId].category = get_child_value(item, "card.metadata.stories")
             library[cardId].cover_image_large = get_child_value(
                 item, "card.metadata.cover.imageL"
@@ -201,6 +199,58 @@ class YotoAPI:
             library[cardId].series_title = get_child_value(
                 item, "card.metadata.cover.seriestitle"
             )
+            card_detail_response = self._get_card_detail(token=token, cardid=cardId)
+            for item in card_detail_response["card"]["content"]["chapters"]:
+                # _LOGGER.debug(f"{DOMAIN} - chapter details:  {item}")
+                if library[cardId].chapters is None:
+                    library[cardId].chapters = {}
+                if get_child_value(item, "key") not in library[cardId].chapters:
+                    chapter: Chapter = Chapter(
+                        key=get_child_value(item, "key"),
+                    )
+                    library[cardId].chapters[chapter.key] = chapter
+                library[cardId].chapters[chapter.key].icon = get_child_value(
+                    item, "display.icon16x16"
+                )
+                library[cardId].chapters[chapter.key].title = get_child_value(
+                    item, "title"
+                )
+                library[cardId].chapters[chapter.key].duration = get_child_value(
+                    item, "duration"
+                )
+                for track_item in item["tracks"]:
+                    if library[cardId].chapters[chapter.key].tracks is None:
+                        library[cardId].chapters[chapter.key].tracks = {}
+                    if (
+                        get_child_value(track_item, "key")
+                        not in library[cardId].chapters[chapter.key].tracks
+                    ):
+                        track: Track = Track(
+                            key=get_child_value(track_item, "key"),
+                        )
+                        # _LOGGER.debug(f"{DOMAIN} - track details:  {track_item}")
+                        library[cardId].chapters[chapter.key].tracks[track.key] = track
+                        library[cardId].chapters[chapter.key].tracks[
+                            track.key
+                        ].icon = get_child_value(track_item, "display.icon16x16")
+                        library[cardId].chapters[chapter.key].tracks[
+                            track.key
+                        ].title = get_child_value(track_item, "title")
+                        library[cardId].chapters[chapter.key].tracks[
+                            track.key
+                        ].duration = get_child_value(track_item, "duration")
+                        library[cardId].chapters[chapter.key].tracks[
+                            track.key
+                        ].format = get_child_value(track_item, "format")
+                        library[cardId].chapters[chapter.key].tracks[
+                            track.key
+                        ].channels = get_child_value(track_item, "channels")
+                        library[cardId].chapters[chapter.key].tracks[
+                            track.key
+                        ].type = get_child_value(track_item, "type")
+                        library[cardId].chapters[chapter.key].tracks[
+                            track.key
+                        ].trackUrl = get_child_value(track_item, "trackUrl")
 
     def set_player_config(self, token: Token, player_id: str, config: YotoPlayerConfig):
         url = self.BASE_URL + "/device-v2/" + player_id + "/config"
@@ -269,7 +319,6 @@ class YotoAPI:
     def _get_cards(self, token: Token) -> dict:
         ############## ${BASE_URL}/card/family/library #############
         url = self.BASE_URL + "/card/family/library"
-
         headers = self._get_authenticated_headers(token)
 
         response = requests.get(url, headers=headers).json()
@@ -405,8 +454,8 @@ class YotoAPI:
         url = self.BASE_URL + "/card/details/" + cardid
         headers = self._get_authenticated_headers(token)
 
-        response = requests.post(url, headers=headers).json()
-        _LOGGER.debug(f"{DOMAIN} - Get Card Detail: {response}")
+        response = requests.get(url, headers=headers).json()
+        # _LOGGER.debug(f"{DOMAIN} - Get Card Detail: {response}")
         return response
 
         ############# ${BASE_URL}/card/details/abcABC #############
