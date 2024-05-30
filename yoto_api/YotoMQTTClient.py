@@ -10,7 +10,6 @@ import pytz
 from .const import DOMAIN, VOLUME_MAPPING_INVERTED
 from .Token import Token
 from .utils import get_child_value, take_closest
-from .YotoPlayer import YotoPlayer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,10 +25,14 @@ class YotoMQTTClient:
         #             mqtt.CallbackAPIVersion.VERSION1,
         userdata = (players, callback)
         self.client = mqtt.Client(
-            client_id="YOTOAPI" + next(iter(players)), transport="websockets", userdata=userdata
+            client_id="YOTOAPI" + next(iter(players)),
+            transport="websockets",
+            userdata=userdata,
         )
         self.client.username_pw_set(
-            username=next(iter(players)) + "?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,
+            username=next(iter(players))
+            + "?x-amz-customauthorizer-name="
+            + self.MQTT_AUTH_NAME,
             password=token.access_token,
         )
         # client.on_connect = on_message
