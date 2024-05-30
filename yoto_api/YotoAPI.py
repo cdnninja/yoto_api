@@ -175,7 +175,7 @@ class YotoAPI:
                 player_config, "device.config.nightDisplayBrightness"
             )
 
-    def update_library(self, token: Token, library: dict[Card]) -> list[Card]:
+    def update_library(self, token: Token, library: dict[Card]) -> None:
         response = self._get_cards(token)
         for item in response["cards"]:
             if get_child_value(item, "cardId") not in library:

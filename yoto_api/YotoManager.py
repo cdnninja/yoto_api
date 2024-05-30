@@ -20,7 +20,7 @@ class YotoManager:
         self.api: YotoAPI = YotoAPI()
         self.players: dict = {}
         self.token: Token = None
-        self.library: list = {}
+        self.library: dict = {}
         self.mqtt_client: dict = {}
         self.callback: None
 
