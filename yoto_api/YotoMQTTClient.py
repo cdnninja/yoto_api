@@ -10,7 +10,6 @@ import pytz
 from .const import DOMAIN, VOLUME_MAPPING_INVERTED
 from .Token import Token
 from .utils import get_child_value, take_closest
-from .YotoPlayer import YotoPlayer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,14 +21,18 @@ class YotoMQTTClient:
         self.MQTT_URL: str = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
         self.client = None
 
-    def connect_mqtt(self, token: Token, player: YotoPlayer, callback):
+    def connect_mqtt(self, token: Token, players: dict, callback):
         #             mqtt.CallbackAPIVersion.VERSION1,
-        userdata = (player, callback)
+        userdata = (players, callback)
         self.client = mqtt.Client(
-            client_id="DASH" + player.id, transport="websockets", userdata=userdata
+            client_id="YOTOAPI" + next(iter(players)),
+            transport="websockets",
+            userdata=userdata,
         )
         self.client.username_pw_set(
-            username=player.id + "?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,
+            username=next(iter(players))
+            + "?x-amz-customauthorizer-name="
+            + self.MQTT_AUTH_NAME,
             password=token.access_token,
         )
         # client.on_connect = on_message
@@ -47,12 +50,18 @@ class YotoMQTTClient:
         self.client.disconnect()
 
     def _on_connect(self, client, userdata, flags, rc):
-        _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT connected: {rc}")
-        player = userdata[0]
-        self.client.subscribe("device/" + player.id + "/events")
-        self.client.subscribe("device/" + player.id + "/status")
-        self.client.subscribe("device/" + player.id + "/response")
-        self.update_status(player.id)
+        players = userdata[0]
+        _LOGGER.debug(f"{DOMAIN} - Players in connect: {players}")
+
+        for player in players:
+            _LOGGER.debug(f"{DOMAIN} - Player in connect: {player}")
+
+            self.client.subscribe("device/" + player + "/events")
+            self.client.subscribe("device/" + player + "/status")
+            self.client.subscribe("device/" + player + "/response")
+            _LOGGER.debug(f"{DOMAIN} - Subscribed to player: {player}")
+
+            self.update_status(player)
 
     def _on_disconnect(self, client, userdata, rc):
         _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT Disconnected: {rc}")
@@ -185,7 +194,7 @@ class YotoMQTTClient:
 
     def _on_message(self, client, userdata, message):
         # Process MQTT Message
-        player = userdata[0]
+        players = userdata[0]
 
         _LOGGER.debug(f"{DOMAIN} - MQTT Topic: {message.topic}")
         _LOGGER.debug(
@@ -194,8 +203,9 @@ class YotoMQTTClient:
         # _LOGGER.debug(f"{DOMAIN} - MQTT QOS: {message.qos}")
         # _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
         callback = userdata[1]
-        parts = message.topic.split("/")
-        base, device, topic = parts
+        base, device, topic = message.topic.split("/")
+        _LOGGER.debug(f"{DOMAIN} - Message is for: {device}")
+        player = players[device]
         if topic == "status":
             self._parse_status_message(
                 json.loads(str(message.payload.decode("utf-8"))), player
