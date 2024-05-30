@@ -21,7 +21,7 @@ class YotoManager:
         self.players: dict = {}
         self.token: Token = None
         self.library: dict = {}
-        self.mqtt_client: dict = {}
+        self.mqtt_client: YotoMQTTClient = None
         self.callback: None
 
     def initialize(self) -> None:
@@ -31,15 +31,15 @@ class YotoManager:
     def update_players_status(self) -> None:
         # Updates the data with current player data.
         self.api.update_players(self.token, self.players)
-        for playerid in self.mqtt_client.keys():
-            self.mqtt_client[playerid].update_status(playerid)
+        if self.mqtt_client:
+            for player in self.players:
+                self.mqtt_client.update_status(player.id)
 
     def connect_to_events(self, callback=None) -> None:
         # Starts and connects to MQTT.  Runs a loop to receive events. Callback is called when event has been processed and player updated.
         self.callback = callback
-        for player in self.players.values():
-            self.mqtt_client[player.id] = YotoMQTTClient()
-            self.mqtt_client[player.id].connect_mqtt(self.token, player, callback)
+        self.mqtt_client = YotoMQTTClient()
+        self.mqtt_client.connect_mqtt(self.token, self.players, callback)
 
     def set_player_config(self, player_id: str, config: YotoPlayerConfig):
         self.api.set_player_config(token=self.token, player_id=player_id, config=config)
@@ -47,8 +47,7 @@ class YotoManager:
 
     def disconnect(self) -> None:
         # Should be used when shutting down
-        for mqtt in self.mqtt_client.values():
-            mqtt.disconnect_mqtt()
+        self.mqtt_client.disconnect_mqtt()
 
     def update_cards(self) -> None:
         # Updates library and all card data.  Typically only required on startup.
@@ -56,13 +55,13 @@ class YotoManager:
         self.api.update_library(self.token, self.library)
 
     def pause_player(self, player_id: str):
-        self.mqtt_client[player_id].card_pause(deviceId=player_id)
+        self.mqtt_client.card_pause(deviceId=player_id)
 
     def stop_player(self, player_id: str):
-        self.mqtt_client[player_id].card_stop(deviceId=player_id)
+        self.mqtt_client.card_stop(deviceId=player_id)
 
     def resume_player(self, player_id: str):
-        self.mqtt_client[player_id].card_resume(deviceId=player_id)
+        self.mqtt_client.card_resume(deviceId=player_id)
 
     def play_card(
         self,
@@ -73,7 +72,7 @@ class YotoManager:
         chapterKey: str,
         trackKey: int,
     ):
-        self.mqtt_client[player_id].card_play(
+        self.mqtt_client.card_play(
             deviceId=player_id,
             cardId=card,
             secondsIn=secondsIn,
@@ -84,14 +83,14 @@ class YotoManager:
 
     def set_volume(self, player_id: str, volume: int):
         # Takes a range from 0-100.  Maps it to the nearest 0-16 value from the constant file and sends that
-        self.mqtt_client[player_id].set_volume(deviceId=player_id, volume=volume)
+        self.mqtt_client.set_volume(deviceId=player_id, volume=volume)
 
     def set_ambients_color(self, player_id: str, r: int, g: int, b: int):
-        self.mqtt_client[player_id].set_ambients(deviceId=player_id, r=r, g=g, b=b)
+        self.mqtt_client.set_ambients(deviceId=player_id, r=r, g=g, b=b)
 
     def set_sleep(self, player_id: str, seconds: int):
         # Set sleep time for playback.  0 Disables sleep.
-        self.mqtt_client[player_id].set_sleep(deviceId=player_id, seconds=seconds)
+        self.mqtt_client.set_sleep(deviceId=player_id, seconds=seconds)
 
     def check_and_refresh_token(self) -> bool:
         if self.token is None:
@@ -101,7 +100,7 @@ class YotoManager:
         if self.token.valid_until - timedelta(hours=1) <= datetime.now(pytz.utc):
             _LOGGER.debug(f"{DOMAIN} - access token expired")
             self.token: Token = self.api.refresh_token(self.token)
-            if len(self.mqtt_client.keys()) != 0:
+            if self.mqtt_client:
                 self.disconnect()
                 self.connect_to_events(self.callback)
             return True
