@@ -33,7 +33,7 @@ class YotoManager:
         self.api.update_players(self.token, self.players)
         if self.mqtt_client:
             for player in self.players:
-                self.mqtt_client.update_status(player.id)
+                self.mqtt_client.update_status(player)
 
     def connect_to_events(self, callback=None) -> None:
         # Starts and connects to MQTT.  Runs a loop to receive events. Callback is called when event has been processed and player updated.
