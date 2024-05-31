@@ -9,7 +9,7 @@ class YotoPlayerConfig:
     # Device Config
     day_mode_time: datetime.time = None
     # Auto, or value
-    day_display_brightness: int = None
+    day_display_brightness: str = None
     # Values in HEX_COLORS in const
     day_ambient_colour: str = None
     day_max_volume_limit: int = None
