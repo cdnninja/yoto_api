@@ -51,11 +51,7 @@ class YotoMQTTClient:
 
     def _on_connect(self, client, userdata, flags, rc):
         players = userdata[0]
-        _LOGGER.debug(f"{DOMAIN} - Players in connect: {players}")
-
         for player in players:
-            _LOGGER.debug(f"{DOMAIN} - Player in connect: {player}")
-
             self.client.subscribe("device/" + player + "/events")
             self.client.subscribe("device/" + player + "/status")
             self.client.subscribe("device/" + player + "/response")
