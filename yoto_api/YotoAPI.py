@@ -262,7 +262,7 @@ class YotoAPI:
         if config.day_ambient_colour:
             config_payload["ambientColour"] = config.day_ambient_colour
         if config.day_max_volume_limit:
-            config_payload["maxVolumeLimit"] = config.day_max_volume_limit
+            config_payload["maxVolumeLimit"] = str(config.day_max_volume_limit)
         if config.night_mode_time:
             config_payload["nightTime"] = config.night_mode_time.strftime("%H:%M")
         if config.night_display_brightness:
@@ -270,7 +270,7 @@ class YotoAPI:
         if config.night_ambient_colour:
             config_payload["nightAmbientColour"] = config.night_ambient_colour
         if config.night_max_volume_limit:
-            config_payload["nightMaxVolumeLimit"] = config.night_max_volume_limit
+            config_payload["nightMaxVolumeLimit"] = str(config.night_max_volume_limit)
         data = {"deviceId": player_id, "config": config_payload}
         headers = self._get_authenticated_headers(token)
         response = requests.put(url, headers=headers, data=json.dumps(data)).json()
