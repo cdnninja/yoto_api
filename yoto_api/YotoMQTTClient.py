@@ -55,7 +55,7 @@ class YotoMQTTClient:
             self.client.subscribe("device/" + player + "/events")
             self.client.subscribe("device/" + player + "/status")
             self.client.subscribe("device/" + player + "/response")
-            _LOGGER.debug(f"{DOMAIN} - Subscribed to player: {player}")
+            _LOGGER.debug(f"{DOMAIN} - Connected and Subscribed to player: {player}")
 
             self.update_status(player)
 
