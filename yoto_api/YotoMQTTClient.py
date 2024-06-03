@@ -176,9 +176,9 @@ class YotoMQTTClient:
         player.playback_status = (
             get_child_value(message, "playbackStatus") or player.playback_status
         )
-        player.sleep_timer_active = (
-            get_child_value(message, "sleepTimerActive") or player.sleep_timer_active
-        )
+        if get_child_value(message, "sleepTimerActive") is not None:
+            player.sleep_timer_active = get_child_value(message, "sleepTimerActive")
+
         player.sleep_timer_seconds_remaining = (
             get_child_value(message, "sleepTimerSeconds")
             or player.sleep_timer_seconds_remaining
