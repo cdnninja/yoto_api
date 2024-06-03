@@ -266,7 +266,9 @@ class YotoAPI:
         if config.night_mode_time:
             config_payload["nightTime"] = config.night_mode_time.strftime("%H:%M")
         if config.night_display_brightness:
-            config_payload["nightDisplayBrightness"] = str(config.night_display_brightness)
+            config_payload["nightDisplayBrightness"] = str(
+                config.night_display_brightness
+            )
         if config.night_ambient_colour:
             config_payload["nightAmbientColour"] = config.night_ambient_colour
         if config.night_max_volume_limit:
