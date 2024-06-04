@@ -35,15 +35,12 @@ class YotoMQTTClient:
             + self.MQTT_AUTH_NAME,
             password=token.access_token,
         )
-        # client.on_connect = on_message
         self.client.on_message = self._on_message
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
         self.client.tls_set()
         self.client.connect(host=self.MQTT_URL, port=443)
         self.client.loop_start()
-        # time.sleep(60)
-        # client.loop_stop()
 
     def disconnect_mqtt(self):
         self.client.loop_stop()
@@ -183,6 +180,8 @@ class YotoMQTTClient:
             get_child_value(message, "sleepTimerSeconds")
             or player.sleep_timer_seconds_remaining
         )
+        if player.sleep_timer_seconds_remaining is None and player.sleep_timer_active == False:
+            player.sleep_timer_seconds_remaining = 0
         player.card_id = get_child_value(message, "cardId") or player.card_id
         player.last_updated_at = datetime.datetime.now(pytz.utc)
 
