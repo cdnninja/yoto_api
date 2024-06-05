@@ -180,7 +180,7 @@ class YotoMQTTClient:
             get_child_value(message, "sleepTimerSeconds")
             or player.sleep_timer_seconds_remaining
         )
-        if player.sleep_timer_seconds_remaining is None and player.sleep_timer_active == False:
+        if not player.sleep_timer_active:
             player.sleep_timer_seconds_remaining = 0
         player.card_id = get_child_value(message, "cardId") or player.card_id
         player.track_key = get_child_value(message, "trackKey") or player.card_id
