@@ -155,9 +155,8 @@ class YotoAPI:
             players[deviceId].config.day_display_brightness = get_child_value(
                 player_config, "device.config.dayDisplayBrightness"
             )
-            players[deviceId].config.day_ambient_colour = HEX_COLORS[
-                get_child_value(player_config, "device.config.ambientColour")
-            ]
+            players[deviceId].config.day_ambient_colour = get_child_value(player_config, "device.config.ambientColour")
+            
             players[deviceId].config.day_max_volume_limit = get_child_value(
                 player_config, "device.config.maxVolumeLimit"
             )
@@ -165,9 +164,8 @@ class YotoAPI:
             players[deviceId].config.night_mode_time = datetime.datetime.strptime(
                 time, "%H:%M"
             ).time()
-            players[deviceId].config.night_ambient_colour = HEX_COLORS[
-                get_child_value(player_config, "device.config.nightAmbientColour")
-            ]
+            players[deviceId].config.night_ambient_colour = get_child_value(player_config, "device.config.nightAmbientColour")
+            
             players[deviceId].config.night_max_volume_limit = get_child_value(
                 player_config, "device.config.nightMaxVolumeLimit"
             )
