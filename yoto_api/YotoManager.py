@@ -54,7 +54,7 @@ class YotoManager:
         self.api.update_library(self.token, self.library)
 
     def update_card_detail(self, cardId: str) -> None:
-        # Used to get more details for a specific card.   update_cards must be run first to get the basic library details.  Could be called in a loop for all cards but this is alot of API calls when the data may not be needed.
+        # Used to get more details for a specific card.   update_cards must be run first to get the basic library details.  Could be called in a loop for all cards but this is a lot of API calls when the data may not be needed.
         self.api.update_card_detail(token=self.token, card=self.library[cardId])
 
     def pause_player(self, player_id: str):
