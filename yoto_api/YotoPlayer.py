@@ -48,9 +48,11 @@ class YotoPlayer:
     firmware_version: str = None
     wifi_strength: int = None
     power_source: str = None
+    last_updated_api: datetime.datetime = None
 
     # Config
     config: YotoPlayerConfig = None
+    last_update_config: datetime.datetime = None
 
     # MQTT
     card_id: str = None

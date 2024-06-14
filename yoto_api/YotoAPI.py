@@ -90,9 +90,7 @@ class YotoAPI:
 
             # Should we call here or make this a separate call from YM?  This could help us reduce API calls.
             player_status_response = self._get_device_status(token, deviceId)
-            players[deviceId].last_updated_at = parse_datetime(
-                get_child_value(player_status_response, "updatedAt"), pytz.utc
-            )
+            players[deviceId].last_updated_api = datetime.datetime.now(pytz.utc)
             if get_child_value(player_status_response, "activeCard") != "none":
                 players[deviceId].is_playing = True
             else:
@@ -176,6 +174,8 @@ class YotoAPI:
             players[deviceId].config.night_display_brightness = get_child_value(
                 player_config, "device.config.nightDisplayBrightness"
             )
+            players[deviceId].last_update_config = datetime.datetime.now(pytz.utc)
+            players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
 
     def update_library(self, token: Token, library: dict[Card]) -> None:
         response = self._get_cards(token)
