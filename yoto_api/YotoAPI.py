@@ -11,7 +11,7 @@ from .const import DOMAIN, POWER_SOURCE
 from .Token import Token
 from .Card import Card, Chapter, Track
 from .YotoPlayer import YotoPlayer, YotoPlayerConfig
-from .utils import get_child_value, parse_datetime
+from .utils import get_child_value
 
 _LOGGER = logging.getLogger(__name__)
 
