@@ -185,6 +185,7 @@ class YotoAPI:
                     id=get_child_value(item, "cardId"),
                 )
                 library[card.id] = card
+                library[card.id].chapters = {}
             cardId = get_child_value(item, "cardId")
             library[cardId].title = get_child_value(item, "card.title")
             library[cardId].description = get_child_value(
@@ -205,7 +206,7 @@ class YotoAPI:
     def update_card_detail(self, token: Token, card: Card) -> None:
         card_detail_response = self._get_card_detail(token=token, cardid=card.id)
         for item in card_detail_response["card"]["content"]["chapters"]:
-            # _LOGGER.debug(f"{DOMAIN} - chapter details:  {item}")
+            _LOGGER.debug(f"{DOMAIN} - Updating Details:  {item}")
             if card.chapters is None:
                 card.chapters = {}
             if get_child_value(item, "key") not in card.chapters:

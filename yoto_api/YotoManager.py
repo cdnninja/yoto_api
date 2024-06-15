@@ -47,7 +47,8 @@ class YotoManager:
 
     def disconnect(self) -> None:
         # Should be used when shutting down
-        self.mqtt_client.disconnect_mqtt()
+        if self.mqtt_client:
+            self.mqtt_client.disconnect_mqtt()
 
     def update_library(self) -> None:
         # Updates library and all card data.  Typically only required on startup.
