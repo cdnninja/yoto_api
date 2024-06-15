@@ -1,6 +1,6 @@
 Introduction
 ============
-
+ 
 Early days of this API. Plan is to use this for home assistant. So far basic device data comes back including online.   The library of cards is also populated.  Pause command functions.  Not other commands work yet.
 
 Credit
