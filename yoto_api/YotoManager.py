@@ -9,6 +9,7 @@ from .YotoMQTTClient import YotoMQTTClient
 from .Token import Token
 from .const import DOMAIN
 from .YotoPlayer import YotoPlayerConfig
+from .Card import Card
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +57,8 @@ class YotoManager:
 
     def update_card_detail(self, cardId: str) -> None:
         # Used to get more details for a specific card.   update_cards must be run first to get the basic library details.  Could be called in a loop for all cards but this is a lot of API calls when the data may not be needed.
+        if cardId not in self.library:
+            self.library[cardId] = Card(id=cardId)
         self.api.update_card_detail(token=self.token, card=self.library[cardId])
 
     def pause_player(self, player_id: str):
