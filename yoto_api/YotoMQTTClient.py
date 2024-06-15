@@ -30,8 +30,7 @@ class YotoMQTTClient:
             userdata=userdata,
         )
         self.client.username_pw_set(
-            username="_?x-amz-customauthorizer-name="
-            + self.MQTT_AUTH_NAME,
+            username="_?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,
             password=token.access_token,
         )
         self.client.on_message = self._on_message
