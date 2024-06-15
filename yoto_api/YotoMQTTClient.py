@@ -25,13 +25,12 @@ class YotoMQTTClient:
         #             mqtt.CallbackAPIVersion.VERSION1,
         userdata = (players, callback)
         self.client = mqtt.Client(
-            client_id="YOTOAPI" + next(iter(players)),
+            client_id="YOTOAPI" + next(reversed(players)),
             transport="websockets",
             userdata=userdata,
         )
         self.client.username_pw_set(
-            username=next(reversed(players))
-            + "?x-amz-customauthorizer-name="
+            username="_?x-amz-customauthorizer-name="
             + self.MQTT_AUTH_NAME,
             password=token.access_token,
         )
