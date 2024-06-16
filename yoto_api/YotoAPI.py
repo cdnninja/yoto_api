@@ -206,7 +206,7 @@ class YotoAPI:
     def update_card_detail(self, token: Token, card: Card) -> None:
         card_detail_response = self._get_card_detail(token=token, cardid=card.id)
         for item in card_detail_response["card"]["content"]["chapters"]:
-            #_LOGGER.debug(f"{DOMAIN} - Updating Details:  {item}")
+            # _LOGGER.debug(f"{DOMAIN} - Updating Details:  {item}")
             if card.chapters is None:
                 card.chapters = {}
             if get_child_value(item, "key") not in card.chapters:
@@ -221,10 +221,7 @@ class YotoAPI:
             for track_item in item["tracks"]:
                 if card.chapters[key].tracks is None:
                     card.chapters[key].tracks = {}
-                if (
-                    get_child_value(track_item, "key")
-                    not in card.chapters[key].tracks
-                ):
+                if get_child_value(track_item, "key") not in card.chapters[key].tracks:
                     track: Track = Track(
                         key=get_child_value(track_item, "key"),
                     )
@@ -233,24 +230,24 @@ class YotoAPI:
                     card.chapters[key].tracks[track.key].icon = get_child_value(
                         track_item, "display.icon16x16"
                     )
-                    card.chapters[key].tracks[
-                        track.key
-                    ].title = get_child_value(track_item, "title")
-                    card.chapters[key].tracks[
-                        track.key
-                    ].duration = get_child_value(track_item, "duration")
-                    card.chapters[key].tracks[
-                        track.key
-                    ].format = get_child_value(track_item, "format")
-                    card.chapters[key].tracks[
-                        track.key
-                    ].channels = get_child_value(track_item, "channels")
+                    card.chapters[key].tracks[track.key].title = get_child_value(
+                        track_item, "title"
+                    )
+                    card.chapters[key].tracks[track.key].duration = get_child_value(
+                        track_item, "duration"
+                    )
+                    card.chapters[key].tracks[track.key].format = get_child_value(
+                        track_item, "format"
+                    )
+                    card.chapters[key].tracks[track.key].channels = get_child_value(
+                        track_item, "channels"
+                    )
                     card.chapters[key].tracks[track.key].type = get_child_value(
                         track_item, "type"
                     )
-                    card.chapters[key].tracks[
-                        track.key
-                    ].trackUrl = get_child_value(track_item, "trackUrl")
+                    card.chapters[key].tracks[track.key].trackUrl = get_child_value(
+                        track_item, "trackUrl"
+                    )
 
     def set_player_config(self, token: Token, player_id: str, config: YotoPlayerConfig):
         url = self.BASE_URL + "/device-v2/" + player_id + "/config"
