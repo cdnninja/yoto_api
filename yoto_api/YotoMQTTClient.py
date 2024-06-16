@@ -181,8 +181,10 @@ class YotoMQTTClient:
         if not player.sleep_timer_active:
             player.sleep_timer_seconds_remaining = 0
         player.card_id = get_child_value(message, "cardId") or player.card_id
-        player.track_key = get_child_value(message, "trackKey") or player.card_id
-        player.chapter_key = get_child_value(message, "chapterKey") or player.card_id
+        if player.card_id == "none":
+            player.card_id = None
+        player.track_key = get_child_value(message, "trackKey") or player.track_key
+        player.chapter_key = get_child_value(message, "chapterKey") or player.chapter_key
         player.last_updated_at = datetime.datetime.now(pytz.utc)
 
     # {"trackLength":315,"position":0,"cardId":"7JtVV","repeatAll":true,"source":"remote","cardUpdatedAt":"2021-07-13T14:51:26.576Z","chapterTitle":"Snow and Tell","chapterKey":"03","trackTitle":"Snow and Tell","trackKey":"03","streaming":false,"volume":5,"volumeMax":8,"playbackStatus":"playing","playbackWait":false,"sleepTimerActive":false,"eventUtc":1715133271}
