@@ -214,40 +214,41 @@ class YotoAPI:
                     key=get_child_value(item, "key"),
                 )
                 card.chapters[chapter.key] = chapter
-            card.chapters[chapter.key].icon = get_child_value(item, "display.icon16x16")
-            card.chapters[chapter.key].title = get_child_value(item, "title")
-            card.chapters[chapter.key].duration = get_child_value(item, "duration")
+            key = get_child_value(item, "key")
+            card.chapters[key].icon = get_child_value(item, "display.icon16x16")
+            card.chapters[key].title = get_child_value(item, "title")
+            card.chapters[key].duration = get_child_value(item, "duration")
             for track_item in item["tracks"]:
-                if card.chapters[chapter.key].tracks is None:
-                    card.chapters[chapter.key].tracks = {}
+                if card.chapters[key].tracks is None:
+                    card.chapters[key].tracks = {}
                 if (
                     get_child_value(track_item, "key")
-                    not in card.chapters[chapter.key].tracks
+                    not in card.chapters[key].tracks
                 ):
                     track: Track = Track(
                         key=get_child_value(track_item, "key"),
                     )
                     # _LOGGER.debug(f"{DOMAIN} - track details:  {track_item}")
-                    card.chapters[chapter.key].tracks[track.key] = track
-                    card.chapters[chapter.key].tracks[track.key].icon = get_child_value(
+                    card.chapters[key].tracks[track.key] = track
+                    card.chapters[key].tracks[track.key].icon = get_child_value(
                         track_item, "display.icon16x16"
                     )
-                    card.chapters[chapter.key].tracks[
+                    card.chapters[key].tracks[
                         track.key
                     ].title = get_child_value(track_item, "title")
-                    card.chapters[chapter.key].tracks[
+                    card.chapters[key].tracks[
                         track.key
                     ].duration = get_child_value(track_item, "duration")
-                    card.chapters[chapter.key].tracks[
+                    card.chapters[key].tracks[
                         track.key
                     ].format = get_child_value(track_item, "format")
-                    card.chapters[chapter.key].tracks[
+                    card.chapters[key].tracks[
                         track.key
                     ].channels = get_child_value(track_item, "channels")
-                    card.chapters[chapter.key].tracks[track.key].type = get_child_value(
+                    card.chapters[key].tracks[track.key].type = get_child_value(
                         track_item, "type"
                     )
-                    card.chapters[chapter.key].tracks[
+                    card.chapters[key].tracks[
                         track.key
                     ].trackUrl = get_child_value(track_item, "trackUrl")
 
