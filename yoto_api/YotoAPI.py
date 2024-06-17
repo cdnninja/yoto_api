@@ -253,7 +253,7 @@ class YotoAPI:
                     )
 
     def set_player_config(self, token: Token, player_id: str, config: YotoPlayerConfig):
-        url = self.BASE_URL + "/device-v2/" + player_id + "/config"
+        url = f"{self.BASE_URL}/device-v2/{player_id}/config"
         config_payload = {}
         if config.day_mode_time:
             config_payload["dayTime"] = config.day_mode_time.strftime("%H:%M")
