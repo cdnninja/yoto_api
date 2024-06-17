@@ -1,3 +1,5 @@
 pytz
 requests
 paho-mqtt
+pytest
+python-dotenv

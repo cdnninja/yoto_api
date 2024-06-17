@@ -68,6 +68,30 @@ Contains the library of cards.  Each card being an object with the data values y
 
     ym.library
 
+Get Set Up For Development
+==========================
+
+Set up pyenv::
+
+    pyenv install
+
+Install the dependencies::
+
+    pip install -r requirements.txt
+    pip install -r requirements_dev.txt
+
+Tests
+=====
+
+Create a .env file in the root of the project with the following content::
+
+    YOTO_USERNAME=your_username
+    YOTO_PASSWORD=your_password
+
+Run the tests with::
+
+        python -m pytest
+
 Other Notes
 ===========
 
