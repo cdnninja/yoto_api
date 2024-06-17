@@ -38,6 +38,7 @@ class login_invalid(unittest.TestCase):
 
         self.assertEqual(str(error.exception), "Wrong email or password.")
 
+
 class get_family(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -51,6 +52,7 @@ class get_family(unittest.TestCase):
 
     def test_it_has_devices(self):
         self.assertIsNotNone(self.family.devices)
+
 
 if __name__ == "__main__":
     unittest.main()

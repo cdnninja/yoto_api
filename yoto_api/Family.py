@@ -1,12 +1,13 @@
-import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Dict
+
 
 @dataclass
 class Device:
     deviceId: str
     addedAt: datetime
+
 
 @dataclass
 class Member:
@@ -20,6 +21,7 @@ class Member:
     userId: str
     addedAt: datetime
 
+
 @dataclass
 class Family:
     familyId: str
@@ -31,12 +33,15 @@ class Family:
     def __init__(self, data: Dict) -> None:
         self.familyId = data["familyId"]
         self.createdAt = datetime.fromisoformat(data["createdAt"].rstrip("Z"))
-        
+
         self.devices = [
-            Device(deviceId=device["deviceId"], addedAt=datetime.fromisoformat(device["addedAt"].rstrip("Z")))
+            Device(
+                deviceId=device["deviceId"],
+                addedAt=datetime.fromisoformat(device["addedAt"].rstrip("Z")),
+            )
             for device in data["devices"]
         ]
-        
+
         self.members = [
             Member(
                 createdAt=datetime.fromisoformat(member["createdAt"].rstrip("Z")),
@@ -51,5 +56,5 @@ class Family:
             )
             for member in data["members"]
         ]
-        
+
         self.country = data["country"]
