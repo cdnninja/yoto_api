@@ -104,8 +104,8 @@ class YotoMQTTClient:
         payload = json.dumps(
             {
                 "uri": f"https://yoto.io/{cardId}",
-                "chapterKey": chapterKey,
-                "trackKey": trackKey,
+                "chapterKey": str(chapterKey),
+                "trackKey": str(trackKey),
                 "secondsIn": secondsIn,
                 "cutOff": cutoff,
             }
