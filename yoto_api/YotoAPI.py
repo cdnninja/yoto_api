@@ -38,6 +38,9 @@ class YotoAPI:
         response = requests.post(url, data=data, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response.keys()}")
 
+        if "error" in response:
+            raise Exception(response["error_description"])
+
         valid_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(
             seconds=response["expires_in"]
         )
