@@ -10,6 +10,7 @@ import pytz
 from .const import DOMAIN, POWER_SOURCE
 from .Token import Token
 from .Card import Card, Chapter, Track
+from .Family import Family
 from .YotoPlayer import YotoPlayer, YotoPlayerConfig
 from .utils import get_child_value
 
@@ -77,6 +78,14 @@ class YotoAPI:
             scope=token.scope,
             valid_until=valid_until,
         )
+
+    def get_family(self, token: Token) -> dict:
+        url = self.BASE_URL + "/user/family"
+        headers = self._get_authenticated_headers(token)
+        response = requests.get(url, headers=headers).json()
+
+        _LOGGER.debug(f"{DOMAIN} - Get Family Response: {response}")
+        return Family(response["family"])
 
     def update_players(self, token: Token, players: list[YotoPlayer]) -> None:
         response = self._get_devices(token)
