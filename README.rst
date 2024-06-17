@@ -89,7 +89,7 @@ Create a .env file in the root of the project with the following content::
     YOTO_PASSWORD=your_password
 
 Run the tests with::
-    
+
         python -m pytest
 
 Other Notes

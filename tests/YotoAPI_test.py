@@ -1,15 +1,15 @@
-
 import unittest
 from dotenv import load_dotenv
 import os
 import pytz
 from yoto_api.YotoAPI import YotoAPI
-from datetime import datetime, timedelta
+from datetime import datetime
+
 
 class ValidLogin(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        load_dotenv() 
+        load_dotenv()
         username = os.getenv("USERNAME")
         password = os.getenv("PASSWORD")
         api = YotoAPI()
@@ -30,14 +30,16 @@ class ValidLogin(unittest.TestCase):
     def test_valid_until_is_greater_than_now(self):
         self.assertGreater(self.token.valid_until, datetime.now(pytz.utc))
 
+
 class InvalidLogin(unittest.TestCase):
     def test_it_throws_an_error(self):
         api = YotoAPI()
 
         with self.assertRaises(Exception) as error:
             api.login("invalid", "invalid")
-        
+
         self.assertEqual(str(error.exception), "Wrong email or password.")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
