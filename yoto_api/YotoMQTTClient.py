@@ -101,7 +101,7 @@ class YotoMQTTClient:
         trackKey: int,
     ):
         if len(str(chapterKey)) != 2:
-            chapterkey = str(chapterkey).zfill(2)
+            chapterKey = str(chapterKey).zfill(2)
         if len(str(trackKey)) != 2:
             trackKey = str(trackKey).zfill(2)    
         topic = f"device/{deviceId}/command/card-play"
