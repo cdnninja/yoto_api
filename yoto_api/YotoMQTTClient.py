@@ -118,8 +118,9 @@ class YotoMQTTClient:
         self.update_status(deviceId)
         # MQTT Message: {"status":{"card-play":"OK","req_body":"{\"uri\":\"https://yoto.io/7JtVV\",\"secondsIn\":0,\"cutOff\":0,\"chapterKey\":\"01\",\"trackKey\":\"01\",\"requestId\":\"5385910e-f853-4f34-99a4-d2ed94f02f6d\"}"}}
 
-    # restart the player
     def restart(self, deviceId):
+        # restart the player
+
         topic = f"device/{deviceId}/command/restart"
         self.client.publish(topic)
 
