@@ -60,7 +60,7 @@ Updates the library of cards.   This is done as part of check_refresh_token so o
 
     ym.update_cards()
 
-Contains player object will data values you can access. ::
+Contains player object with data values you can access. ::
 
     ym.players
 
