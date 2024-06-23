@@ -11,8 +11,9 @@ class login(unittest.TestCase):
     def setUpClass(cls):
         load_dotenv()
 
-        cls.ym= YotoManager(os.getenv("YOTO_USERNAME"), os.getenv("YOTO_PASSWORD"))
+        cls.ym = YotoManager(os.getenv("YOTO_USERNAME"), os.getenv("YOTO_PASSWORD"))
         cls.ym.initialize()
+
     def test_access_token(self):
         self.assertIsNotNone(self.ym.token.access_token)
 
@@ -52,6 +53,7 @@ class update_family(unittest.TestCase):
     def test_it_has_devices(self):
         self.assertIsNotNone(self.ym.family.devices)
 
+
 class update_players_status(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -67,6 +69,7 @@ class update_players_status(unittest.TestCase):
         for player in self.ym.players.values():
             self.assertIsNotNone(player.config)
 
+
 class update_library(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -77,6 +80,7 @@ class update_library(unittest.TestCase):
 
     def test_it_has_players(self):
         self.assertIsNotNone(self.ym.library)
+
 
 if __name__ == "__main__":
     unittest.main()
