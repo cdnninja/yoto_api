@@ -6,14 +6,12 @@ from yoto_api.YotoAPI import YotoAPI
 from datetime import datetime
 
 
-class ValidLogin(unittest.TestCase):
+class login(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         load_dotenv()
-        username = os.getenv("USERNAME")
-        password = os.getenv("PASSWORD")
-        api = YotoAPI()
-        cls.token = api.login(username, password)
+
+        cls.token = YotoAPI().login(os.getenv("USERNAME"), os.getenv("PASSWORD"))
 
     def test_access_token(self):
         self.assertIsNotNone(self.token.access_token)
@@ -31,7 +29,7 @@ class ValidLogin(unittest.TestCase):
         self.assertGreater(self.token.valid_until, datetime.now(pytz.utc))
 
 
-class InvalidLogin(unittest.TestCase):
+class login_invalid(unittest.TestCase):
     def test_it_throws_an_error(self):
         api = YotoAPI()
 
@@ -39,6 +37,21 @@ class InvalidLogin(unittest.TestCase):
             api.login("invalid", "invalid")
 
         self.assertEqual(str(error.exception), "Wrong email or password.")
+
+
+class get_family(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        load_dotenv()
+        api = YotoAPI()
+        token = api.login(os.getenv("USERNAME"), os.getenv("PASSWORD"))
+        cls.family = api.get_family(token)
+
+    def test_it_has_members(self):
+        self.assertIsNotNone(self.family.members)
+
+    def test_it_has_devices(self):
+        self.assertIsNotNone(self.family.devices)
 
 
 if __name__ == "__main__":

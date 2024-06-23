@@ -6,6 +6,7 @@ import pytz
 
 from .YotoAPI import YotoAPI
 from .YotoMQTTClient import YotoMQTTClient
+from .Family import Family
 from .Token import Token
 from .const import DOMAIN
 from .YotoPlayer import YotoPlayerConfig
@@ -24,6 +25,7 @@ class YotoManager:
         self.library: dict = {}
         self.mqtt_client: YotoMQTTClient = None
         self.callback: None
+        self.family: Family = None
 
     def initialize(self) -> None:
         self.token: Token = self.api.login(self.username, self.password)
@@ -54,6 +56,10 @@ class YotoManager:
     def update_library(self) -> None:
         # Updates library and all card data.  Typically only required on startup.
         self.api.update_library(self.token, self.library)
+
+    def update_family(self) -> None:
+        # Updates the family object with family details
+        self.family = self.api.get_family(self.token)
 
     def update_card_detail(self, cardId: str) -> None:
         # Used to get more details for a specific card.   update_cards must be run first to get the basic library details.  Could be called in a loop for all cards but this is a lot of API calls when the data may not be needed.
