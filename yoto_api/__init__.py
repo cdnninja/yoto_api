@@ -2,6 +2,7 @@
 # flake8: noqa
 
 from .YotoPlayer import YotoPlayer, YotoPlayerConfig
+from .Family import Family
 from .YotoManager import YotoManager
 from .YotoAPI import YotoAPI
 from .Token import Token
