@@ -11,7 +11,9 @@ class login(unittest.TestCase):
     def setUpClass(cls):
         load_dotenv()
 
-        cls.token = YotoAPI().login(os.getenv("YOTO_USERNAME"), os.getenv("YOTO_PASSWORD"))
+        cls.token = YotoAPI().login(
+            os.getenv("YOTO_USERNAME"), os.getenv("YOTO_PASSWORD")
+        )
 
     def test_access_token(self):
         self.assertIsNotNone(self.token.access_token)
