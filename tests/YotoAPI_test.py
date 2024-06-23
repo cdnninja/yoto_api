@@ -11,7 +11,9 @@ class login(unittest.TestCase):
     def setUpClass(cls):
         load_dotenv()
 
-        cls.token = YotoAPI().login(os.getenv("USERNAME"), os.getenv("PASSWORD"))
+        cls.token = YotoAPI().login(
+            os.getenv("YOTO_USERNAME"), os.getenv("YOTO_PASSWORD")
+        )
 
     def test_access_token(self):
         self.assertIsNotNone(self.token.access_token)
@@ -44,7 +46,7 @@ class get_family(unittest.TestCase):
     def setUpClass(cls):
         load_dotenv()
         api = YotoAPI()
-        token = api.login(os.getenv("USERNAME"), os.getenv("PASSWORD"))
+        token = api.login(os.getenv("YOTO_USERNAME"), os.getenv("YOTO_PASSWORD"))
         cls.family = api.get_family(token)
 
     def test_it_has_members(self):
