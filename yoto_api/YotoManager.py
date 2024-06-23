@@ -25,7 +25,7 @@ class YotoManager:
         self.library: dict = {}
         self.mqtt_client: YotoMQTTClient = None
         self.callback: None
-        self.family: Family
+        self.family: Family = None
 
     def initialize(self) -> None:
         self.token: Token = self.api.login(self.username, self.password)
