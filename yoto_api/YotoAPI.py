@@ -125,8 +125,13 @@ class YotoAPI:
             players[deviceId].system_volume = get_child_value(
                 player_status_response, "systemVolumePercentage"
             )
-            if isinstance(get_child_value(player_status_response, "temperatureCelcius"), int):
-                if int(get_child_value(player_status_response, "temperatureCelcius")) != 0:
+            if isinstance(
+                get_child_value(player_status_response, "temperatureCelcius"), int
+            ):
+                if (
+                    int(get_child_value(player_status_response, "temperatureCelcius"))
+                    != 0
+                ):
                     players[deviceId].temperature_celcius = get_child_value(
                         player_status_response, "temperatureCelcius"
                     )
