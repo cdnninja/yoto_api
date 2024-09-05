@@ -67,8 +67,8 @@ class YotoPlayer:
     track_position: int = None
     track_key: str = None
     playback_status: str = None
-    sleep_timer_active: bool = None
-    sleep_timer_seconds_remaining: int = None
+    sleep_timer_active: bool = False
+    sleep_timer_seconds_remaining: int = 0
 
 
 # {'devices': [{'deviceId': 'XXXX', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}
