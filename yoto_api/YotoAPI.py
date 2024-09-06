@@ -127,7 +127,7 @@ class YotoAPI:
             )
             if (
                 get_child_value(player_status_response, "temperatureCelcius")
-                != "unsupported"
+                != "notSupported"
             ):
                 if (
                     int(get_child_value(player_status_response, "temperatureCelcius"))
