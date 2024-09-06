@@ -125,7 +125,10 @@ class YotoAPI:
             players[deviceId].system_volume = get_child_value(
                 player_status_response, "systemVolumePercentage"
             )
-            if get_child_value(player_status_response, "temperatureCelcius") != "unsupported":
+            if (
+                get_child_value(player_status_response, "temperatureCelcius")
+                != "unsupported"
+            ):
                 if (
                     int(get_child_value(player_status_response, "temperatureCelcius"))
                     != 0
