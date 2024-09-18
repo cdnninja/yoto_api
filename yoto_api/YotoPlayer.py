@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import datetime
 
+
 @dataclass
 class Alarm:
     on: bool = None
@@ -26,6 +27,7 @@ class YotoPlayerConfig:
     night_ambient_colour: str = None
     night_max_volume_limit: int = None
     alarms: dict = None
+
 
 @dataclass
 class YotoPlayer:
