@@ -6,8 +6,10 @@ import datetime
 
 @dataclass
 class Alarm:
-    on: bool = None
+    enabled: bool = None
     time: datetime.time = None
+    volume: int = None
+    sound: str = None
 
 
 @dataclass
