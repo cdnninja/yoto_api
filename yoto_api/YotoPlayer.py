@@ -6,6 +6,7 @@ import datetime
 
 @dataclass
 class Alarm:
+    id: int = None
     enabled: bool = None
     time: datetime.time = None
     volume: int = None
