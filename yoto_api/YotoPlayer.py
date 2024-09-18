@@ -7,11 +7,11 @@ import datetime
 @dataclass
 class Alarm:
     # raw api example. ['0000001,0700,4OD25,,,1,0']
-    id: int = None
+    days_enabled: int = None
     enabled: bool = None
     time: datetime.time = None
     volume: int = None
-    sound: str = None
+    sound_id: str = None
 
 
 @dataclass
@@ -30,7 +30,7 @@ class YotoPlayerConfig:
     # Values in HEX_COLORS in const
     night_ambient_colour: str = None
     night_max_volume_limit: int = None
-    alarms: dict = None
+    alarms: list = None
 
 
 @dataclass
