@@ -6,6 +6,7 @@ import datetime
 
 @dataclass
 class Alarm:
+    # raw api example. ['0000001,0700,4OD25,,,1,0']
     id: int = None
     enabled: bool = None
     time: datetime.time = None
