@@ -194,16 +194,22 @@ class YotoAPI:
             players[deviceId].config.night_display_brightness = get_child_value(
                 player_config, "device.config.nightDisplayBrightness"
             )
-            alarms = get_child_value(
-                player_config, "device.config.alarms"
-            )
+            alarms = get_child_value(player_config, "device.config.alarms")
             if players[deviceId].config.alarms is None:
                 players[deviceId].config.alarms = []
             for alarm in alarms:
                 _LOGGER.debug(f"{DOMAIN} - alarms:  {alarm}")
-                values = alarm.split(',')
+                values = alarm.split(",")
                 _LOGGER.debug(f"{DOMAIN} - Value Length:  {len(values)}")
-                players[deviceId].config.alarms.append(Alarm(days_enabled=values[0],time=values[1],sound_id=values[2],volume=values[5],enabled=False if len(values)>6 else True))
+                players[deviceId].config.alarms.append(
+                    Alarm(
+                        days_enabled=values[0],
+                        time=values[1],
+                        sound_id=values[2],
+                        volume=values[5],
+                        enabled=False if len(values) > 6 else True,
+                    )
+                )
             _LOGGER.debug(f"{DOMAIN} - alarms:  {players[deviceId].config.alarms}")
             players[deviceId].last_update_config = datetime.datetime.now(pytz.utc)
             players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
