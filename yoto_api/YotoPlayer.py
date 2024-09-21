@@ -5,6 +5,16 @@ import datetime
 
 
 @dataclass
+class Alarm:
+    # raw api example. ['0000001,0700,4OD25,,,1,0']
+    days_enabled: int = None
+    enabled: bool = None
+    time: datetime.time = None
+    volume: int = None
+    sound_id: str = None
+
+
+@dataclass
 class YotoPlayerConfig:
     # Device Config
     day_mode_time: datetime.time = None
@@ -20,6 +30,7 @@ class YotoPlayerConfig:
     # Values in HEX_COLORS in const
     night_ambient_colour: str = None
     night_max_volume_limit: int = None
+    alarms: list = None
 
 
 @dataclass

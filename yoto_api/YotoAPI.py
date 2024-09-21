@@ -11,8 +11,9 @@ from .const import DOMAIN, POWER_SOURCE
 from .Token import Token
 from .Card import Card, Chapter, Track
 from .Family import Family
-from .YotoPlayer import YotoPlayer, YotoPlayerConfig
+from .YotoPlayer import YotoPlayer, YotoPlayerConfig, Alarm
 from .utils import get_child_value
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -193,6 +194,30 @@ class YotoAPI:
             players[deviceId].config.night_display_brightness = get_child_value(
                 player_config, "device.config.nightDisplayBrightness"
             )
+            alarms = get_child_value(player_config, "device.config.alarms")
+            if players[deviceId].config.alarms is None:
+                players[deviceId].config.alarms = []
+            for index in range(len(alarms)):
+                values = alarms[index].split(",")
+                if index > len(players[deviceId].config.alarms) - 1:
+                    players[deviceId].config.alarms.append(
+                        Alarm(
+                            days_enabled=values[0],
+                            time=values[1],
+                            sound_id=values[2],
+                            volume=values[5],
+                            enabled=False if len(values) > 6 else True,
+                        )
+                    )
+                else:
+                    players[deviceId].config.alarms[index].days_enabled = values[0]
+                    players[deviceId].config.alarms[index].time = values[1]
+                    players[deviceId].config.alarms[index].sound_id = values[2]
+                    players[deviceId].config.alarms[index].volume = values[5]
+                    players[deviceId].config.alarms[index].enabled = (
+                        False if len(values) > 6 else True
+                    )
+
             players[deviceId].last_update_config = datetime.datetime.now(pytz.utc)
             players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
 
