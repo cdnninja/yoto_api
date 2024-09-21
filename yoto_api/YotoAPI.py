@@ -198,15 +198,25 @@ class YotoAPI:
             if players[deviceId].config.alarms is None:
                 players[deviceId].config.alarms = []
             for index in range(len(alarms)):
-                values = alarms[index].split(',')
-                if index > len(players[deviceId].config.alarms)-1:
-                    players[deviceId].config.alarms.append(Alarm(days_enabled=values[0],time=values[1],sound_id=values[2],volume=values[5],enabled=False if len(values)>6 else True))
+                values = alarms[index].split(",")
+                if index > len(players[deviceId].config.alarms) - 1:
+                    players[deviceId].config.alarms.append(
+                        Alarm(
+                            days_enabled=values[0],
+                            time=values[1],
+                            sound_id=values[2],
+                            volume=values[5],
+                            enabled=False if len(values) > 6 else True,
+                        )
+                    )
                 else:
                     players[deviceId].config.alarms[index].days_enabled = values[0]
                     players[deviceId].config.alarms[index].time = values[1]
                     players[deviceId].config.alarms[index].sound_id = values[2]
                     players[deviceId].config.alarms[index].volume = values[5]
-                    players[deviceId].config.alarms[index].enabled = False if len(values)>6 else True
+                    players[deviceId].config.alarms[index].enabled = (
+                        False if len(values) > 6 else True
+                    )
 
             players[deviceId].last_update_config = datetime.datetime.now(pytz.utc)
             players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
