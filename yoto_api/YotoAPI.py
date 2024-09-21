@@ -194,9 +194,7 @@ class YotoAPI:
             players[deviceId].config.night_display_brightness = get_child_value(
                 player_config, "device.config.nightDisplayBrightness"
             )
-            alarms = get_child_value(
-                player_config, "device.config.alarms"
-            )
+            alarms = get_child_value(player_config, "device.config.alarms")
             if players[deviceId].config.alarms is None:
                 players[deviceId].config.alarms = []
             for index in range(len(alarms)):
