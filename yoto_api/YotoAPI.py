@@ -206,7 +206,7 @@ class YotoAPI:
                             time=values[1],
                             sound_id=values[2],
                             volume=values[5],
-                            enabled=False if len(values) > 6 else True,
+                            enabled=False if values[6] == "0" else True,
                         )
                     )
                 else:
@@ -215,7 +215,7 @@ class YotoAPI:
                     players[deviceId].config.alarms[index].sound_id = values[2]
                     players[deviceId].config.alarms[index].volume = values[5]
                     players[deviceId].config.alarms[index].enabled = (
-                        False if len(values) > 6 else True
+                        False if values[6] == "0" else True
                     )
 
             players[deviceId].last_update_config = datetime.datetime.now(pytz.utc)
