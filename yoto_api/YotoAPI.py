@@ -317,7 +317,17 @@ class YotoAPI:
         if config.alarms:
             alarm_payload = []
             for alarm in config.alarms:
-                payload = str(alarm.days_enabled) + "," + str(alarm.time) + "," + str(alarm.sound_id) + ",,," + str(alarm.volume) + "," + str(alarm.enabled)
+                payload = (
+                    str(alarm.days_enabled)
+                    + ","
+                    + str(alarm.time)
+                    + ","
+                    + str(alarm.sound_id)
+                    + ",,,"
+                    + str(alarm.volume)
+                    + ","
+                    + str(alarm.enabled)
+                )
                 alarm_payload.append(payload)
             config_payload["nightAmbientColour"] = alarm_payload
         data = {"deviceId": player_id, "config": config_payload}
