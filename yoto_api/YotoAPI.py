@@ -200,23 +200,36 @@ class YotoAPI:
             for index in range(len(alarms)):
                 values = alarms[index].split(",")
                 if index > len(players[deviceId].config.alarms) - 1:
-                    players[deviceId].config.alarms.append(
-                        Alarm(
-                            days_enabled=values[0],
-                            time=values[1],
-                            sound_id=values[2],
-                            volume=values[5],
-                            enabled=False if values[6] == "0" else True,
+                    # Sometimes the alarm list coming from API is shorter than it should be.  This implies new enabled alarm that hasn't been toggled.
+                    if len(values) > 5:
+                        players[deviceId].config.alarms.append(
+                            Alarm(
+                                days_enabled=values[0],
+                                time=values[1],
+                                sound_id=values[2],
+                                volume=values[5],
+                                enabled=False if values[6] == "0" else True,
+                            )
                         )
-                    )
+                    else:
+                        players[deviceId].config.alarms.append(
+                            Alarm(
+                                days_enabled=values[0],
+                                time=values[1],
+                                sound_id=values[2],
+                                volume=values[5],
+                                enabled=True,
+                            )
+                        )
                 else:
                     players[deviceId].config.alarms[index].days_enabled = values[0]
                     players[deviceId].config.alarms[index].time = values[1]
                     players[deviceId].config.alarms[index].sound_id = values[2]
                     players[deviceId].config.alarms[index].volume = values[5]
-                    players[deviceId].config.alarms[index].enabled = (
-                        False if values[6] == "0" else True
-                    )
+                    if len(values) > 5:
+                        players[deviceId].config.alarms[index].enabled = (
+                            False if values[6] == "0" else True
+                        )
 
             players[deviceId].last_update_config = datetime.datetime.now(pytz.utc)
             players[deviceId].last_updated_at = datetime.datetime.now(pytz.utc)
