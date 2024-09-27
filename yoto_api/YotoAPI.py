@@ -201,7 +201,7 @@ class YotoAPI:
                 values = alarms[index].split(",")
                 if index > len(players[deviceId].config.alarms) - 1:
                     # Sometimes the alarm list coming from API is shorter than it should be.  This implies new enabled alarm that hasn't been toggled.
-                    if len(values) > 5:
+                    if len(values) > 6:
                         players[deviceId].config.alarms.append(
                             Alarm(
                                 days_enabled=values[0],
