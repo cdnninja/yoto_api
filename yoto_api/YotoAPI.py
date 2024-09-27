@@ -226,7 +226,7 @@ class YotoAPI:
                     players[deviceId].config.alarms[index].time = values[1]
                     players[deviceId].config.alarms[index].sound_id = values[2]
                     players[deviceId].config.alarms[index].volume = values[5]
-                    if len(values) > 5:
+                    if len(values) > 6:
                         players[deviceId].config.alarms[index].enabled = (
                             False if values[6] == "0" else True
                         )
