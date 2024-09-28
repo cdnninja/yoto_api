@@ -339,10 +339,10 @@ class YotoAPI:
                     + ",,,"
                     + str(alarm.volume)
                     + ","
-                    + str(alarm.enabled)
+                    + str(int(alarm.enabled))
                 )
                 alarm_payload.append(payload)
-            config_payload["nightAmbientColour"] = alarm_payload
+            config_payload["alarms"] = alarm_payload
         data = {"deviceId": player_id, "config": config_payload}
         headers = self._get_authenticated_headers(token)
         response = requests.put(url, headers=headers, data=json.dumps(data)).json()
