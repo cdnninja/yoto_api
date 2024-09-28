@@ -327,6 +327,22 @@ class YotoAPI:
             config_payload["nightAmbientColour"] = config.night_ambient_colour
         if config.night_max_volume_limit:
             config_payload["nightMaxVolumeLimit"] = str(config.night_max_volume_limit)
+        if config.alarms:
+            alarm_payload = []
+            for alarm in config.alarms:
+                payload = (
+                    str(alarm.days_enabled)
+                    + ","
+                    + str(alarm.time)
+                    + ","
+                    + str(alarm.sound_id)
+                    + ",,,"
+                    + str(alarm.volume)
+                    + ","
+                    + str(int(alarm.enabled))
+                )
+                alarm_payload.append(payload)
+            config_payload["alarms"] = alarm_payload
         data = {"deviceId": player_id, "config": config_payload}
         headers = self._get_authenticated_headers(token)
         response = requests.put(url, headers=headers, data=json.dumps(data)).json()
