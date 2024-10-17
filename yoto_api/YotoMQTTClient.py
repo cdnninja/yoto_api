@@ -156,6 +156,8 @@ class YotoMQTTClient:
         player.last_updated_at = datetime.datetime.now(pytz.utc)
 
     def _parse_events_message(self, message, player):
+        if player.online is False:
+            player.online = True
         player.repeat_all = get_child_value(message, "repeatAll") or player.repeat_all
         player.volume = get_child_value(message, "volume") or player.volume
         player.volume_max = get_child_value(message, "volumeMax") or player.volume_max
