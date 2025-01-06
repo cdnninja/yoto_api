@@ -58,6 +58,7 @@ VOLUME_MAPPING_INVERTED = [
 
 POWER_SOURCE = {
     # Guessing on this.
+    None: None,
     0: "Battery Power",
     1: "Battery Power",
     2: "USB Power",
