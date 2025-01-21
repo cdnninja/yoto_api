@@ -210,7 +210,6 @@ class YotoMQTTClient:
         # _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
         callback = userdata[1]
         base, device, topic = message.topic.split("/")
-        _LOGGER.debug(f"{DOMAIN} - Message is for: {device}")
         player = players[device]
         if topic == "status":
             self._parse_status_message(
