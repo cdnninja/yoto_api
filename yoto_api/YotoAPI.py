@@ -21,15 +21,14 @@ _LOGGER = logging.getLogger(__name__)
 class YotoAPI:
     def __init__(self) -> None:
         self.BASE_URL: str = "https://api.yotoplay.com"
-        self.CLIENT_ID: str = "4P2do5RhHDXvCDZDZ6oti27Ft2XdRrzr"
         self.LOGIN_URL: str = "login.yotoplay.com"
 
     # https://api.yoto.dev/#75c77d23-397f-47f9-b76c-ce3c647b11d5
-    def login(self, username: str, password: str) -> Token:
+    def login(self, username: str, password: str, client_id: str) -> Token:
         url = f"{self.BASE_URL}/auth/token"
         data = {
             "audience": self.BASE_URL,
-            "client_id": self.CLIENT_ID,
+            "client_id": client_id,
             "grant_type": "password",
             "password": password,
             "username": username,
