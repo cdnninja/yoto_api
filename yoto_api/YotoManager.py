@@ -16,9 +16,13 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class YotoManager:
-    def __init__(self, username: str, password: str) -> None:
+    def __init__(self, username: str, password: str, client_id: str = None) -> None:
         self.username: str = username
         self.password: str = password
+        if client_id is None:
+            self.client_id = "4P2do5RhHDXvCDZDZ6oti27Ft2XdRrzr"
+        else:
+            self.client_id: str = client_id
         self.api: YotoAPI = YotoAPI()
         self.players: dict = {}
         self.token: Token = None
@@ -28,7 +32,7 @@ class YotoManager:
         self.family: Family = None
 
     def initialize(self) -> None:
-        self.token: Token = self.api.login(self.username, self.password)
+        self.token: Token = self.api.login(self.username, self.password, self.client_id)
         self.update_players_status()
 
     def update_players_status(self) -> None:
