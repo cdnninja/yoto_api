@@ -1,11 +1,13 @@
 """exceptions.py"""
 
+
 class YotoException(Exception):
     """
     Generic YotoException exception.
     """
 
     pass
+
 
 class AuthenticationError(YotoException):
     """
