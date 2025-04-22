@@ -22,7 +22,6 @@ _LOGGER = logging.getLogger(__name__)
 class YotoAPI:
     def __init__(self) -> None:
         self.BASE_URL: str = "https://api.yotoplay.com"
-        self.LOGIN_URL: str = "login.yotoplay.com"
         self.CLIENT_ID: str = None
 
     # https://api.yoto.dev/#75c77d23-397f-47f9-b76c-ce3c647b11d5
