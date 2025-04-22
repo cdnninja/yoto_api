@@ -22,7 +22,6 @@ _LOGGER = logging.getLogger(__name__)
 class YotoAPI:
     def __init__(self) -> None:
         self.BASE_URL: str = "https://api.yotoplay.com"
-        self.LOGIN_URL: str = "login.yotoplay.com"
         self.CLIENT_ID: str = None
 
     # https://api.yoto.dev/#75c77d23-397f-47f9-b76c-ce3c647b11d5
@@ -39,27 +38,22 @@ class YotoAPI:
         }
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-        response = requests.post(url, data=data, headers=headers).json()
+        response = requests.post(url, data=data, headers=headers)
+        data = response.json()
 
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response.keys()}")
 
-        if "error" in response:
-            if response["error_description"] == "Wrong email or password.":
-                raise AuthenticationError("Wrong email or password.")
+        if response.status_code != 200:
+            if data["error"] == "invalid_grant":
+                raise AuthenticationError(data["error_description"])
             else:
-                raise Exception(response["error_description"])
+                raise Exception(data["error_description"])
 
         valid_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(
-            seconds=response["expires_in"]
+            seconds=data["expires_in"]
         )
 
-        return Token(
-            access_token=response["access_token"],
-            refresh_token=response["refresh_token"],
-            token_type=response["token_type"],
-            scope=response["scope"],
-            valid_until=valid_until,
-        )
+        return Token(**data, valid_until=valid_until)
 
     # https://api.yoto.dev/#644d0b20-0b27-4b34-bbfa-bdffb96ec672
     def refresh_token(self, token: Token) -> Token:
@@ -497,7 +491,7 @@ class YotoAPI:
         #             "duration": 3335,
         #             "hasStreams": false
         #           },
-        #           "description": "The sky’s the limit for imaginations when it comes to this audio adventure! Wave goodbye to Earth and blast off into the skies above to explore 'nearby' planets, stars and galaxies, alongside inventor Otto and Missy – the cleverest raven in the universe. So, hop aboard Otto’s spacecraft and get ready for a story that’s nothing short of out of this world!\n\nLadybird Audio Adventures is an original series for 4-to 7-year-olds; a new, entertaining and engaging way for children to learn about the world around them. These are special stories written exclusively for audio with fun sound and musical effects, perfect for listening at home, before bed and on long journeys. ",
+        #           "description": "The sky's the limit for imaginations when it comes to this audio adventure! Wave goodbye to Earth and blast off into the skies above to explore 'nearby' planets, stars and galaxies, alongside inventor Otto and Missy – the cleverest raven in the universe. So, hop aboard Otto's spacecraft and get ready for a story that's nothing short of out of this world!\n\nLadybird Audio Adventures is an original series for 4-to 7-year-olds; a new, entertaining and engaging way for children to learn about the world around them. These are special stories written exclusively for audio with fun sound and musical effects, perfect for listening at home, before bed and on long journeys. ",
         #           "cover": {
         #             "imageL": "https://card-content.yotoplay.com/yoto/pub/ksdlfbksdbgklsbdlgk?width=250"
         #           },
@@ -618,7 +612,7 @@ class YotoAPI:
         #     },
         #     "createdAt": "2019-12-04T00:14:57.438Z",
         #     "metadata": {
-        #       "description": "The sky’s the limit for imaginations when it comes to this audio adventure! Wave goodbye to Earth and blast off into the skies above to explore 'nearby' planets, stars and galaxies, alongside inventor Otto and Missy – the cleverest raven in the universe. So, hop aboard Otto’s spacecraft and get ready for a story that’s nothing short of out of this world!\n\nLadybird Audio Adventures is an original series for 4-to 7-year-olds; a new, entertaining and engaging way for children to learn about the world around them. These are special stories written exclusively for audio with fun sound and musical effects, perfect for listening at home, before bed and on long journeys. ",
+        #       "description": "The sky's the limit for imaginations when it comes to this audio adventure! Wave goodbye to Earth and blast off into the skies above to explore 'nearby' planets, stars and galaxies, alongside inventor Otto and Missy – the cleverest raven in the universe. So, hop aboard Otto's spacecraft and get ready for a story that's nothing short of out of this world!\n\nLadybird Audio Adventures is an original series for 4-to 7-year-olds; a new, entertaining and engaging way for children to learn about the world around them. These are special stories written exclusively for audio with fun sound and musical effects, perfect for listening at home, before bed and on long journeys. ",
         #       "category": "stories",
         #       "author": "Ladybird Audio Adventures",
         #       "previewAudio": "shopify-slug",
