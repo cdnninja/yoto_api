@@ -13,6 +13,7 @@ from .Card import Card, Chapter, Track
 from .Family import Family
 from .YotoPlayer import YotoPlayer, YotoPlayerConfig, Alarm
 from .utils import get_child_value
+from .exceptions import AuthenticationError
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,10 +40,14 @@ class YotoAPI:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         response = requests.post(url, data=data, headers=headers).json()
+
         _LOGGER.debug(f"{DOMAIN} - Sign In Response {response.keys()}")
 
         if "error" in response:
-            raise Exception(response["error_description"])
+            if response["error_description"] == "Wrong email or password.":
+                raise AuthenticationError("Wrong email or password.")
+            else:
+                raise Exception(response["error_description"])
 
         valid_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(
             seconds=response["expires_in"]
