@@ -41,7 +41,7 @@ class YotoAPI:
         response = requests.post(url, data=data, headers=headers)
         data = response.json()
 
-        _LOGGER.debug(f"{DOMAIN} - Sign In Response {response.keys()}")
+        _LOGGER.debug(f"{DOMAIN} - Sign In Response {data.keys()}")
 
         if response.status_code != 200:
             if data["error"] == "invalid_grant":
