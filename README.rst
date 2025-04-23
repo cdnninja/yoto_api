@@ -6,7 +6,7 @@ Early days of this API. Plan is to use this for home assistant. So far basic dev
 Credit
 ======
 
-A big thank you to @buzzeddesign for helping to sniff some of the API and make sense of it.  Thank you to @fuatakgun for creating to core architecture is based on over in kia_uvo.
+A big thank you to @buzzeddesign for helping to sniff some of the API and make sense of it.  Thank you to @fuatakgun for creating the core architecture which is based on kia_uvo.
 
 Example Test Code
 =================
