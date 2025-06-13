@@ -17,7 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 class YotoMQTTClient:
     def __init__(self) -> None:
         self.CLIENT_ID: str = "4P2do5RhHDXvCDZDZ6oti27Ft2XdRrzr"
-        self.MQTT_AUTH_NAME: str = "JwtAuthorizer_mGDDmvLsocFY"
+        self.MQTT_AUTH_NAME: str = "PublicJWTAuthorizer"
         self.MQTT_URL: str = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
         self.client = None
 
