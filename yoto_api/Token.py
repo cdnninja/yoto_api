@@ -8,8 +8,6 @@ import datetime as dt
 class Token:
     """Token"""
 
-    username: str = None
-    password: str = None
     access_token: str = None
     refresh_token: str = None
     id_token: str = None
