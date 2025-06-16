@@ -24,7 +24,7 @@ To run this code for test I am doing::
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format='%(asctime)s %(name)s %(levelname)s:%(message)s')
     logger = logging.getLogger(__name__)
 
-    ym = YotoManager(username="username", password="password")
+    ym = YotoManager(client_id="your_client_id")
     ym.check_and_refresh_token()
     ym.update_player_status()
     print (ym.players)
@@ -85,8 +85,7 @@ Tests
 
 Create a .env file in the root of the project with the following content::
 
-    YOTO_USERNAME=your_username
-    YOTO_PASSWORD=your_password
+    YOTO_CLIENT_ID=your_client_id
 
 Run the tests with::
 
