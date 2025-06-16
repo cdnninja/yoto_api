@@ -20,7 +20,7 @@ class YotoManager:
         """Initialize YotoManager with OAuth2 code flow."""
         if not client_id:
             raise ValueError("client_id is required")
-            
+
         self.client_id: str = client_id
         self.api: YotoAPI = YotoAPI()
         self.players: dict = {}
