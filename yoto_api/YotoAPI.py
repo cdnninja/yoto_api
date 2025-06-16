@@ -45,7 +45,7 @@ class YotoAPI:
                 token = self.refresh_token(token, client_id)
                 self._save_token(token)
                 return token
-            except:
+            except AuthenticationError:
                 pass  # Fall through to new login
         
         # Do new login
@@ -69,7 +69,7 @@ class YotoAPI:
                 scope=token_data.get("scope"),
                 valid_until=datetime.datetime.fromisoformat(token_data["valid_until"]) if token_data.get("valid_until") else None
             )
-        except:
+        except json.JSONDecodeError:
             return None
 
     def _save_token(self, token: Token) -> None:
