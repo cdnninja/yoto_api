@@ -28,7 +28,7 @@ class YotoAPI:
         self.TOKEN_URL: str = "https://login.yotoplay.com/oauth/token"
         self.token_dir = Path.home() / ".yoto"
         self.token_file = self.token_dir / "token.json"
-        
+
         # Ensure token directory exists
         self.token_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
 
@@ -38,7 +38,7 @@ class YotoAPI:
         token = self._load_token()
         if token and self._is_valid(token):
             return token
-        
+
         # Try to refresh if we have a refresh token
         if token and token.refresh_token:
             try:
@@ -47,7 +47,7 @@ class YotoAPI:
                 return token
             except AuthenticationError:
                 pass  # Fall through to new login
-        
+
         # Do new login
         token = self.login(client_id)
         self._save_token(token)
@@ -58,16 +58,18 @@ class YotoAPI:
         try:
             if not self.token_file.exists():
                 return None
-                
-            with open(self.token_file, 'r') as f:
+
+            with open(self.token_file) as f:
                 token_data = json.load(f)
-                
+
             return Token(
                 access_token=token_data.get("access_token"),
                 refresh_token=token_data.get("refresh_token"),
                 token_type=token_data.get("token_type"),
                 scope=token_data.get("scope"),
-                valid_until=datetime.datetime.fromisoformat(token_data["valid_until"]) if token_data.get("valid_until") else None
+                valid_until=datetime.datetime.fromisoformat(token_data["valid_until"])
+                if token_data.get("valid_until")
+                else None,
             )
         except json.JSONDecodeError:
             return None
@@ -80,15 +82,17 @@ class YotoAPI:
                 "refresh_token": token.refresh_token,
                 "token_type": token.token_type,
                 "scope": token.scope,
-                "valid_until": token.valid_until.isoformat() if token.valid_until else None
+                "valid_until": token.valid_until.isoformat()
+                if token.valid_until
+                else None,
             }
-            
-            with open(self.token_file, 'w') as f:
+
+            with open(self.token_file, "w") as f:
                 json.dump(data, f)
-                
+
             # Ensure file permissions are secure
             self.token_file.chmod(0o600)
-            
+
         except Exception as e:
             _LOGGER.error(f"Failed to save token: {e}")
 
@@ -96,7 +100,9 @@ class YotoAPI:
         if not token or not token.access_token or not token.valid_until:
             return False
         # 5 minute buffer
-        return token.valid_until > datetime.datetime.now(pytz.utc) + timedelta(minutes=5)
+        return token.valid_until > datetime.datetime.now(pytz.utc) + timedelta(
+            minutes=5
+        )
 
     def clear_token(self) -> None:
         if self.token_file.exists():
@@ -108,10 +114,10 @@ class YotoAPI:
 
         # Step 1: Get authorization details
         auth_response = self._get_authorization(client_id)
-        
+
         # Step 2: Display user instructions
         self._display_user_instructions(auth_response)
-        
+
         # Step 3: Poll for token
         return self._poll_for_token(client_id, auth_response)
 
@@ -125,19 +131,21 @@ class YotoAPI:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         response = requests.post(self.AUTH_URL, data=data, headers=headers)
-        
+
         if not response.ok:
-            raise AuthenticationError(f"Authorization failed: {response.status_code} {response.text}")
-        
+            raise AuthenticationError(
+                f"Authorization failed: {response.status_code} {response.text}"
+            )
+
         return response.json()
 
     def _display_user_instructions(self, auth_result: dict) -> None:
         verification_uri_complete = auth_result.get("verification_uri_complete")
         user_code = auth_result.get("user_code")
-        
-        print("\n" + "="*60)
+
+        print("\n" + "=" * 60)
         print("YOTO AUTHENTICATION REQUIRED")
-        print("="*60)
+        print("=" * 60)
         print(f"1. Go to: {verification_uri_complete}")
         print(f"2. You'll see the code: {user_code}")
         print("Waiting for authentication...")
@@ -146,12 +154,14 @@ class YotoAPI:
         code = auth_result["device_code"]
         interval = auth_result.get("interval", 5)
         expires_in = auth_result.get("expires_in", 300)
-        
+
         # Calculate expiration time
-        expiration_time = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
-        
+        expiration_time = datetime.datetime.now() + datetime.timedelta(
+            seconds=expires_in
+        )
+
         interval_ms = interval * 1000
-        
+
         while datetime.datetime.now() < expiration_time:
             token_data = {
                 "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
@@ -168,7 +178,7 @@ class YotoAPI:
             if response.ok:
                 _LOGGER.debug(f"{DOMAIN} - Authorization successful")
                 print("\n✅ Authorization successful!")
-                
+
                 valid_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(
                     seconds=response_body["expires_in"]
                 )
@@ -191,23 +201,32 @@ class YotoAPI:
                 elif error == "slow_down":
                     interval_ms += 5000
                     interval = interval_ms // 1000
-                    _LOGGER.debug(f"{DOMAIN} - Received slow_down, increasing interval to {interval}s")
+                    _LOGGER.debug(
+                        f"{DOMAIN} - Received slow_down, increasing interval to {interval}s"
+                    )
                     time.sleep(interval)
                     continue
                 elif error == "expired_token":
-                    raise AuthenticationError("Code has expired. Please restart the authentication process.")
+                    raise AuthenticationError(
+                        "Code has expired. Please restart the authentication process."
+                    )
                 else:
-                    raise AuthenticationError(response_body.get("error_description", response_body.get("error", "Unknown error")))
+                    raise AuthenticationError(
+                        response_body.get(
+                            "error_description",
+                            response_body.get("error", "Unknown error"),
+                        )
+                    )
 
             # Unexpected error
-            raise AuthenticationError(f"Token request failed: {response.status_code} {response.text}")
+            raise AuthenticationError(
+                f"Token request failed: {response.status_code} {response.text}"
+            )
 
         raise AuthenticationError("Authentication timed out. Please try again.")
 
     # https://yoto.dev/authentication/auth
     def refresh_token(self, token: Token) -> Token:
-
-            
         data = {
             "client_id": self.CLIENT_ID,
             "grant_type": "refresh_token",
@@ -217,10 +236,12 @@ class YotoAPI:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         response = requests.post(self.TOKEN_URL, data=data, headers=headers)
-        
+
         if not response.ok:
-            raise AuthenticationError(f"Refresh token request failed: {response.status_code} {response.text}")
-            
+            raise AuthenticationError(
+                f"Refresh token request failed: {response.status_code} {response.text}"
+            )
+
         response_data = response.json()
         _LOGGER.debug(f"{DOMAIN} - Refresh Token Response {response_data.keys()}")
 
@@ -675,7 +696,7 @@ class YotoAPI:
         response = requests.get(url, headers=headers).json()
         # _LOGGER.debug(f"{DOMAIN} - Get Card Detail: {response}")
         return response
-    
+
         ############# ${BASE_URL}/card/details/abcABC #############
         # {
         #   "card": {
