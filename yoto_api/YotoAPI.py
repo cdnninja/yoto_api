@@ -53,11 +53,13 @@ class YotoAPI:
             seconds=data["expires_in"]
         )
 
-        return Token(access_token=data["access_token"],
+        return Token(
+            access_token=data["access_token"],
             refresh_token=data["refresh_token"],
             token_type=data["token_type"],
             scope=data["scope"],
-            valid_until=valid_until)
+            valid_until=valid_until,
+        )
 
     # https://api.yoto.dev/#644d0b20-0b27-4b34-bbfa-bdffb96ec672
     def refresh_token(self, token: Token) -> Token:
