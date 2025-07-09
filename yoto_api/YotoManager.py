@@ -20,7 +20,7 @@ class YotoManager:
         self.username: str = username
         self.password: str = password
         if client_id is None:
-            self.client_id = "4P2do5RhHDXvCDZDZ6oti27Ft2XdRrzr"
+            self.client_id = "zQtHNRUAEKoBXGyC05FYyV01WY7P4nhg"
         else:
             self.client_id: str = client_id
         self.api: YotoAPI = YotoAPI()
