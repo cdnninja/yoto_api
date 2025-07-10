@@ -20,7 +20,7 @@ class YotoManager:
         if client_id is None:
             raise ValueError("client_id is required")
         self.client_id: str = client_id
-        self.api: YotoAPI = YotoAPI()
+        self.api: YotoAPI = YotoAPI(client_id=self.client_id)
         self.players: dict = {}
         self.token: Token = None
         self.library: dict = {}
@@ -37,11 +37,11 @@ class YotoManager:
         self.token = token
 
     def device_code_flow_start(self) -> dict:
-        self.auth_result = self.api.get_authorization(self.client_id)
+        self.auth_result = self.api.get_authorization()
         return self.auth_result
 
     def device_code_flow_complete(self) -> None:
-        self.token = self.api.poll_for_token(self.client_id, self.auth_result)
+        self.token = self.api.poll_for_token(self.auth_result)
 
     def update_players_status(self) -> None:
         # Updates the data with current player data.
