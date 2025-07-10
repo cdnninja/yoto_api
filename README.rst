@@ -24,8 +24,11 @@ To run this code for test I am doing::
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format='%(asctime)s %(name)s %(levelname)s:%(message)s')
     logger = logging.getLogger(__name__)
 
-    ym = YotoManager(username="username", password="password")
-    ym.check_and_refresh_token()
+    ym = YotoManager(client_id="clientID")
+    print(ym.device_code_flow_start())
+    #complete the link, present to user
+    time.sleep(15)
+    ym.device_code_flow_complete()
     ym.update_player_status()
     print (ym.players)
     ym.connect_to_events()
@@ -34,11 +37,35 @@ To run this code for test I am doing::
     # Sleep will let the terminal show events coming back. For dev today.
     time.sleep(60)
 
+    # If you have already linked save the token.
+    token = ym.token
+
+    instead of device code flow user:
+    ym.set_token(token)
+    #Refresh token - maybe it is old. 
+    ym.check_and_refresh_token()
+
 Usage
 =====
 
 For additional methods not mentioned below follow the file here for all functionality:
 https://github.com/cdnninja/yoto_api/blob/master/yoto_api/YotoManager.py
+
+To use this API you need to create a YotoManager object with your client ID.  You can get this from the Yoto app.  It is in the URL when you log in.  It is the long string after "client_id=".
+
+    ym = YotoManager(client_id="your_client_id")
+
+Start the device code flow.  This will return a dictionary with the device code and other information.  You will need to present this to the user to complete the login. ::
+
+    ym.device_code_flow_start()
+
+Complete the device code flow.  This will poll the API for the token.  You will need to wait a few seconds before calling this after presenting the device code to the user. ::
+    ym.device_code_flow_complete()
+
+If you have a token already you can set it directly.  This is useful if you have already logged in and want to use the API without going through the device code flow again. ::
+
+    ym.set_token(token: Token)
+
 
 Check and refresh token will pull the first set of data.   It also should be run regularly if you keep your code running for days.  It will check if the token is valid.  If it isn't it will refresh the token.  If this is first run of the command and no data has been pulled it will also run update_player_status() and update_cards() for you. ::
 
