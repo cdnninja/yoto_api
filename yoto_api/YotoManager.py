@@ -27,6 +27,7 @@ class YotoManager:
         self.mqtt_client: YotoMQTTClient = None
         self.callback: None
         self.family: Family = None
+        self.auth_result: dict = None
 
     def initialize(self) -> None:
         self.check_and_refresh_token
@@ -36,10 +37,11 @@ class YotoManager:
         self.token = token
 
     def device_code_flow_start(self) -> dict:
-        return self.api.get_authorization(self.client_id)
+        self.auth_result = self.api.get_authorization(self.client_id)
+        return self.auth_result
 
     def device_code_flow_complete(self) -> None:
-        self.token = self.api.poll_for_token(self.client_id)
+        self.token = self.api.poll_for_token(self.client_id, self.auth_result)
 
     def update_players_status(self) -> None:
         # Updates the data with current player data.
