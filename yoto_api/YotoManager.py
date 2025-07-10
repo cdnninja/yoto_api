@@ -16,13 +16,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class YotoManager:
-    def __init__(self, username: str, password: str, client_id: str = None) -> None:
-        self.username: str = username
-        self.password: str = password
+    def __init__(self, client_id: str = None) -> None:
         if client_id is None:
-            self.client_id = "zQtHNRUAEKoBXGyC05FYyV01WY7P4nhg"
-        else:
-            self.client_id: str = client_id
+            raise ValueError("client_id is required")
+        self.client_id: str = client_id
         self.api: YotoAPI = YotoAPI()
         self.players: dict = {}
         self.token: Token = None
@@ -32,8 +29,17 @@ class YotoManager:
         self.family: Family = None
 
     def initialize(self) -> None:
-        self.token: Token = self.api.login(self.username, self.password, self.client_id)
+        self.check_and_refresh_token
         self.update_players_status()
+    
+    def set_token(self, token: Token) -> None:
+        self.token = token
+
+    def device_code_flow_start(self) -> dict:
+        self.api._get_authorization(self.client_id)
+
+    def device_code_flow_complete(self) -> None:
+        self.token = self.api._poll_for_token(self.client_id)
 
     def update_players_status(self) -> None:
         # Updates the data with current player data.
@@ -110,10 +116,10 @@ class YotoManager:
         # Set sleep time for playback.  0 Disables sleep.
         self.mqtt_client.set_sleep(deviceId=player_id, seconds=seconds)
 
-    def check_and_refresh_token(self) -> bool:
+    def check_and_refresh_token(self) -> Token | None:
+        # Returns True if the token was refreshed, False if a device code flow is required.
         if self.token is None:
-            self.initialize()
-            return True
+            return False
         # Check if valid and correct if not
         if self.token.valid_until - timedelta(hours=1) <= datetime.now(pytz.utc):
             _LOGGER.debug(f"{DOMAIN} - access token expired")
@@ -121,5 +127,5 @@ class YotoManager:
             if self.mqtt_client:
                 self.disconnect()
                 self.connect_to_events(self.callback)
-            return True
+            return self.token
         return False

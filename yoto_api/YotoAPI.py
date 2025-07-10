@@ -22,10 +22,11 @@ _LOGGER = logging.getLogger(__name__)
 class YotoAPI:
     def __init__(self) -> None:
         self.BASE_URL: str = "https://api.yotoplay.com"
-        self.CLIENT_ID: str = None
+        self.AUTH_URL: str = "https://login.yotoplay.com/oauth/device/code"
+        self.TOKEN_URL: str = "https://login.yotoplay.com/oauth/token"        self.CLIENT_ID: str = None
 
     # https://api.yoto.dev/#75c77d23-397f-47f9-b76c-ce3c647b11d5
-    def login(self, username: str, password: str, client_id: str) -> Token:
+    def login(self, client_id: str, access_token: str) -> Token:
         self.CLIENT_ID = client_id
         url = f"{self.BASE_URL}/auth/token"
         data = {
@@ -355,6 +356,99 @@ class YotoAPI:
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Payload: {data}")
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Response: {response}")
         return response
+    
+    def _get_authorization(self, client_id: str) -> dict:
+        """Get authorization code and user instructions."""
+        data = {
+            "audience": self.BASE_URL,
+            "client_id": client_id,
+            "scope": "offline_access",
+        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+        response = requests.post(self.AUTH_URL, data=data, headers=headers)
+
+        if not response.ok:
+            raise AuthenticationError(
+                f"Authorization failed: {response.status_code} {response.text}"
+            )
+
+        return response.json()
+    
+    def _poll_for_token(self, client_id: str, auth_result: dict) -> Token:
+        code = auth_result["device_code"]
+        interval = auth_result.get("interval", 5)
+        expires_in = auth_result.get("expires_in", 300)
+
+        # Calculate expiration time
+        expiration_time = datetime.datetime.now() + datetime.timedelta(
+            seconds=expires_in
+        )
+
+        interval_ms = interval * 1000
+
+        while datetime.datetime.now() < expiration_time:
+            token_data = {
+                "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                "device_code": code,
+                "client_id": client_id,
+                "audience": self.BASE_URL,
+            }
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+            response = requests.post(self.TOKEN_URL, data=token_data, headers=headers)
+            response_body = response.json()
+
+            # Successful authentication
+            if response.ok:
+                _LOGGER.debug(f"{DOMAIN} - Authorization successful")
+                print("\n✅ Authorization successful!")
+
+                valid_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(
+                    seconds=response_body["expires_in"]
+                )
+
+                return Token(
+                    access_token=response_body["access_token"],
+                    refresh_token=response_body["refresh_token"],
+                    token_type=response_body.get("token_type", "Bearer"),
+                    scope=response_body.get("scope", "openid profile offline_access"),
+                    valid_until=valid_until,
+                )
+
+            # Handle OAuth2 errors
+            if response.status_code == 403:
+                error = response_body.get("error")
+                if error == "authorization_pending":
+                    _LOGGER.debug(f"{DOMAIN} - Authorization pending, waiting...")
+                    time.sleep(interval)
+                    continue
+                elif error == "slow_down":
+                    interval_ms += 5000
+                    interval = interval_ms // 1000
+                    _LOGGER.debug(
+                        f"{DOMAIN} - Received slow_down, increasing interval to {interval}s"
+                    )
+                    time.sleep(interval)
+                    continue
+                elif error == "expired_token":
+                    raise AuthenticationError(
+                        "Code has expired. Please restart the authentication process."
+                    )
+                else:
+                    raise AuthenticationError(
+                        response_body.get(
+                            "error_description",
+                            response_body.get("error", "Unknown error"),
+                        )
+                    )
+
+            # Unexpected error
+            raise AuthenticationError(
+                f"Token request failed: {response.status_code} {response.text}"
+            )
+
+        raise AuthenticationError("Authentication timed out. Please try again.")
 
     def _get_devices(self, token: Token) -> None:
         url = self.BASE_URL + "/device-v2/devices/mine"
