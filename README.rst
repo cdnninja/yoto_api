@@ -42,7 +42,7 @@ To run this code for test I am doing::
 
     instead of device code flow user:
     ym.set_token(token)
-    #Refresh token - maybe it is old. 
+    #Refresh token - maybe it is old.
     ym.check_and_refresh_token()
 
 Usage
