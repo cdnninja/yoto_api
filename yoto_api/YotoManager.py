@@ -32,7 +32,7 @@ class YotoManager:
     def initialize(self) -> None:
         self.check_and_refresh_token
         self.update_players_status()
-    
+
     def set_token(self, token: Token) -> None:
         self.token = token
 

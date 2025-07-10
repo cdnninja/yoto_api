@@ -23,7 +23,7 @@ class YotoAPI:
     def __init__(self) -> None:
         self.BASE_URL: str = "https://api.yotoplay.com"
         self.AUTH_URL: str = "https://login.yotoplay.com/oauth/device/code"
-        self.TOKEN_URL: str = "https://login.yotoplay.com/oauth/token"        
+        self.TOKEN_URL: str = "https://login.yotoplay.com/oauth/token"
         self.CLIENT_ID: str = None
 
     # https://api.yoto.dev/#75c77d23-397f-47f9-b76c-ce3c647b11d5
@@ -357,7 +357,7 @@ class YotoAPI:
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Payload: {data}")
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Response: {response}")
         return response
-    
+
     def get_authorization(self, client_id: str) -> dict:
         """Get authorization code and user instructions."""
         data = {
@@ -374,7 +374,7 @@ class YotoAPI:
             )
 
         return response.json()
-    
+
     def poll_for_token(self, client_id: str, auth_result: dict) -> Token:
         code = auth_result["device_code"]
         interval = auth_result.get("interval", 5)
