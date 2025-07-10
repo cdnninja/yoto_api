@@ -26,7 +26,6 @@ class YotoAPI:
         self.TOKEN_URL: str = "https://login.yotoplay.com/oauth/token"
         self.CLIENT_ID: str = client_id
 
-
     def refresh_token(self, token: Token) -> Token:
         url = f"{self.BASE_URL}/auth/token"
         data = {
