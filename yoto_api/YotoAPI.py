@@ -23,7 +23,8 @@ class YotoAPI:
     def __init__(self) -> None:
         self.BASE_URL: str = "https://api.yotoplay.com"
         self.AUTH_URL: str = "https://login.yotoplay.com/oauth/device/code"
-        self.TOKEN_URL: str = "https://login.yotoplay.com/oauth/token"        self.CLIENT_ID: str = None
+        self.TOKEN_URL: str = "https://login.yotoplay.com/oauth/token"        
+        self.CLIENT_ID: str = None
 
     # https://api.yoto.dev/#75c77d23-397f-47f9-b76c-ce3c647b11d5
     def login(self, client_id: str, access_token: str) -> Token:
@@ -357,7 +358,7 @@ class YotoAPI:
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Response: {response}")
         return response
     
-    def _get_authorization(self, client_id: str) -> dict:
+    def get_authorization(self, client_id: str) -> dict:
         """Get authorization code and user instructions."""
         data = {
             "audience": self.BASE_URL,
@@ -367,7 +368,6 @@ class YotoAPI:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         response = requests.post(self.AUTH_URL, data=data, headers=headers)
-
         if not response.ok:
             raise AuthenticationError(
                 f"Authorization failed: {response.status_code} {response.text}"
@@ -375,7 +375,7 @@ class YotoAPI:
 
         return response.json()
     
-    def _poll_for_token(self, client_id: str, auth_result: dict) -> Token:
+    def poll_for_token(self, client_id: str, auth_result: dict) -> Token:
         code = auth_result["device_code"]
         interval = auth_result.get("interval", 5)
         expires_in = auth_result.get("expires_in", 300)
