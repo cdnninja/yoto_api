@@ -577,7 +577,7 @@ class YotoAPI:
     def _get_card_detail(self, token: Token, cardid: str) -> dict:
         ############## Details below from snooping JSON requests of the app ######################
 
-        url = self.BASE_URL + "/card/details/" + cardid
+        url = self.BASE_URL + "/card/" + cardid
         headers = self._get_authenticated_headers(token)
 
         response = requests.get(url, headers=headers).json()
