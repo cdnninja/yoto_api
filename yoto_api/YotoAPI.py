@@ -5,7 +5,7 @@ import logging
 import datetime
 import json
 
-from datetime import timedelta
+from datetime import time, timedelta
 import pytz
 from .const import DOMAIN, POWER_SOURCE
 from .Token import Token
