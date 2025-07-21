@@ -27,7 +27,6 @@ class YotoAPI:
         self.CLIENT_ID: str = client_id
 
     def refresh_token(self, token: Token) -> Token:
-        url = f"{self.BASE_URL}/auth/token"
         data = {
             "client_id": self.CLIENT_ID,
             "grant_type": "refresh_token",
