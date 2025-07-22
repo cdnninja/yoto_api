@@ -3,7 +3,7 @@ Introduction
 
 This is a Python wrapper for the Yoto API.  It allows you to interact with the Yoto API to control your Yoto players, update your library, and get information about your players and cards.
 
-You need a client ID to use this API.  You can get this from here: https://yoto.dev/get-started/start-here/.  
+You need a client ID to use this API.  You can get this from here: https://yoto.dev/get-started/start-here/.
 
 Credit
 ======
