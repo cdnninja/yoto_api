@@ -4,8 +4,9 @@ import requests
 import logging
 import datetime
 import json
+import time
 
-from datetime import time, timedelta
+from datetime import timedelta
 import pytz
 from .const import DOMAIN, POWER_SOURCE
 from .Token import Token
@@ -324,7 +325,7 @@ class YotoAPI:
         """Get authorization code and user instructions."""
         data = {
             "audience": self.BASE_URL,
-            "client_id": self.client_id,
+            "client_id": self.CLIENT_ID,
             "scope": "offline_access",
         }
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
@@ -353,7 +354,7 @@ class YotoAPI:
             token_data = {
                 "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
                 "device_code": code,
-                "client_id": self.client_id,
+                "client_id": self.CLIENT_ID,
                 "audience": self.BASE_URL,
             }
             headers = {"Content-Type": "application/x-www-form-urlencoded"}
