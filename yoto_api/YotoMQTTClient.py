@@ -1,5 +1,6 @@
 """MQTT Client for Yoto"""
 
+from email import message
 import logging
 import paho.mqtt.client as mqtt
 import json
@@ -203,9 +204,7 @@ class YotoMQTTClient:
         players = userdata[0]
 
         _LOGGER.debug(f"{DOMAIN} - MQTT Topic: {message.topic}")
-        _LOGGER.debug(
-            f"{DOMAIN} - MQTT Message: {str(message.payload.decode('utf-8'))}"
-        )
+        _LOGGER.debug(f"{DOMAIN} - MQTT Raw Payload: {message.payload}")
         # _LOGGER.debug(f"{DOMAIN} - MQTT QOS: {message.qos}")
         # _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
         callback = userdata[1]
