@@ -16,8 +16,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class YotoManager:
-    def __init__(self) -> None:
-        self.client_id: str = "KFLTf5PCpTh0yOuDuyQ5C3LEU9PSbult"
+    def __init__(self, client_id: str) -> None:
+        if not client_id:
+            raise ValueError("A client_id must be provided")
+        self.client_id: str = client_id
         self.api: YotoAPI = YotoAPI(client_id=self.client_id)
         self.players: dict = {}
         self.token: Token = None
