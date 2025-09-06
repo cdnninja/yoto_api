@@ -38,7 +38,10 @@ class YotoAPI:
 
         response = requests.post(self.TOKEN_URL, data=data, headers=headers).json()
         _LOGGER.debug(f"{DOMAIN} - Refresh Token Response {response}")
-
+        if response.get("error"):
+            raise AuthenticationError(
+                f"Refresh token invalid"
+            )
         valid_until = datetime.datetime.now(pytz.utc) + timedelta(
             seconds=response["expires_in"]
         )
