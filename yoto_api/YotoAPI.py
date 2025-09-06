@@ -365,7 +365,6 @@ class YotoAPI:
             # Successful authentication
             if response.ok:
                 _LOGGER.debug(f"{DOMAIN} - Authorization successful")
-                print("\n✅ Authorization successful!")
 
                 valid_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(
                     seconds=response_body["expires_in"]
