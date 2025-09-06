@@ -29,14 +29,8 @@ class YotoManager:
         self.family: Family = None
         self.auth_result: dict = None
 
-    def initialize(self) -> None:
-        self.check_and_refresh_token
-        self.update_players_status()
-
     def set_refresh_token(self, refresh_token: str) -> None:
         self.token = Token(refresh_token=refresh_token)
-        self.check_and_refresh_token()
-        self.initialize()
 
     def device_code_flow_start(self) -> dict:
         self.auth_result = self.api.get_authorization()
