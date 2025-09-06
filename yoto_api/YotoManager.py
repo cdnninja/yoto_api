@@ -38,7 +38,7 @@ class YotoManager:
 
     def device_code_flow_complete(self) -> None:
         self.token = self.api.poll_for_token(self.auth_result)
-        self.initialize()
+        self.api.update_players(self.token, self.players)
 
     def update_players_status(self) -> None:
         # Updates the data with current player data.
