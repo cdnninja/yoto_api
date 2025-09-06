@@ -16,10 +16,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class YotoManager:
-    def __init__(self, client_id: str = None) -> None:
-        if client_id is None:
-            raise ValueError("client_id is required")
-        self.client_id: str = client_id
+    def __init__(self) -> None:
+        self.client_id: str = "KFLTf5PCpTh0yOuDuyQ5C3LEU9PSbult"
         self.api: YotoAPI = YotoAPI(client_id=self.client_id)
         self.players: dict = {}
         self.token: Token = None
@@ -42,6 +40,7 @@ class YotoManager:
 
     def device_code_flow_complete(self) -> None:
         self.token = self.api.poll_for_token(self.auth_result)
+        self.initialize()
 
     def update_players_status(self) -> None:
         # Updates the data with current player data.
@@ -118,16 +117,13 @@ class YotoManager:
         # Set sleep time for playback.  0 Disables sleep.
         self.mqtt_client.set_sleep(deviceId=player_id, seconds=seconds)
 
-    def check_and_refresh_token(self) -> Token | None:
-        # Returns True if the token was refreshed, False if a device code flow is required.
-        if self.token is None:
-            return False
-        # Check if valid and correct if not
+    def check_and_refresh_token(self) -> Token:
+        # Returns a new token, or current token if still valid.
+
         if self.token.valid_until - timedelta(hours=1) <= datetime.now(pytz.utc):
             _LOGGER.debug(f"{DOMAIN} - access token expired")
             self.token: Token = self.api.refresh_token(self.token)
             if self.mqtt_client:
                 self.disconnect()
                 self.connect_to_events(self.callback)
-            return self.token
-        return False
+        return self.token
