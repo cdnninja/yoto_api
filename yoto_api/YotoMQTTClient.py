@@ -1,6 +1,5 @@
 """MQTT Client for Yoto"""
 
-from email import message
 import logging
 import paho.mqtt.client as mqtt
 import json
@@ -99,12 +98,8 @@ class YotoMQTTClient:
         secondsIn: int,
         cutoff: int,
         chapterKey: str,
-        trackKey: int,
+        trackKey: str,
     ):
-        if len(str(chapterKey)) != 2:
-            chapterKey = str(chapterKey).zfill(2)
-        if len(str(trackKey)) != 2:
-            trackKey = str(trackKey).zfill(2)
         topic = f"device/{deviceId}/command/card-play"
         payload = json.dumps(
             {
@@ -115,6 +110,7 @@ class YotoMQTTClient:
                 "cutOff": cutoff,
             }
         )
+        _LOGGER.debug(f"{DOMAIN} - card-play payload: {str(payload)}")
         self.client.publish(topic, str(payload))
         self.update_status(deviceId)
         # MQTT Message: {"status":{"card-play":"OK","req_body":"{\"uri\":\"https://yoto.io/7JtVV\",\"secondsIn\":0,\"cutOff\":0,\"chapterKey\":\"01\",\"trackKey\":\"01\",\"requestId\":\"5385910e-f853-4f34-99a4-d2ed94f02f6d\"}"}}
