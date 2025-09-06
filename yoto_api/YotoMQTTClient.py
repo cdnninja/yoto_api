@@ -1,6 +1,5 @@
 """MQTT Client for Yoto"""
 
-from email import message
 import logging
 import paho.mqtt.client as mqtt
 import json
