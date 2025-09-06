@@ -41,11 +41,11 @@ To run this code for test I am doing::
     time.sleep(60)
 
     # If you have already linked save the token.
-    token = ym.token
+    refresh_token = ym.token.refresh_token
 
     instead of device code flow user:
-    ym.set_token(token)
-    #Refresh token - maybe it is old.
+    ym.set_refresh_token(refresh_token)
+    #Refresh token - maybe it is old. Auto run by set refresh token
     ym.check_and_refresh_token()
 
 Usage

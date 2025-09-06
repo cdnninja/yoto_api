@@ -28,6 +28,7 @@ class YotoAPI:
         self.CLIENT_ID: str = client_id
 
     def refresh_token(self, token: Token) -> Token:
+        _LOGGER.debug(f"{DOMAIN} - Refreshing Token, current token: {token}")
         data = {
             "client_id": self.CLIENT_ID,
             "grant_type": "refresh_token",
@@ -37,7 +38,7 @@ class YotoAPI:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         response = requests.post(self.TOKEN_URL, data=data, headers=headers).json()
-        _LOGGER.debug(f"{DOMAIN} - Refresh TokenResponse {response}")
+        _LOGGER.debug(f"{DOMAIN} - Refresh Token Response {response}")
 
         valid_until = datetime.datetime.now(pytz.utc) + timedelta(
             seconds=response["expires_in"]
@@ -45,7 +46,7 @@ class YotoAPI:
 
         return Token(
             access_token=response["access_token"],
-            refresh_token=token.refresh_token,
+            refresh_token=response["refresh_token"],
             token_type=response["token_type"],
             scope=token.scope,
             valid_until=valid_until,

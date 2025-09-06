@@ -33,8 +33,10 @@ class YotoManager:
         self.check_and_refresh_token
         self.update_players_status()
 
-    def set_token(self, token: Token) -> None:
-        self.token = token
+    def set_refresh_token(self, refresh_token: str) -> None:
+        self.token = Token(refresh_token=refresh_token)
+        self.check_and_refresh_token()
+        self.initialize()
 
     def device_code_flow_start(self) -> dict:
         self.auth_result = self.api.get_authorization()
@@ -121,9 +123,13 @@ class YotoManager:
 
     def check_and_refresh_token(self) -> Token:
         # Returns a new token, or current token if still valid.
+        if self.token is None:
+            raise ValueError("No token available, please authenticate first")
+        if self.token.access_token is None:
+            self.token = self.api.refresh_token(self.token)
 
         if self.token.valid_until - timedelta(hours=1) <= datetime.now(pytz.utc):
-            _LOGGER.debug(f"{DOMAIN} - access token expired")
+            _LOGGER.debug(f"{DOMAIN} - access token expired, refreshing")
             self.token: Token = self.api.refresh_token(self.token)
             if self.mqtt_client:
                 self.disconnect()
