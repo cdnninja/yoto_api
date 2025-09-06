@@ -88,15 +88,15 @@ class YotoManager:
         secondsIn: int,
         cutoff: int,
         chapterKey: str,
-        trackKey: int,
+        trackKey: str,
     ):
         self.mqtt_client.card_play(
             deviceId=player_id,
             cardId=card,
             secondsIn=secondsIn,
             cutoff=cutoff,
-            chapterKey=chapterKey,
-            trackKey=trackKey,
+            chapterKey=str(chapterKey),
+            trackKey=str(trackKey),
         )
 
     def set_volume(self, player_id: str, volume: int):
