@@ -95,22 +95,24 @@ class YotoMQTTClient:
         self,
         deviceId,
         cardId: str,
-        secondsIn: int,
-        cutoff: int,
-        chapterKey: str,
-        trackKey: str,
+        secondsIn: int = None,
+        cutoff: int = None,
+        chapterKey: str = None,
+        trackKey: str = None,
     ):
         topic = f"device/{deviceId}/command/card-play"
-        payload = json.dumps(
-            {
-                "uri": f"https://yoto.io/{cardId}",
-                "chapterKey": chapterKey,
-                "trackKey": trackKey,
-                "secondsIn": secondsIn,
-                "cutOff": cutoff,
-            }
-        )
-        _LOGGER.debug(f"{DOMAIN} - card-play payload: {str(payload)}")
+        payload = {}
+        payload["uri"] = f"https://yoto.io/{cardId}"
+        if secondsIn is not None:
+            payload["secondsIn"] = int(secondsIn)
+            if cutoff is not None:
+                payload["cutOff"] = int(cutoff)
+        if chapterKey is not None:
+            payload["chapterKey"] = chapterKey
+        if trackKey is not None:
+            payload["trackKey"] = trackKey
+        json_payload = json.dumps(payload)
+        _LOGGER.debug(f"{DOMAIN} - card-play payload: {str(json_payload)}")
         self.client.publish(topic, str(payload))
         self.update_status(deviceId)
         # MQTT Message: {"status":{"card-play":"OK","req_body":"{\"uri\":\"https://yoto.io/7JtVV\",\"secondsIn\":0,\"cutOff\":0,\"chapterKey\":\"01\",\"trackKey\":\"01\",\"requestId\":\"5385910e-f853-4f34-99a4-d2ed94f02f6d\"}"}}
