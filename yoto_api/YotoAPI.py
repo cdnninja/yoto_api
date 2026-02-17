@@ -278,7 +278,9 @@ class YotoAPI:
                         track_item, "trackUrl"
                     )
 
-    def set_player_config(self, token: Token, player_id: str, config: YotoPlayerConfig) -> None:
+    def set_player_config(
+        self, token: Token, player_id: str, config: YotoPlayerConfig
+    ) -> None:
         url = f"{self.BASE_URL}/device-v2/{player_id}/config"
         config_payload = {}
         if config.day_mode_time:

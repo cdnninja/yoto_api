@@ -21,7 +21,7 @@ class YotoMQTTClient:
         self.CLIENT_ID: str = "4P2do5RhHDXvCDZDZ6oti27Ft2XdRrzr"
         self.MQTT_AUTH_NAME: str = "PublicJWTAuthorizer"
         self.MQTT_URL: str = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
-        self.client: mqtt.Client  = None
+        self.client: mqtt.Client = None
 
     def connect_mqtt(self, token: Token, players: dict[YotoPlayer], callback) -> None:
         #             mqtt.CallbackAPIVersion.VERSION1,
@@ -200,7 +200,9 @@ class YotoMQTTClient:
 
     # {"trackLength":315,"position":0,"cardId":"7JtVV","repeatAll":true,"source":"remote","cardUpdatedAt":"2021-07-13T14:51:26.576Z","chapterTitle":"Snow and Tell","chapterKey":"03","trackTitle":"Snow and Tell","trackKey":"03","streaming":false,"volume":5,"volumeMax":8,"playbackStatus":"playing","playbackWait":false,"sleepTimerActive":false,"eventUtc":1715133271}
 
-    def _on_message(self, client: mqtt.Client, userdata, message: mqtt.MQTTMessage) -> None:
+    def _on_message(
+        self, client: mqtt.Client, userdata, message: mqtt.MQTTMessage
+    ) -> None:
         # Process MQTT Message
         players = userdata[0]
 
