@@ -6,6 +6,8 @@ import json
 import datetime
 import pytz
 
+from yoto_api.YotoPlayer import YotoPlayer
+
 
 from .const import DOMAIN, VOLUME_MAPPING_INVERTED
 from .Token import Token
@@ -19,9 +21,9 @@ class YotoMQTTClient:
         self.CLIENT_ID: str = "4P2do5RhHDXvCDZDZ6oti27Ft2XdRrzr"
         self.MQTT_AUTH_NAME: str = "PublicJWTAuthorizer"
         self.MQTT_URL: str = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
-        self.client = None
+        self.client: mqtt.Client = None
 
-    def connect_mqtt(self, token: Token, players: dict, callback):
+    def connect_mqtt(self, token: Token, players: dict[YotoPlayer], callback) -> None:
         #             mqtt.CallbackAPIVersion.VERSION1,
         userdata = (players, callback)
         self.client = mqtt.Client(
@@ -44,7 +46,7 @@ class YotoMQTTClient:
         self.client.loop_stop()
         self.client.disconnect()
 
-    def _on_connect(self, client, userdata, flags, rc):
+    def _on_connect(self, client, userdata, flags, rc) -> None:
         players = userdata[0]
         for player in players:
             self.client.subscribe("device/" + player + "/events")
@@ -54,14 +56,14 @@ class YotoMQTTClient:
 
             self.update_status(player)
 
-    def _on_disconnect(self, client, userdata, rc):
+    def _on_disconnect(self, client: mqtt.Client, userdata, rc) -> None:
         _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT Disconnected: {rc}")
 
-    def update_status(self, deviceId):
+    def update_status(self, deviceId: str):
         topic = f"device/{deviceId}/command/events"
         self.client.publish(topic)
 
-    def set_volume(self, deviceId: str, volume: int):
+    def set_volume(self, deviceId: str, volume: int) -> None:
         closest_volume = take_closest(VOLUME_MAPPING_INVERTED, volume)
         topic = f"device/{deviceId}/command/set-volume"
         payload = json.dumps({"volume": closest_volume})
@@ -69,23 +71,23 @@ class YotoMQTTClient:
         self.update_status(deviceId)
         # {"status":{"set-volume":"OK","req_body":"{\"volume\":25,\"requestId\":\"39804a13-988d-43d2-b30f-1f3b9b5532f0\"}"}}
 
-    def set_sleep(self, deviceId: str, seconds: int):
+    def set_sleep(self, deviceId: str, seconds: int) -> None:
         topic = f"device/{deviceId}/command/sleep"
         payload = json.dumps({"seconds": seconds})
         self.client.publish(topic, str(payload))
         self.update_status(deviceId)
 
-    def card_stop(self, deviceId):
+    def card_stop(self, deviceId: str) -> None:
         topic = f"device/{deviceId}/command/card-stop"
         self.client.publish(topic)
         self.update_status(deviceId)
 
-    def card_pause(self, deviceId):
+    def card_pause(self, deviceId: str) -> None:
         topic = f"device/{deviceId}/command/card-pause"
         self.client.publish(topic)
         self.update_status(deviceId)
 
-    def card_resume(self, deviceId):
+    def card_resume(self, deviceId: str) -> None:
         topic = f"device/{deviceId}/command/card-resume"
         self.client.publish(topic)
         self.update_status(deviceId)
@@ -93,13 +95,13 @@ class YotoMQTTClient:
 
     def card_play(
         self,
-        deviceId,
+        deviceId: str,
         cardId: str,
         secondsIn: int = None,
         cutoff: int = None,
         chapterKey: str = None,
         trackKey: str = None,
-    ):
+    ) -> None:
         topic = f"device/{deviceId}/command/card-play"
         payload = {}
         payload["uri"] = f"https://yoto.io/{cardId}"
@@ -118,7 +120,7 @@ class YotoMQTTClient:
         self.update_status(deviceId)
         # MQTT Message: {"status":{"card-play":"OK","req_body":"{\"uri\":\"https://yoto.io/7JtVV\",\"secondsIn\":0,\"cutOff\":0,\"chapterKey\":\"01\",\"trackKey\":\"01\",\"requestId\":\"5385910e-f853-4f34-99a4-d2ed94f02f6d\"}"}}
 
-    def restart(self, deviceId):
+    def restart(self, deviceId: str):
         # restart the player
 
         topic = f"device/{deviceId}/command/restart"
@@ -128,7 +130,7 @@ class YotoMQTTClient:
     # action: "on" (turn on), "off" (turn off), "is-on" (check if bluetooth is on)
     # name: (optional) the name of the target device to connect to when action is "on"
     # mac: (optional) the MAC address of the target device to connect to when action is "on"
-    def bluetooth(self, deviceId, action: str, name: str, mac: str):
+    def bluetooth(self, deviceId: str, action: str, name: str, mac: str) -> None:
         topic = f"device/{deviceId}/command/bt"
         payload = json.dumps(
             {
@@ -141,12 +143,12 @@ class YotoMQTTClient:
 
     # set the ambient light of the player
     # red, blue, green values of intensity from 0-255
-    def set_ambients(self, deviceId: str, r: int, g: int, b: int):
+    def set_ambients(self, deviceId: str, r: int, g: int, b: int) -> None:
         topic = f"device/{deviceId}/command/ambients"
         payload = json.dumps({"r": r, "g": g, "b": b})
         self.client.publish(topic, str(payload))
 
-    def _parse_status_message(self, message, player):
+    def _parse_status_message(self, message, player: YotoPlayer) -> None:
         player.night_light_mode = (
             get_child_value(message, "nightlightMode") or player.night_light_mode
         )
@@ -155,7 +157,7 @@ class YotoMQTTClient:
         )
         player.last_updated_at = datetime.datetime.now(pytz.utc)
 
-    def _parse_events_message(self, message, player):
+    def _parse_events_message(self, message, player: YotoPlayer) -> None:
         if player.online is False:
             player.online = True
         player.repeat_all = get_child_value(message, "repeatAll") or player.repeat_all
@@ -198,7 +200,9 @@ class YotoMQTTClient:
 
     # {"trackLength":315,"position":0,"cardId":"7JtVV","repeatAll":true,"source":"remote","cardUpdatedAt":"2021-07-13T14:51:26.576Z","chapterTitle":"Snow and Tell","chapterKey":"03","trackTitle":"Snow and Tell","trackKey":"03","streaming":false,"volume":5,"volumeMax":8,"playbackStatus":"playing","playbackWait":false,"sleepTimerActive":false,"eventUtc":1715133271}
 
-    def _on_message(self, client, userdata, message):
+    def _on_message(
+        self, client: mqtt.Client, userdata, message: mqtt.MQTTMessage
+    ) -> None:
         # Process MQTT Message
         players = userdata[0]
 
@@ -208,7 +212,7 @@ class YotoMQTTClient:
         # _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
         callback = userdata[1]
         base, device, topic = message.topic.split("/")
-        player = players[device]
+        player: YotoPlayer = players[device]
         if topic == "status":
             self._parse_status_message(
                 json.loads(str(message.payload.decode("utf-8"))), player

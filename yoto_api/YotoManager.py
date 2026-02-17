@@ -104,11 +104,11 @@ class YotoManager:
             trackKey=trackKey,
         )
 
-    def set_volume(self, player_id: str, volume: int):
+    def set_volume(self, player_id: str, volume: int) -> None:
         # Takes a range from 0-100.  Maps it to the nearest 0-16 value from the constant file and sends that
         self.mqtt_client.set_volume(deviceId=player_id, volume=volume)
 
-    def set_ambients_color(self, player_id: str, r: int, g: int, b: int):
+    def set_ambients_color(self, player_id: str, r: int, g: int, b: int) -> None:
         self.mqtt_client.set_ambients(deviceId=player_id, r=r, g=g, b=b)
 
     def set_sleep(self, player_id: str, seconds: int):

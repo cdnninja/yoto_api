@@ -278,7 +278,9 @@ class YotoAPI:
                         track_item, "trackUrl"
                     )
 
-    def set_player_config(self, token: Token, player_id: str, config: YotoPlayerConfig):
+    def set_player_config(
+        self, token: Token, player_id: str, config: YotoPlayerConfig
+    ) -> None:
         url = f"{self.BASE_URL}/device-v2/{player_id}/config"
         config_payload = {}
         if config.day_mode_time:
@@ -720,18 +722,3 @@ class YotoAPI:
             "Content-Type": "application/json",
             "Authorization": token.token_type + " " + token.access_token,
         }
-
-
-######Endpoints:
-
-# api.yotoplay.com/device-v2/devices/mine
-# api.yotoplay.com/device-v2/$deviceid/status
-# api.yotoplay.com/media/displayIcons/user/me
-# api.yotoplay.com/user/details
-# api.yotoplay.com/user/family/mine?allowStub=true
-# api.yotoplay.com/card/mine
-# api.yotoplay.com/card/mine/user/family/mine?allowStub=true
-# api.yotoplay.com/card/family/library
-# api.yotoplay.com/card/library/free
-# api.yotoplay.com/card/library/club
-# api.yotoplay.com/card/family/library
