@@ -18,7 +18,7 @@ def get_child_value(data, key):
     return value
 
 
-def parse_datetime(value, timezone) -> datetime.datetime:
+def parse_datetime(value: str, timezone) -> datetime.datetime:
     if value is None:
         return datetime.datetime(2000, 1, 1, tzinfo=timezone)
 
@@ -35,7 +35,7 @@ def parse_datetime(value, timezone) -> datetime.datetime:
     )
 
 
-def take_closest(list, number):
+def take_closest(list: list, number: int) -> int:
     """
     Assumes list is sorted. Returns closest value to number. Used for volume mapping.
 
