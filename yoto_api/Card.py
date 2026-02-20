@@ -21,7 +21,7 @@ class Chapter:
     title: str = None  # $.card.content.chapters[0].title e.g. "Introduction"
     duration: int = None  # $.card.content.chapters[0].duration e.g. 349
     key: str = None  # $.card.content.chapters[0].key e.g. "01-INT"
-    tracks: list[Track] = None  # $.card.content.chapters[0].tracks
+    tracks: dict[Track] = None  # $.card.content.chapters[0].tracks
 
 
 @dataclass
@@ -36,4 +36,4 @@ class Card:
         None  # $.card.metadata.seriestitle e.g. "Ladybird Audio Adventures Volume 1"
     )
     series_order: int = None  # $.card.metadata.seriesorder e.g. 4
-    chapters: list[Chapter] = None  # $.card.content.chapters
+    chapters: dict[Chapter] = None  # $.card.content.chapters
