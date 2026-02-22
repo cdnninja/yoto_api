@@ -1,7 +1,6 @@
 """Card class"""
 
 from dataclasses import dataclass
-from typing import Optional, Dict, List
 
 
 @dataclass

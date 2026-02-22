@@ -1,4 +1,4 @@
-Introduction 
+Introduction
 ============
 
 This is a Python wrapper for the Yoto API.  It allows you to interact with the Yoto API to control your Yoto players, update your library, and get information about your players and cards.

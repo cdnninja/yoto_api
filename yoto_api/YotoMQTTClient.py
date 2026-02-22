@@ -153,7 +153,8 @@ class YotoMQTTClient:
             get_child_value(message, "status.nightlightMode") or player.night_light_mode
         )
         player.battery_level_percentage = (
-            get_child_value(message, "status.batteryLevel") or player.battery_level_percentage
+            get_child_value(message, "status.batteryLevel")
+            or player.battery_level_percentage
         )
         player.battery_temperature = get_child_value(message, "status.batteryTemp")
         player.last_updated_at = datetime.datetime.now(pytz.utc)
