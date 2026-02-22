@@ -156,7 +156,9 @@ class YotoMQTTClient:
             get_child_value(message, "status.batteryLevel")
             or player.battery_level_percentage
         )
-        player.battery_temperature = get_child_value(message, "status.batteryTemp")
+        battery_temperature = get_child_value(message, "status.batteryTemp")
+        if battery_temperature is not None and battery_temperature != 0:
+            player.battery_temperature = battery_temperature
         player.last_updated_at = datetime.datetime.now(pytz.utc)
 
     def _parse_events_message(self, message, player: YotoPlayer) -> None:
