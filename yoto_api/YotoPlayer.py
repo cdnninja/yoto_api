@@ -47,7 +47,6 @@ class YotoPlayer:
     is_playing: bool = None
     playing_source: str = None
     ambient_light_sensor_reading: int = None
-    battery_level_percentage: int = None
     day_mode_on: bool = None
     night_light_mode: str = None
     user_volume: int = None
@@ -80,6 +79,8 @@ class YotoPlayer:
     playback_status: str = None
     sleep_timer_active: bool = False
     sleep_timer_seconds_remaining: int = 0
+    battery_level_percentage: int = None
+    battery_temperature: int = None
 
 
 # {'devices': [{'deviceId': 'XXXX', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}

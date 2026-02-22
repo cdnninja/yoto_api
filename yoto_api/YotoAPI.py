@@ -86,9 +86,6 @@ class YotoAPI:
             players[deviceId].ambient_light_sensor_reading = get_child_value(
                 player_status_response, "ambientLightSensorReading"
             )
-            players[deviceId].battery_level_percentage = get_child_value(
-                player_status_response, "batteryLevelPercentage"
-            )
             players[deviceId].day_mode_on = get_child_value(
                 player_status_response, "dayMode"
             )
