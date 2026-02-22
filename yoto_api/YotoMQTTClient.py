@@ -150,12 +150,12 @@ class YotoMQTTClient:
 
     def _parse_status_message(self, message, player: YotoPlayer) -> None:
         player.night_light_mode = (
-            get_child_value(message, "nightlightMode") or player.night_light_mode
+            get_child_value(message, "status.nightlightMode") or player.night_light_mode
         )
         player.battery_level_percentage = (
-            get_child_value(message, "batteryLevel") or player.battery_level_percentage
+            get_child_value(message, "status.batteryLevel") or player.battery_level_percentage
         )
-        player.battery_temperature = get_child_value(message, "batteryTemp")
+        player.battery_temperature = get_child_value(message, "status.batteryTemp")
         player.last_updated_at = datetime.datetime.now(pytz.utc)
 
     def _parse_events_message(self, message, player: YotoPlayer) -> None:

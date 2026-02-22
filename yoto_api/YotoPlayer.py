@@ -2,85 +2,86 @@
 
 from dataclasses import dataclass
 import datetime
+from typing import Optional, List
 
 
 @dataclass
 class Alarm:
     # raw api example. ['0000001,0700,4OD25,,,1,0']
-    days_enabled: int = None
-    enabled: bool = None
-    time: datetime.time = None
-    volume: int = None
-    sound_id: str = None
+    days_enabled: Optional[int] = None
+    enabled: Optional[bool] = None
+    time: Optional[datetime.time] = None
+    volume: Optional[int] = None
+    sound_id: Optional[str] = None
 
 
 @dataclass
 class YotoPlayerConfig:
     # Device Config
-    day_mode_time: datetime.time = None
+    day_mode_time: Optional[datetime.time] = None
     # Auto, or value
-    day_display_brightness: str = None
+    day_display_brightness: Optional[str] = None
     # Values in HEX_COLORS in const
-    day_ambient_colour: str = None
-    day_max_volume_limit: int = None
+    day_ambient_colour: Optional[str] = None
+    day_max_volume_limit: Optional[int] = None
 
-    night_mode_time: datetime.time = None
+    night_mode_time: Optional[datetime.time] = None
     # Auto, or value
-    night_display_brightness: str = None
+    night_display_brightness: Optional[str] = None
     # Values in HEX_COLORS in const
-    night_ambient_colour: str = None
-    night_max_volume_limit: int = None
-    alarms: list = None
+    night_ambient_colour: Optional[str] = None
+    night_max_volume_limit: Optional[int] = None
+    alarms: Optional[List[Alarm]] = None
 
 
 @dataclass
 class YotoPlayer:
     # Device API
-    id: str = None
-    name: str = None
-    device_type: str = None
-    online: bool = None
-    last_updated_at: datetime.datetime = None
+    id: Optional[str] = None
+    name: Optional[str] = None
+    device_type: Optional[str] = None
+    online: Optional[bool] = None
+    last_updated_at: Optional[datetime.datetime] = None
 
     # Status API
-    active_card: str = None
-    is_playing: bool = None
-    playing_source: str = None
-    ambient_light_sensor_reading: int = None
-    day_mode_on: bool = None
-    night_light_mode: str = None
-    user_volume: int = None
-    system_volume: int = None
-    temperature_celcius: int = None
-    bluetooth_audio_connected: bool = None
-    charging: bool = None
-    audio_device_connected: bool = None
-    firmware_version: str = None
-    wifi_strength: int = None
-    power_source: str = None
-    last_updated_api: datetime.datetime = None
+    active_card: Optional[str] = None
+    is_playing: Optional[bool] = None
+    playing_source: Optional[str] = None
+    ambient_light_sensor_reading: Optional[int] = None
+    day_mode_on: Optional[bool] = None
+    night_light_mode: Optional[str] = None
+    user_volume: Optional[int] = None
+    system_volume: Optional[int] = None
+    temperature_celcius: Optional[int] = None
+    bluetooth_audio_connected: Optional[bool] = None
+    charging: Optional[bool] = None
+    audio_device_connected: Optional[bool] = None
+    firmware_version: Optional[str] = None
+    wifi_strength: Optional[int] = None
+    power_source: Optional[str] = None
+    last_updated_api: Optional[datetime.datetime] = None
 
     # Config
-    config: YotoPlayerConfig = None
-    last_update_config: datetime.datetime = None
+    config: Optional[YotoPlayerConfig] = None
+    last_update_config: Optional[datetime.datetime] = None
 
     # MQTT
-    card_id: str = None
-    repeat_all: bool = None
-    volume_max: int = None
-    volume: int = None
-    chapter_title: str = None
-    chapter_key: str = None
-    source: str = None
-    track_title: str = None
-    track_length: int = None
-    track_position: int = None
-    track_key: str = None
-    playback_status: str = None
-    sleep_timer_active: bool = False
-    sleep_timer_seconds_remaining: int = 0
-    battery_level_percentage: int = None
-    battery_temperature: int = None
+    card_id: Optional[str] = None
+    repeat_all: Optional[bool] = None
+    volume_max: Optional[int] = None
+    volume: Optional[int] = None
+    chapter_title: Optional[str] = None
+    chapter_key: Optional[str] = None
+    source: Optional[str] = None
+    track_title: Optional[str] = None
+    track_length: Optional[int] = None
+    track_position: Optional[int] = None
+    track_key: Optional[str] = None
+    playback_status: Optional[str] = None
+    sleep_timer_active: Optional[bool] = False
+    sleep_timer_seconds_remaining: Optional[int] = 0
+    battery_level_percentage: Optional[int] = None
+    battery_temperature: Optional[int] = None
 
 
 # {'devices': [{'deviceId': 'XXXX', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}
