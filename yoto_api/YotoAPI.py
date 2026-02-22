@@ -98,6 +98,10 @@ class YotoAPI:
             players[deviceId].system_volume = get_child_value(
                 player_status_response, "systemVolumePercentage"
             )
+            if player[deviceId].battery_level_percentage is None:
+                players[deviceId].battery_level_percentage = get_child_value(
+                    player_status_response, "batteryLevelPercentage"
+                )
             if (
                 get_child_value(player_status_response, "temperatureCelcius")
                 != "notSupported"
