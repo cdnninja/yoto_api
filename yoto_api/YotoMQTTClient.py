@@ -158,8 +158,7 @@ class YotoMQTTClient:
             get_child_value(status, "nightlightMode") or player.night_light_mode
         )
         player.battery_level_percentage = (
-            get_child_value(status, "batteryLevel")
-            or player.battery_level_percentage
+            get_child_value(status, "batteryLevel") or player.battery_level_percentage
         )
         battery_temperature = get_child_value(status, "batteryTemp")
         if battery_temperature is not None and battery_temperature != 0:
