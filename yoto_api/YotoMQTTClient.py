@@ -246,7 +246,9 @@ class YotoMQTTClient:
         callback = userdata[1]
         parts = message.topic.split("/")
         if len(parts) < 4:
-            _LOGGER.debug(f"{DOMAIN} - Ignoring unsupported MQTT Topic: {message.topic}")
+            _LOGGER.debug(
+                f"{DOMAIN} - Ignoring unsupported MQTT Topic: {message.topic}"
+            )
             return
         _, device, category, topic = parts[:4]
         player: YotoPlayer = players[device]
