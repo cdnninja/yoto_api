@@ -24,7 +24,9 @@ class YotoMQTTClientTest(unittest.TestCase):
         fake_client = FakeClient()
         mqtt_client.client = fake_client
 
-        mqtt_client._on_connect(fake_client, ({"device-1": YotoPlayer(id="device-1")}, None), None, 0)
+        mqtt_client._on_connect(
+            fake_client, ({"device-1": YotoPlayer(id="device-1")}, None), None, 0
+        )
 
         self.assertEqual(
             fake_client.subscriptions,
