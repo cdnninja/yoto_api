@@ -185,11 +185,7 @@ class YotoMQTTClient:
             if int(playing_status) == 2:
                 player.playback_status = "playing"
                 player.is_playing = True
-            elif int(playing_status) == 1:
-                player.playback_status = "paused"
-                player.is_playing = False
             else:
-                player.playback_status = "stopped"
                 player.is_playing = False
         player.last_updated_at = datetime.datetime.now(pytz.utc)
 
