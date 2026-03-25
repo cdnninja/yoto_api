@@ -49,8 +49,8 @@ class YotoMQTTClient:
     def _on_connect(self, client, userdata, flags, rc) -> None:
         players = userdata[0]
         for player in players:
-            self.client.subscribe("device/" + player + "/events")
-            self.client.subscribe("device/" + player + "/status")
+            self.client.subscribe("device/" + player + "/data/events")
+            self.client.subscribe("device/" + player + "/data/status")
             self.client.subscribe("device/" + player + "/response")
             _LOGGER.debug(f"{DOMAIN} - Connected and Subscribed to player: {player}")
 
@@ -60,35 +60,35 @@ class YotoMQTTClient:
         _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT Disconnected: {rc}")
 
     def update_status(self, deviceId: str):
-        topic = f"device/{deviceId}/command/events"
-        self.client.publish(topic)
+        self.client.publish(f"device/{deviceId}/command/events/request")
+        self.client.publish(f"device/{deviceId}/command/status/request")
 
     def set_volume(self, deviceId: str, volume: int) -> None:
         closest_volume = take_closest(VOLUME_MAPPING_INVERTED, volume)
-        topic = f"device/{deviceId}/command/set-volume"
+        topic = f"device/{deviceId}/command/volume/set"
         payload = json.dumps({"volume": closest_volume})
         self.client.publish(topic, str(payload))
         self.update_status(deviceId)
         # {"status":{"set-volume":"OK","req_body":"{\"volume\":25,\"requestId\":\"39804a13-988d-43d2-b30f-1f3b9b5532f0\"}"}}
 
     def set_sleep(self, deviceId: str, seconds: int) -> None:
-        topic = f"device/{deviceId}/command/sleep"
+        topic = f"device/{deviceId}/command/sleep-timer/set"
         payload = json.dumps({"seconds": seconds})
         self.client.publish(topic, str(payload))
         self.update_status(deviceId)
 
     def card_stop(self, deviceId: str) -> None:
-        topic = f"device/{deviceId}/command/card-stop"
+        topic = f"device/{deviceId}/command/card/stop"
         self.client.publish(topic)
         self.update_status(deviceId)
 
     def card_pause(self, deviceId: str) -> None:
-        topic = f"device/{deviceId}/command/card-pause"
+        topic = f"device/{deviceId}/command/card/pause"
         self.client.publish(topic)
         self.update_status(deviceId)
 
     def card_resume(self, deviceId: str) -> None:
-        topic = f"device/{deviceId}/command/card-resume"
+        topic = f"device/{deviceId}/command/card/resume"
         self.client.publish(topic)
         self.update_status(deviceId)
         # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}
@@ -102,7 +102,7 @@ class YotoMQTTClient:
         chapterKey: str = None,
         trackKey: str = None,
     ) -> None:
-        topic = f"device/{deviceId}/command/card-play"
+        topic = f"device/{deviceId}/command/card/start"
         payload = {}
         payload["uri"] = f"https://yoto.io/{cardId}"
 
@@ -123,7 +123,7 @@ class YotoMQTTClient:
     def restart(self, deviceId: str):
         # restart the player
 
-        topic = f"device/{deviceId}/command/restart"
+        topic = f"device/{deviceId}/command/reboot"
         self.client.publish(topic)
 
     # control bluetooth on the player
@@ -131,7 +131,11 @@ class YotoMQTTClient:
     # name: (optional) the name of the target device to connect to when action is "on"
     # mac: (optional) the MAC address of the target device to connect to when action is "on"
     def bluetooth(self, deviceId: str, action: str, name: str, mac: str) -> None:
-        topic = f"device/{deviceId}/command/bt"
+        topic = (
+            f"device/{deviceId}/command/bluetooth/on"
+            if action == "on"
+            else f"device/{deviceId}/command/bluetooth/off"
+        )
         payload = json.dumps(
             {
                 "action": action,
@@ -144,21 +148,44 @@ class YotoMQTTClient:
     # set the ambient light of the player
     # red, blue, green values of intensity from 0-255
     def set_ambients(self, deviceId: str, r: int, g: int, b: int) -> None:
-        topic = f"device/{deviceId}/command/ambients"
+        topic = f"device/{deviceId}/command/ambients/set"
         payload = json.dumps({"r": r, "g": g, "b": b})
         self.client.publish(topic, str(payload))
 
     def _parse_status_message(self, message, player: YotoPlayer) -> None:
+        status = get_child_value(message, "status") or message
         player.night_light_mode = (
-            get_child_value(message, "status.nightlightMode") or player.night_light_mode
+            get_child_value(status, "nightlightMode") or player.night_light_mode
         )
         player.battery_level_percentage = (
-            get_child_value(message, "status.batteryLevel")
-            or player.battery_level_percentage
+            get_child_value(status, "batteryLevel") or player.battery_level_percentage
         )
-        battery_temperature = get_child_value(message, "status.batteryTemp")
+        battery_temperature = get_child_value(status, "batteryTemp")
         if battery_temperature is not None and battery_temperature != 0:
             player.battery_temperature = battery_temperature
+        active_card = get_child_value(status, "activeCard")
+        if active_card == "none":
+            player.active_card = None
+            player.card_id = None
+        elif active_card is not None:
+            player.active_card = active_card
+            player.card_id = active_card
+
+        status_volume = get_child_value(status, "volume")
+        if status_volume is not None:
+            player.volume = status_volume
+
+        user_volume = get_child_value(status, "userVolume")
+        if user_volume is not None:
+            player.user_volume = user_volume
+
+        playing_status = get_child_value(status, "playingStatus")
+        if playing_status is not None:
+            if int(playing_status) == 2:
+                player.playback_status = "playing"
+                player.is_playing = True
+            else:
+                player.is_playing = False
         player.last_updated_at = datetime.datetime.now(pytz.utc)
 
     def _parse_events_message(self, message, player: YotoPlayer) -> None:
@@ -184,6 +211,8 @@ class YotoMQTTClient:
         player.playback_status = (
             get_child_value(message, "playbackStatus") or player.playback_status
         )
+        if player.playback_status is not None:
+            player.is_playing = player.playback_status == "playing"
         if get_child_value(message, "sleepTimerActive") is not None:
             player.sleep_timer_active = get_child_value(message, "sleepTimerActive")
 
@@ -215,15 +244,21 @@ class YotoMQTTClient:
         # _LOGGER.debug(f"{DOMAIN} - MQTT QOS: {message.qos}")
         # _LOGGER.debug(f"{DOMAIN} - MQTT Retain: {message.retain}")
         callback = userdata[1]
-        base, device, topic = message.topic.split("/")
+        parts = message.topic.split("/")
+        if len(parts) < 4:
+            _LOGGER.debug(
+                f"{DOMAIN} - Ignoring unsupported MQTT Topic: {message.topic}"
+            )
+            return
+        _, device, category, topic = parts[:4]
         player: YotoPlayer = players[device]
-        if topic == "status":
+        if category == "data" and topic == "status":
             self._parse_status_message(
                 json.loads(str(message.payload.decode("utf-8"))), player
             )
             if callback:
                 callback()
-        elif topic == "events":
+        elif category == "data" and topic == "events":
             self._parse_events_message(
                 json.loads(str(message.payload.decode("utf-8"))), player
             )
