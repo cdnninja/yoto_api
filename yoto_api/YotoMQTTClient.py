@@ -66,10 +66,14 @@ class YotoMQTTClient:
 
             self.update_status(player)
 
-    def _on_subscribe(self, client, userdata, mid, granted_qos, properties=None) -> None:
+    def _on_subscribe(
+        self, client, userdata, mid, granted_qos, properties=None
+    ) -> None:
         _LOGGER.debug(f"{DOMAIN} - MQTT Subscribed: {mid} {granted_qos}")
 
-    def _on_disconnect(self, client: mqtt.Client, userdata, rc, properties=None) -> None:
+    def _on_disconnect(
+        self, client: mqtt.Client, userdata, rc, properties=None
+    ) -> None:
         _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT Disconnected: {rc}")
         if rc != 0:
             _LOGGER.warning(
