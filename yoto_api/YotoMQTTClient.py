@@ -24,13 +24,22 @@ class YotoMQTTClient:
         self.client: mqtt.Client = None
 
     def connect_mqtt(self, token: Token, players: dict[YotoPlayer], callback) -> None:
-        #             mqtt.CallbackAPIVersion.VERSION1,
         userdata = (players, callback)
-        self.client = mqtt.Client(
-            client_id="YOTOAPI" + next(iter(players)).replace("-", ""),
-            transport="websockets",
-            userdata=userdata,
-        )
+        try:
+            # paho-mqtt 2.x
+            self.client = mqtt.Client(
+                mqtt.CallbackAPIVersion.VERSION1,
+                client_id="YOTOAPI" + next(iter(players)).replace("-", ""),
+                transport="websockets",
+                userdata=userdata,
+            )
+        except AttributeError:
+            # paho-mqtt 1.x
+            self.client = mqtt.Client(
+                client_id="YOTOAPI" + next(iter(players)).replace("-", ""),
+                transport="websockets",
+                userdata=userdata,
+            )
         self.client.username_pw_set(
             username="_?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,
             password=token.access_token,
@@ -38,8 +47,9 @@ class YotoMQTTClient:
         self.client.on_message = self._on_message
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
+        self.client.on_subscribe = self._on_subscribe
         self.client.tls_set()
-        self.client.connect(host=self.MQTT_URL, port=443)
+        self.client.connect(host=self.MQTT_URL, port=443, keepalive=60)
         self.client.loop_start()
 
     def disconnect_mqtt(self):
@@ -56,8 +66,19 @@ class YotoMQTTClient:
 
             self.update_status(player)
 
-    def _on_disconnect(self, client: mqtt.Client, userdata, rc) -> None:
+    def _on_subscribe(
+        self, client, userdata, mid, granted_qos, properties=None
+    ) -> None:
+        _LOGGER.debug(f"{DOMAIN} - MQTT Subscribed: {mid} {granted_qos}")
+
+    def _on_disconnect(
+        self, client: mqtt.Client, userdata, rc, properties=None
+    ) -> None:
         _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT Disconnected: {rc}")
+        if rc != 0:
+            _LOGGER.warning(
+                f"{DOMAIN} - Unexpected MQTT disconnection: {rc}. Paho will attempt to reconnect."
+            )
 
     def update_status(self, deviceId: str):
         self.client.publish(f"device/{deviceId}/command/events/request")
