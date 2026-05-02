@@ -3,18 +3,34 @@
 import datetime
 import re
 from bisect import bisect_left
+from typing import Any
 
 
-def get_child_value(data, key):
-    value = data
+def get_child_value(data: Any, key: str) -> Any:
+    value: Any = data
     for x in key.split("."):
         try:
             value = value[x]
+            continue
         except Exception:
-            try:
-                value = value[int(x)]
-            except Exception:
-                value = None
+            pass
+
+        try:
+            value = value[int(x)]
+            continue
+        except Exception:
+            value = None
+            break
+
+    if isinstance(value, str):
+        lower = value.lower()
+        if lower == "true":
+            return True
+        if lower == "false":
+            return False
+        if lower.lstrip("+-").isdigit():
+            return int(value)
+
     return value
 
 
