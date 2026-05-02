@@ -19,7 +19,9 @@ class TestUtils(unittest.TestCase):
     def test_get_child_value_returns_int_for_numeric_string(self):
         data = {"device": {"config": {"maxVolumeLimit": "15"}}}
         self.assertEqual(get_child_value(data, "device.config.maxVolumeLimit"), 15)
-        self.assertIsInstance(get_child_value(data, "device.config.maxVolumeLimit"), int)
+        self.assertIsInstance(
+            get_child_value(data, "device.config.maxVolumeLimit"), int
+        )
 
     def test_get_child_value_returns_none_for_missing_key(self):
         data = {"device": {"status": {"isOnline": False}}}
