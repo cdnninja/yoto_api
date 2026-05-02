@@ -3,10 +3,11 @@
 import datetime
 import re
 from bisect import bisect_left
+from typing import Any
 
 
-def get_child_value(data, key):
-    value = data
+def get_child_value(data: Any, key: str) -> Any:
+    value: Any = data
     for x in key.split("."):
         try:
             value = value[x]
