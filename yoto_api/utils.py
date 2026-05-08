@@ -7,6 +7,27 @@ from typing import Any
 
 
 def get_child_value(data: Any, key: str) -> Any:
+    """
+    Look up `key` in a nested dict/list. Dotted keys descend into children.
+
+    String values that look like numbers or booleans are coerced
+    (e.g. "16" -> 16, "true" -> True). Use `get_raw_value` for ID-shaped
+    fields like chapter or track keys where leading-zero formatting matters.
+    """
+    value = get_raw_value(data, key)
+    if isinstance(value, str):
+        lower = value.lower()
+        if lower == "true":
+            return True
+        if lower == "false":
+            return False
+        if lower.lstrip("+-").isdigit():
+            return int(value)
+    return value
+
+
+def get_raw_value(data: Any, key: str) -> Any:
+    """Like `get_child_value` but returns the raw value with no type coercion."""
     value: Any = data
     for x in key.split("."):
         try:
@@ -19,18 +40,7 @@ def get_child_value(data: Any, key: str) -> Any:
             value = value[int(x)]
             continue
         except Exception:
-            value = None
-            break
-
-    if isinstance(value, str):
-        lower = value.lower()
-        if lower == "true":
-            return True
-        if lower == "false":
-            return False
-        if lower.lstrip("+-").isdigit():
-            return int(value)
-
+            return None
     return value
 
 

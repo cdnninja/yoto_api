@@ -104,6 +104,58 @@ class YotoManager:
             trackKey=trackKey,
         )
 
+    def seek(self, player_id: str, position: int) -> None:
+        player = self.players.get(player_id)
+        if player is None or player.card_id is None:
+            return
+        self.play_card(
+            player_id=player_id,
+            card=player.card_id,
+            secondsIn=position,
+            chapterKey=player.chapter_key,
+            trackKey=player.track_key,
+        )
+
+    def next_track(self, player_id: str) -> None:
+        self._skip_track(player_id, direction=1)
+
+    def previous_track(self, player_id: str) -> None:
+        self._skip_track(player_id, direction=-1)
+
+    def _skip_track(self, player_id: str, direction: int) -> None:
+        player = self.players.get(player_id)
+        if player is None or player.card_id is None:
+            return
+        if (
+            player.card_id not in self.library
+            or not self.library[player.card_id].chapters
+        ):
+            self.update_card_detail(player.card_id)
+        card = self.library.get(player.card_id)
+        if card is None or not card.chapters:
+            return
+
+        playlist = [
+            (chapter_key, track_key)
+            for chapter_key, chapter in card.chapters.items()
+            for track_key in (chapter.tracks or {})
+        ]
+        current = (player.chapter_key, player.track_key)
+        if current not in playlist:
+            return
+
+        new_idx = playlist.index(current) + direction
+        if not 0 <= new_idx < len(playlist):
+            return
+
+        new_chapter_key, new_track_key = playlist[new_idx]
+        self.play_card(
+            player_id=player_id,
+            card=player.card_id,
+            chapterKey=new_chapter_key,
+            trackKey=new_track_key,
+        )
+
     def set_volume(self, player_id: str, volume: int) -> None:
         # Takes a range from 0-100.  Maps it to the nearest 0-16 value from the constant file and sends that
         self.mqtt_client.set_volume(deviceId=player_id, volume=volume)
