@@ -171,9 +171,9 @@ class YotoMQTTClient:
             player.active_card = active_card
             player.card_id = active_card
 
-        status_volume = get_child_value(status, "volume")
-        if status_volume is not None:
-            player.volume = status_volume
+        system_volume = get_child_value(status, "volume")
+        if system_volume is not None:
+            player.system_volume = system_volume
 
         user_volume = get_child_value(status, "userVolume")
         if user_volume is not None:
