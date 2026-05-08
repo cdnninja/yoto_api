@@ -13,7 +13,7 @@ from .Token import Token
 from .Card import Card, Chapter, Track
 from .Family import Family
 from .YotoPlayer import YotoPlayer, YotoPlayerConfig, Alarm
-from .utils import get_child_value
+from .utils import get_child_value, get_raw_value
 from .exceptions import AuthenticationError
 
 
@@ -239,22 +239,18 @@ class YotoAPI:
             # _LOGGER.debug(f"{DOMAIN} - Updating Details:  {item}")
             if card.chapters is None:
                 card.chapters = {}
-            if get_child_value(item, "key") not in card.chapters:
-                chapter: Chapter = Chapter(
-                    key=get_child_value(item, "key"),
-                )
-                card.chapters[chapter.key] = chapter
-            key = get_child_value(item, "key")
+            key = get_raw_value(item, "key")
+            if key not in card.chapters:
+                card.chapters[key] = Chapter(key=key)
             card.chapters[key].icon = get_child_value(item, "display.icon16x16")
             card.chapters[key].title = get_child_value(item, "title")
             card.chapters[key].duration = get_child_value(item, "duration")
             for track_item in item["tracks"]:
                 if card.chapters[key].tracks is None:
                     card.chapters[key].tracks = {}
-                if get_child_value(track_item, "key") not in card.chapters[key].tracks:
-                    track: Track = Track(
-                        key=get_child_value(track_item, "key"),
-                    )
+                track_key = get_raw_value(track_item, "key")
+                if track_key not in card.chapters[key].tracks:
+                    track: Track = Track(key=track_key)
                     # _LOGGER.debug(f"{DOMAIN} - track details:  {track_item}")
                     card.chapters[key].tracks[track.key] = track
                     card.chapters[key].tracks[track.key].icon = get_child_value(

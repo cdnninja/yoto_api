@@ -15,16 +15,6 @@ from .Card import Card
 _LOGGER = logging.getLogger(__name__)
 
 
-def _format_key(value) -> str:
-    """Zero-pad numeric chapter/track keys to 2 digits (e.g. 1 -> "01", "9" -> "09")."""
-    if value is None:
-        return None
-    s = str(value)
-    if s.isdigit() and len(s) < 2:
-        return s.zfill(2)
-    return s
-
-
 class YotoManager:
     def __init__(self, client_id: str) -> None:
         if not client_id:
@@ -122,8 +112,8 @@ class YotoManager:
             player_id=player_id,
             card=player.card_id,
             secondsIn=position,
-            chapterKey=_format_key(player.chapter_key),
-            trackKey=_format_key(player.track_key),
+            chapterKey=player.chapter_key,
+            trackKey=player.track_key,
         )
 
     def next_track(self, player_id: str) -> None:
@@ -159,8 +149,8 @@ class YotoManager:
         self.play_card(
             player_id=player_id,
             card=player.card_id,
-            chapterKey=_format_key(new_chapter_key),
-            trackKey=_format_key(new_track_key),
+            chapterKey=new_chapter_key,
+            trackKey=new_track_key,
         )
 
     def set_volume(self, player_id: str, volume: int) -> None:

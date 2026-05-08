@@ -12,7 +12,7 @@ from yoto_api.YotoPlayer import YotoPlayer
 
 from .const import DOMAIN, VOLUME_MAPPING_INVERTED
 from .Token import Token
-from .utils import get_child_value, take_closest
+from .utils import get_child_value, get_raw_value, take_closest
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -232,9 +232,9 @@ class YotoMQTTClient:
         player.card_id = get_child_value(message, "cardId") or player.card_id
         if player.card_id == "none":
             player.card_id = None
-        player.track_key = get_child_value(message, "trackKey") or player.track_key
+        player.track_key = get_raw_value(message, "trackKey") or player.track_key
         player.chapter_key = (
-            get_child_value(message, "chapterKey") or player.chapter_key
+            get_raw_value(message, "chapterKey") or player.chapter_key
         )
         player.last_updated_at = datetime.datetime.now(pytz.utc)
 
