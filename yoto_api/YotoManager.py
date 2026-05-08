@@ -126,7 +126,10 @@ class YotoManager:
         player = self.players.get(player_id)
         if player is None or player.card_id is None:
             return
-        if player.card_id not in self.library or not self.library[player.card_id].chapters:
+        if (
+            player.card_id not in self.library
+            or not self.library[player.card_id].chapters
+        ):
             self.update_card_detail(player.card_id)
         card = self.library.get(player.card_id)
         if card is None or not card.chapters:
