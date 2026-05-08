@@ -22,6 +22,7 @@ class YotoMQTTClient:
         self.MQTT_AUTH_NAME: str = "PublicJWTAuthorizer"
         self.MQTT_URL: str = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
         self.client: mqtt.Client = None
+        self._players: dict[str, YotoPlayer] = {}
 
     def connect_mqtt(self, token: Token, players: dict[YotoPlayer], callback) -> None:
         #             mqtt.CallbackAPIVersion.VERSION1,
@@ -48,6 +49,7 @@ class YotoMQTTClient:
 
     def _on_connect(self, client, userdata, flags, rc) -> None:
         players = userdata[0]
+        self._players = players
         for player in players:
             self.client.subscribe("device/" + player + "/data/events")
             self.client.subscribe("device/" + player + "/data/status")
@@ -64,6 +66,10 @@ class YotoMQTTClient:
         self.client.publish(f"device/{deviceId}/command/status/request")
 
     def set_volume(self, deviceId: str, volume: int) -> None:
+        player = self._players.get(deviceId)
+        if player is not None and player.volume_max is not None:
+            max_pct = round(player.volume_max / 16 * 100)
+            volume = min(volume, max_pct)
         closest_volume = take_closest(VOLUME_MAPPING_INVERTED, volume)
         topic = f"device/{deviceId}/command/volume/set"
         payload = json.dumps({"volume": closest_volume})
@@ -171,9 +177,9 @@ class YotoMQTTClient:
             player.active_card = active_card
             player.card_id = active_card
 
-        status_volume = get_child_value(status, "volume")
-        if status_volume is not None:
-            player.volume = status_volume
+        system_volume = get_child_value(status, "volume")
+        if system_volume is not None:
+            player.system_volume = system_volume
 
         user_volume = get_child_value(status, "userVolume")
         if user_volume is not None:
