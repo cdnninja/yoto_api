@@ -5,6 +5,7 @@ import paho.mqtt.client as mqtt
 import json
 import datetime
 import pytz
+import uuid
 
 from yoto_api.YotoPlayer import YotoPlayer
 
@@ -28,7 +29,7 @@ class YotoMQTTClient:
         #             mqtt.CallbackAPIVersion.VERSION1,
         userdata = (players, callback)
         self.client = mqtt.Client(
-            client_id="YOTOAPI" + next(iter(players)).replace("-", ""),
+            client_id=f"YOTOAPI-{uuid.uuid4().hex}",
             transport="websockets",
             userdata=userdata,
         )
