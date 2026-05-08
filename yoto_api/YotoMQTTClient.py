@@ -29,7 +29,7 @@ class YotoMQTTClient:
         #             mqtt.CallbackAPIVersion.VERSION1,
         userdata = (players, callback)
         self.client = mqtt.Client(
-            client_id=f"YOTOAPI-{uuid.uuid4().hex}",
+            client_id=f"YOTOAPI{uuid.uuid4().hex}",
             transport="websockets",
             userdata=userdata,
         )
