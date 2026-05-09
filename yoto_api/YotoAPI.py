@@ -81,8 +81,9 @@ class YotoAPI:
             raise YotoAPIError(f"Get family response malformed: {err}") from err
 
     def update_player_list(self, token: Token, players: dict) -> None:
-        # Skips /status and /config so callers without the
-        # `family:device-status:view` scope can use it.
+        # Lighter than update_players: only /devices/mine + /config (no
+        # /status, which needs `family:device-status:view`). Populates
+        # device metadata + mac + firmware. Live state is left to MQTT.
         response = self._get_devices(token)
         for item in response["devices"]:
             deviceId = get_child_value(item, "deviceId")
@@ -97,6 +98,12 @@ class YotoAPI:
             players[deviceId].form_factor = get_child_value(item, "formFactor")
             players[deviceId].release_channel = get_child_value(item, "releaseChannel")
             players[deviceId].online = get_child_value(item, "online")
+
+            config = self._get_device_config(token, deviceId)
+            players[deviceId].mac = get_child_value(config, "device.mac")
+            players[deviceId].firmware_version = get_child_value(
+                config, "device.releaseChannelVersion"
+            )
 
     def update_players(self, token: Token, players: list[YotoPlayer]) -> None:
         response = self._get_devices(token)

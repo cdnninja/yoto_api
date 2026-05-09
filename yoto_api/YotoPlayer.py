@@ -46,6 +46,7 @@ class YotoPlayer:
     generation: Optional[str] = None
     form_factor: Optional[str] = None
     release_channel: Optional[str] = None
+    mac: Optional[str] = None
     online: Optional[bool] = None
     last_updated_at: Optional[datetime.datetime] = None
 
