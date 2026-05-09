@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 import logging
+from typing import Optional
 import pytz
 
 from .YotoAPI import YotoAPI
@@ -16,11 +17,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class YotoManager:
-    def __init__(self, client_id: str) -> None:
-        if not client_id:
-            raise ValueError("A client_id must be provided")
-        self.client_id: str = client_id
-        self.api: YotoAPI = YotoAPI(client_id=self.client_id)
+    def __init__(self, client_id: Optional[str] = None) -> None:
+        self.client_id: Optional[str] = client_id
+        self.api: YotoAPI = YotoAPI(client_id=client_id)
         self.players: dict = {}
         self.token: Token = None
         self.library: dict = {}
@@ -46,6 +45,9 @@ class YotoManager:
         if self.mqtt_client:
             for player in self.players:
                 self.mqtt_client.update_status(player)
+
+    def update_player_list(self) -> None:
+        self.api.update_player_list(self.token, self.players)
 
     def connect_to_events(self, callback=None) -> None:
         # Starts and connects to MQTT.  Runs a loop to receive events. Callback is called when event has been processed and player updated.

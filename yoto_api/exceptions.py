@@ -1,17 +1,21 @@
 """exceptions.py"""
 
 
-class YotoException(Exception):
+class YotoError(Exception):
+    pass
+
+
+class AuthenticationError(YotoError):
     """
-    Generic YotoException exception.
+    Raised upon receipt of an authentication error.
     """
 
     pass
 
 
-class AuthenticationError(YotoException):
-    """
-    Raised upon receipt of an authentication error.
-    """
+class YotoAPIError(YotoError):
+    pass
 
+
+class YotoMQTTError(YotoError):
     pass

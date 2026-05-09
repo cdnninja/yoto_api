@@ -39,7 +39,14 @@ class YotoPlayer:
     # Device API
     id: Optional[str] = None
     name: Optional[str] = None
+    description: Optional[str] = None
     device_type: Optional[str] = None
+    device_family: Optional[str] = None
+    device_group: Optional[str] = None
+    generation: Optional[str] = None
+    form_factor: Optional[str] = None
+    release_channel: Optional[str] = None
+    mac: Optional[str] = None
     online: Optional[bool] = None
     last_updated_at: Optional[datetime.datetime] = None
 
@@ -82,6 +89,11 @@ class YotoPlayer:
     sleep_timer_seconds_remaining: Optional[int] = 0
     battery_level_percentage: Optional[int] = None
     battery_temperature: Optional[int] = None
+
+    @property
+    def model(self) -> str:
+        family = (self.device_family or "").lower()
+        return "Yoto Mini" if family == "mini" else "Yoto Player"
 
 
 # {'devices': [{'deviceId': 'XXXX', 'name': 'Yoto Player', 'description': 'nameless.limit', 'online': False, 'releaseChannel': 'general', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'hasUserGivenName': False}]}

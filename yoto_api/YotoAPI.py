@@ -5,6 +5,7 @@ import logging
 import datetime
 import json
 import time
+from typing import Optional
 
 from datetime import timedelta
 import pytz
@@ -14,20 +15,32 @@ from .Card import Card, Chapter, Track
 from .Family import Family
 from .YotoPlayer import YotoPlayer, YotoPlayerConfig, Alarm
 from .utils import get_child_value, get_raw_value
-from .exceptions import AuthenticationError
+from .exceptions import AuthenticationError, YotoAPIError, YotoError
 
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class YotoAPI:
-    def __init__(self, client_id) -> None:
+    def __init__(self, client_id: Optional[str] = None) -> None:
         self.BASE_URL: str = "https://api.yotoplay.com"
         self.AUTH_URL: str = "https://login.yotoplay.com/oauth/device/code"
         self.TOKEN_URL: str = "https://login.yotoplay.com/oauth/token"
-        self.CLIENT_ID: str = client_id
+        self.CLIENT_ID: Optional[str] = client_id
+
+    def _request_json(self, method: str, url: str, what: str, **kwargs) -> dict:
+        try:
+            response = requests.request(method, url, **kwargs)
+            return response.json()
+        except (requests.RequestException, ValueError) as err:
+            raise YotoAPIError(f"{what} failed: {err}") from err
+
+    def _require_client_id(self, operation: str) -> None:
+        if self.CLIENT_ID is None:
+            raise YotoError(f"client_id required for {operation}")
 
     def refresh_token(self, token: Token) -> Token:
+        self._require_client_id("refresh_token")
         data = {
             "client_id": self.CLIENT_ID,
             "grant_type": "refresh_token",
@@ -36,29 +49,61 @@ class YotoAPI:
         }
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-        response = requests.post(self.TOKEN_URL, data=data, headers=headers).json()
+        response = self._request_json(
+            "POST", self.TOKEN_URL, "Refresh token", data=data, headers=headers
+        )
         _LOGGER.debug(f"{DOMAIN} - Refresh Token Response {response}")
         if response.get("error"):
             raise AuthenticationError("Refresh token invalid")
-        valid_until = datetime.datetime.now(pytz.utc) + timedelta(
-            seconds=response["expires_in"]
-        )
-
-        return Token(
-            access_token=response["access_token"],
-            refresh_token=response["refresh_token"],
-            token_type=response["token_type"],
-            scope=token.scope,
-            valid_until=valid_until,
-        )
+        try:
+            valid_until = datetime.datetime.now(pytz.utc) + timedelta(
+                seconds=response["expires_in"]
+            )
+            return Token(
+                access_token=response["access_token"],
+                refresh_token=response["refresh_token"],
+                token_type=response["token_type"],
+                scope=token.scope,
+                valid_until=valid_until,
+            )
+        except (KeyError, TypeError) as err:
+            raise YotoAPIError(f"Refresh token response malformed: {err}") from err
 
     def get_family(self, token: Token) -> dict:
         url = self.BASE_URL + "/user/family"
         headers = self._get_authenticated_headers(token)
-        response = requests.get(url, headers=headers).json()
+        response = self._request_json("GET", url, "Get family", headers=headers)
 
         _LOGGER.debug(f"{DOMAIN} - Get Family Response: {response}")
-        return Family(response["family"])
+        try:
+            return Family(response["family"])
+        except (KeyError, TypeError, ValueError) as err:
+            raise YotoAPIError(f"Get family response malformed: {err}") from err
+
+    def update_player_list(self, token: Token, players: dict) -> None:
+        # Lighter than update_players: only /devices/mine + /config (no
+        # /status, which needs `family:device-status:view`). Populates
+        # device metadata + mac + firmware. Live state is left to MQTT.
+        response = self._get_devices(token)
+        for item in response["devices"]:
+            deviceId = get_child_value(item, "deviceId")
+            if deviceId not in players:
+                players[deviceId] = YotoPlayer(id=deviceId)
+            players[deviceId].name = get_child_value(item, "name")
+            players[deviceId].description = get_child_value(item, "description")
+            players[deviceId].device_type = get_child_value(item, "deviceType")
+            players[deviceId].device_family = get_child_value(item, "deviceFamily")
+            players[deviceId].device_group = get_child_value(item, "deviceGroup")
+            players[deviceId].generation = get_child_value(item, "generation")
+            players[deviceId].form_factor = get_child_value(item, "formFactor")
+            players[deviceId].release_channel = get_child_value(item, "releaseChannel")
+            players[deviceId].online = get_child_value(item, "online")
+
+            config = self._get_device_config(token, deviceId)
+            players[deviceId].mac = get_child_value(config, "device.mac")
+            players[deviceId].firmware_version = get_child_value(
+                config, "device.releaseChannelVersion"
+            )
 
     def update_players(self, token: Token, players: list[YotoPlayer]) -> None:
         response = self._get_devices(token)
@@ -70,7 +115,13 @@ class YotoAPI:
                 players[player.id] = player
             deviceId = get_child_value(item, "deviceId")
             players[deviceId].name = get_child_value(item, "name")
+            players[deviceId].description = get_child_value(item, "description")
             players[deviceId].device_type = get_child_value(item, "deviceType")
+            players[deviceId].device_family = get_child_value(item, "deviceFamily")
+            players[deviceId].device_group = get_child_value(item, "deviceGroup")
+            players[deviceId].generation = get_child_value(item, "generation")
+            players[deviceId].form_factor = get_child_value(item, "formFactor")
+            players[deviceId].release_channel = get_child_value(item, "releaseChannel")
             players[deviceId].online = get_child_value(item, "online")
 
             # Should we call here or make this a separate call from YM?  This could help us reduce API calls.
@@ -316,13 +367,16 @@ class YotoAPI:
             config_payload["alarms"] = alarm_payload
         data = {"deviceId": player_id, "config": config_payload}
         headers = self._get_authenticated_headers(token)
-        response = requests.put(url, headers=headers, data=json.dumps(data)).json()
+        response = self._request_json(
+            "PUT", url, "Set device config", headers=headers, data=json.dumps(data)
+        )
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Payload: {data}")
         _LOGGER.debug(f"{DOMAIN} - Set Device Config Response: {response}")
         return response
 
     def get_authorization(self) -> dict:
         """Get authorization code and user instructions."""
+        self._require_client_id("device code authorization")
         data = {
             "audience": self.BASE_URL,
             "client_id": self.CLIENT_ID,
@@ -330,15 +384,22 @@ class YotoAPI:
         }
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-        response = requests.post(self.AUTH_URL, data=data, headers=headers)
+        try:
+            response = requests.post(self.AUTH_URL, data=data, headers=headers)
+        except requests.RequestException as err:
+            raise YotoAPIError(f"Authorization request failed: {err}") from err
         if not response.ok:
             raise AuthenticationError(
                 f"Authorization failed: {response.status_code} {response.text}"
             )
 
-        return response.json()
+        try:
+            return response.json()
+        except ValueError as err:
+            raise YotoAPIError(f"Authorization response malformed: {err}") from err
 
     def poll_for_token(self, auth_result: dict) -> Token:
+        self._require_client_id("device code token polling")
         code = auth_result["device_code"]
         interval = auth_result.get("interval", 5)
         expires_in = auth_result.get("expires_in", 300)
@@ -359,8 +420,13 @@ class YotoAPI:
             }
             headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-            response = requests.post(self.TOKEN_URL, data=token_data, headers=headers)
-            response_body = response.json()
+            try:
+                response = requests.post(
+                    self.TOKEN_URL, data=token_data, headers=headers
+                )
+                response_body = response.json()
+            except (requests.RequestException, ValueError) as err:
+                raise YotoAPIError(f"Token poll request failed: {err}") from err
 
             # Successful authentication
             if response.ok:
@@ -417,7 +483,7 @@ class YotoAPI:
 
         headers = self._get_authenticated_headers(token)
 
-        response = requests.get(url, headers=headers).json()
+        response = self._request_json("GET", url, "Get devices", headers=headers)
         _LOGGER.debug(f"{DOMAIN} - Get Devices Response: {response}")
         return response
 
@@ -426,7 +492,9 @@ class YotoAPI:
 
         headers = self._get_authenticated_headers(token)
 
-        response = requests.get(url, headers=headers).json()
+        response = self._request_json(
+            "GET", url, f"Get device {player_id} status", headers=headers
+        )
         _LOGGER.debug(f"{DOMAIN} - Get Device {player_id} Status Response: {response}")
         return response
 
@@ -435,7 +503,9 @@ class YotoAPI:
 
         headers = self._get_authenticated_headers(token)
 
-        response = requests.get(url, headers=headers).json()
+        response = self._request_json(
+            "GET", url, f"Get device {player_id} config", headers=headers
+        )
         _LOGGER.debug(f"{DOMAIN} - Get Device {player_id} Config Response: {response}")
         return response
         #  2024-05-15 17:25:48,604 yoto_api.YotoAPI DEBUG:yoto_api - Get Device Config Response: {'device': {'deviceId': 'y23IBS76kCaOSrGlz29XhIFO', 'name': '', 'errorCode': None, 'fwVersion': 'v2.17.5-5', 'popCode': 'FAJKEH', 'releaseChannelId': 'prerelease', 'releaseChannelVersion': 'v2.17.5-5', 'activationPopCode': 'IBSKCAAA', 'registrationCode': 'IBSKCAAA', 'deviceType': 'v3', 'deviceFamily': 'v3', 'deviceGroup': '', 'mac': 'b4:8a:0a:92:7a:f4', 'online': True, 'geoTimezone': 'America/Edmonton', 'getPosix': 'MST7MDT,M3.2.0,M11.1.0', 'status': {'activeCard': 'none', 'aliveTime': None, 'als': 0, 'battery': None, 'batteryLevel': 100, 'batteryRemaining': None, 'bgDownload': 0, 'bluetoothHp': 0, 'buzzErrors': 0, 'bytesPS': 0, 'cardInserted': 0, 'chgStatLevel': None, 'charging': 0, 'day': 1, 'dayBright': None, 'dbatTimeout': None, 'dnowBrightness': None, 'deviceId': 'y23IBS76kCaOSrGlz29XhIFO', 'errorsLogged': 164, 'failData': None, 'failReason': None, 'free': None, 'free32': None, 'freeDisk': 30219824, 'freeDMA': None, 'fwVersion': 'v2.17.5-5', 'headphones': 0, 'lastSeenAt': None, 'missedLogs': None, 'nfcErrs': 'n/a', 'nightBright': None, 'nightlightMode': '0x194a55', 'playingStatus': 0, 'powerCaps': '0x02', 'powerSrc': 2, 'qiOtp': None, 'sd_info': None, 'shutDown': None, 'shutdownTimeout': None, 'ssid': 'speed', 'statusVersion': None, 'temp': '0:24', 'timeFormat': None, 'totalDisk': 31385600, 'twdt': 0, 'updatedAt': '2024-05-15T23:23:45.284Z', 'upTime': 159925, 'userVolume': 31, 'utcOffset': -21600, 'utcTime': 1715815424, 'volume': 34, 'wifiRestarts': None, 'wifiStrength': -54}, 'config': {'locale': 'en', 'bluetoothEnabled': '1', 'repeatAll': True, 'showDiagnostics': True, 'btHeadphonesEnabled': True, 'pauseVolumeDown': False, 'pausePowerButton': True, 'displayDimTimeout': '60', 'shutdownTimeout': '3600', 'headphonesVolumeLimited': False, 'dayTime': '06:30', 'maxVolumeLimit': '16', 'ambientColour': '#40bfd9', 'dayDisplayBrightness': 'auto', 'dayYotoDaily': '3nC80/daily/<yyyymmdd>', 'dayYotoRadio': '3nC80/radio-day/01', 'daySoundsOff': '0', 'nightTime': '18:20', 'nightMaxVolumeLimit': '8', 'nightAmbientColour': '#f57399', 'nightDisplayBrightness': '100', 'nightYotoDaily': '0', 'nightYotoRadio': '0', 'nightSoundsOff': '1', 'hourFormat': '12', 'timezone': '', 'displayDimBrightness': '0', 'systemVolume': '87', 'volumeLevel': 'safe', 'clockFace': 'digital-sun', 'logLevel': 'none', 'alarms': []}, 'shortcuts': {'versionId': '36645a9463e038d6cb9923257b38d9d9df7a6509', 'modes': {'day': {'content': [{'cmd': 'track-play', 'params': {'card': '3nC80', 'chapter': 'daily', 'track': '<yyyymmdd>'}}, {'cmd': 'track-play', 'params': {'card': '3nC80', 'chapter': 'radio-day', 'track': '01'}}]}, 'night': {'content': [{'cmd': 'track-play', 'params': {'card': '3nC80', 'chapter': 'daily', 'track': '<yyyymmdd>'}}, {'cmd': 'track-play', 'params': {'card': '3nC80', 'chapter': 'radio-night', 'track': '01'}}]}}}}}
@@ -445,7 +515,7 @@ class YotoAPI:
         url = self.BASE_URL + "/card/family/library"
         headers = self._get_authenticated_headers(token)
 
-        response = requests.get(url, headers=headers).json()
+        response = self._request_json("GET", url, "Get card library", headers=headers)
         # _LOGGER.debug(f"{DOMAIN} - Get Card Library: {response}")
         return response
 
@@ -578,7 +648,9 @@ class YotoAPI:
         url = self.BASE_URL + "/card/" + cardid
         headers = self._get_authenticated_headers(token)
 
-        response = requests.get(url, headers=headers).json()
+        response = self._request_json(
+            "GET", url, f"Get card {cardid} detail", headers=headers
+        )
         # _LOGGER.debug(f"{DOMAIN} - Get Card Detail: {response}")
         return response
 
