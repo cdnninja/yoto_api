@@ -39,7 +39,13 @@ class YotoPlayer:
     # Device API
     id: Optional[str] = None
     name: Optional[str] = None
+    description: Optional[str] = None
     device_type: Optional[str] = None
+    device_family: Optional[str] = None
+    device_group: Optional[str] = None
+    generation: Optional[str] = None
+    form_factor: Optional[str] = None
+    release_channel: Optional[str] = None
     online: Optional[bool] = None
     last_updated_at: Optional[datetime.datetime] = None
 

@@ -11,6 +11,7 @@ from yoto_api.YotoPlayer import YotoPlayer
 
 
 from .const import DOMAIN, VOLUME_MAPPING_INVERTED
+from .exceptions import YotoMQTTError
 from .Token import Token
 from .utils import get_child_value, get_raw_value, take_closest
 
@@ -28,25 +29,31 @@ class YotoMQTTClient:
     def connect_mqtt(self, token: Token, players: dict[YotoPlayer], callback) -> None:
         #             mqtt.CallbackAPIVersion.VERSION1,
         userdata = (players, callback)
-        self.client = mqtt.Client(
-            client_id=f"YOTOAPI{uuid.uuid4().hex}",
-            transport="websockets",
-            userdata=userdata,
-        )
-        self.client.username_pw_set(
-            username="_?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,
-            password=token.access_token,
-        )
-        self.client.on_message = self._on_message
-        self.client.on_connect = self._on_connect
-        self.client.on_disconnect = self._on_disconnect
-        self.client.tls_set()
-        self.client.connect(host=self.MQTT_URL, port=443)
-        self.client.loop_start()
+        try:
+            self.client = mqtt.Client(
+                client_id=f"YOTOAPI{uuid.uuid4().hex}",
+                transport="websockets",
+                userdata=userdata,
+            )
+            self.client.username_pw_set(
+                username="_?x-amz-customauthorizer-name=" + self.MQTT_AUTH_NAME,
+                password=token.access_token,
+            )
+            self.client.on_message = self._on_message
+            self.client.on_connect = self._on_connect
+            self.client.on_disconnect = self._on_disconnect
+            self.client.tls_set()
+            self.client.connect(host=self.MQTT_URL, port=443)
+            self.client.loop_start()
+        except Exception as err:
+            raise YotoMQTTError(f"MQTT connect failed: {err}") from err
 
     def disconnect_mqtt(self):
-        self.client.loop_stop()
-        self.client.disconnect()
+        try:
+            self.client.loop_stop()
+            self.client.disconnect()
+        except Exception as err:
+            raise YotoMQTTError(f"MQTT disconnect failed: {err}") from err
 
     def _on_connect(self, client, userdata, flags, rc) -> None:
         players = userdata[0]
@@ -62,9 +69,18 @@ class YotoMQTTClient:
     def _on_disconnect(self, client: mqtt.Client, userdata, rc) -> None:
         _LOGGER.debug(f"{DOMAIN} - {client._client_id} - MQTT Disconnected: {rc}")
 
+    def _publish(self, topic: str, payload=None) -> None:
+        try:
+            if payload is None:
+                self.client.publish(topic)
+            else:
+                self.client.publish(topic, payload)
+        except Exception as err:
+            raise YotoMQTTError(f"MQTT publish to {topic} failed: {err}") from err
+
     def update_status(self, deviceId: str):
-        self.client.publish(f"device/{deviceId}/command/events/request")
-        self.client.publish(f"device/{deviceId}/command/status/request")
+        self._publish(f"device/{deviceId}/command/events/request")
+        self._publish(f"device/{deviceId}/command/status/request")
 
     def set_volume(self, deviceId: str, volume: int) -> None:
         player = self._players.get(deviceId)
@@ -74,29 +90,29 @@ class YotoMQTTClient:
         closest_volume = take_closest(VOLUME_MAPPING_INVERTED, volume)
         topic = f"device/{deviceId}/command/volume/set"
         payload = json.dumps({"volume": closest_volume})
-        self.client.publish(topic, str(payload))
+        self._publish(topic, str(payload))
         self.update_status(deviceId)
         # {"status":{"set-volume":"OK","req_body":"{\"volume\":25,\"requestId\":\"39804a13-988d-43d2-b30f-1f3b9b5532f0\"}"}}
 
     def set_sleep(self, deviceId: str, seconds: int) -> None:
         topic = f"device/{deviceId}/command/sleep-timer/set"
         payload = json.dumps({"seconds": seconds})
-        self.client.publish(topic, str(payload))
+        self._publish(topic, str(payload))
         self.update_status(deviceId)
 
     def card_stop(self, deviceId: str) -> None:
         topic = f"device/{deviceId}/command/card/stop"
-        self.client.publish(topic)
+        self._publish(topic)
         self.update_status(deviceId)
 
     def card_pause(self, deviceId: str) -> None:
         topic = f"device/{deviceId}/command/card/pause"
-        self.client.publish(topic)
+        self._publish(topic)
         self.update_status(deviceId)
 
     def card_resume(self, deviceId: str) -> None:
         topic = f"device/{deviceId}/command/card/resume"
-        self.client.publish(topic)
+        self._publish(topic)
         self.update_status(deviceId)
         # MQTT Message: {"status":{"card-pause":"OK","req_body":""}}
 
@@ -123,7 +139,7 @@ class YotoMQTTClient:
             payload["secondsIn"] = int(secondsIn)
         json_payload = json.dumps(payload)
         _LOGGER.debug(f"{DOMAIN} - card-play payload: {json_payload}")
-        self.client.publish(topic, json_payload)
+        self._publish(topic, json_payload)
         self.update_status(deviceId)
         # MQTT Message: {"status":{"card-play":"OK","req_body":"{\"uri\":\"https://yoto.io/7JtVV\",\"secondsIn\":0,\"cutOff\":0,\"chapterKey\":\"01\",\"trackKey\":\"01\",\"requestId\":\"5385910e-f853-4f34-99a4-d2ed94f02f6d\"}"}}
 
@@ -131,7 +147,7 @@ class YotoMQTTClient:
         # restart the player
 
         topic = f"device/{deviceId}/command/reboot"
-        self.client.publish(topic)
+        self._publish(topic)
 
     # control bluetooth on the player
     # action: "on" (turn on), "off" (turn off), "is-on" (check if bluetooth is on)
@@ -150,14 +166,14 @@ class YotoMQTTClient:
                 "mac": mac,
             }
         )
-        self.client.publish(topic, str(payload))
+        self._publish(topic, str(payload))
 
     # set the ambient light of the player
     # red, blue, green values of intensity from 0-255
     def set_ambients(self, deviceId: str, r: int, g: int, b: int) -> None:
         topic = f"device/{deviceId}/command/ambients/set"
         payload = json.dumps({"r": r, "g": g, "b": b})
-        self.client.publish(topic, str(payload))
+        self._publish(topic, str(payload))
 
     def _parse_status_message(self, message, player: YotoPlayer) -> None:
         status = get_child_value(message, "status") or message
