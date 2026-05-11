@@ -28,9 +28,9 @@ class PlaybackEvent:
     chapter_title: Optional[str] = None
     track_key: Optional[str] = None
     track_title: Optional[str] = None
-    track_length: Optional[int] = None       # seconds
-    position: Optional[int] = None           # seconds
-    source: Optional[str] = None             # e.g. "remote", "card"
+    track_length: Optional[int] = None  # seconds
+    position: Optional[int] = None  # seconds
+    source: Optional[str] = None  # e.g. "remote", "card"
 
     playback_status: Optional[PlaybackStatus] = None
     repeat_all: Optional[bool] = None

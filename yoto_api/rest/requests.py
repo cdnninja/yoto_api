@@ -15,15 +15,17 @@ def encode_alarm(alarm: Alarm) -> str:
 
     `<days_enabled>,<time>,<sound_id>,,,<volume>,<enabled_int>`
     """
-    return ",".join([
-        alarm.days_enabled or "",
-        alarm.time.strftime("%H:%M") if alarm.time is not None else "",
-        alarm.sound_id or "",
-        "",
-        "",
-        str(alarm.volume) if alarm.volume is not None else "",
-        "1" if alarm.enabled else "0",
-    ])
+    return ",".join(
+        [
+            alarm.days_enabled or "",
+            alarm.time.strftime("%H:%M") if alarm.time is not None else "",
+            alarm.sound_id or "",
+            "",
+            "",
+            str(alarm.volume) if alarm.volume is not None else "",
+            "1" if alarm.enabled else "0",
+        ]
+    )
 
 
 def encode_alarms_payload(alarms: Iterable[Alarm]) -> Dict[str, Any]:

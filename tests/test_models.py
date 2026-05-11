@@ -23,7 +23,9 @@ class StatusPatchMergeTests(unittest.TestCase):
 
 class YotoPlayerTests(unittest.TestCase):
     def test_model_property(self) -> None:
-        mini = YotoPlayer(device=Device(device_id="x", name="Mini", device_family="mini"))
+        mini = YotoPlayer(
+            device=Device(device_id="x", name="Mini", device_family="mini")
+        )
         v3 = YotoPlayer(device=Device(device_id="y", name="V3", device_family="v3"))
         unknown = YotoPlayer(device=Device(device_id="z", name="?", device_family=None))
         self.assertEqual(mini.model, "Yoto Mini")
@@ -68,10 +70,12 @@ class PlaybackEventVolumePercentageTests(unittest.TestCase):
 
     def test_full_range(self) -> None:
         self.assertEqual(
-            PlaybackEvent(player_id="d", volume=0).volume_percentage, 0.0,
+            PlaybackEvent(player_id="d", volume=0).volume_percentage,
+            0.0,
         )
         self.assertEqual(
-            PlaybackEvent(player_id="d", volume=16).volume_percentage, 1.0,
+            PlaybackEvent(player_id="d", volume=16).volume_percentage,
+            1.0,
         )
 
 
@@ -81,6 +85,7 @@ class PlayerConfigParseTests(unittest.TestCase):
 
     def _parse(self, raw):
         from yoto_api.rest.client import _parse_player_config
+
         return _parse_player_config(raw)
 
     def test_parses_real_payload(self) -> None:
@@ -109,6 +114,7 @@ class PlayerConfigParseTests(unittest.TestCase):
             "alarms": [],
         }
         from datetime import time
+
         config = self._parse(raw)
         self.assertEqual(config.day_time, time(7, 30))
         self.assertEqual(config.night_time, time(19, 0))

@@ -19,9 +19,9 @@ class Capabilities:
 
 
 _CAPABILITIES = {
-    "v1":   Capabilities(has_ambient_light=True),
-    "v2":   Capabilities(has_ambient_light=True),
-    "v3":   Capabilities(has_ambient_light=True),
+    "v1": Capabilities(has_ambient_light=True),
+    "v2": Capabilities(has_ambient_light=True),
+    "v3": Capabilities(has_ambient_light=True),
     "mini": Capabilities(has_ambient_light=False),
 }
 
@@ -32,6 +32,7 @@ def caps_for(device: Device) -> Capabilities:
         return _CAPABILITIES[family]
     _LOGGER.warning(
         "Unknown device_family %r for %s — falling back to v2 capabilities",
-        device.device_family, device.device_id,
+        device.device_family,
+        device.device_id,
     )
     return _CAPABILITIES["v2"]

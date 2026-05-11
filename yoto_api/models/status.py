@@ -37,7 +37,7 @@ class PlayerStatus:
     device_id: str
     is_online: Optional[bool] = None
     updated_at: Optional[datetime] = None
-    uptime: Optional[int] = None                # seconds
+    uptime: Optional[int] = None  # seconds
     utc_time: Optional[int] = None
     utc_offset_seconds: Optional[int] = None
 
@@ -49,7 +49,7 @@ class PlayerStatus:
 
     # Network
     network_ssid: Optional[str] = None
-    wifi_strength: Optional[int] = None         # dBm
+    wifi_strength: Optional[int] = None  # dBm
     average_download_speed_bytes_second: Optional[int] = None
     is_background_download_active: Optional[bool] = None
 
@@ -68,7 +68,7 @@ class PlayerStatus:
     is_bluetooth_audio_connected: Optional[bool] = None
 
     # Display + ambient
-    nightlight_mode: Optional[str] = None       # hex code or "off"
+    nightlight_mode: Optional[str] = None  # hex code or "off"
     day_mode: Optional[DayMode] = None
     ambient_light_sensor_reading: Optional[int] = None
-    temperature_celcius: Optional[int] = None   # Yoto's typo preserved
+    temperature_celcius: Optional[int] = None  # Yoto's typo preserved

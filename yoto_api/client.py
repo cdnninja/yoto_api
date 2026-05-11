@@ -100,7 +100,11 @@ _CONFIG_FIELD_MAP: Dict[str, tuple] = {
 # either send "auto" or send a stringified int — never both.
 _BRIGHTNESS_PAIRS = (
     ("day_display_brightness_auto", "day_display_brightness", "dayDisplayBrightness"),
-    ("night_display_brightness_auto", "night_display_brightness", "nightDisplayBrightness"),
+    (
+        "night_display_brightness_auto",
+        "night_display_brightness",
+        "nightDisplayBrightness",
+    ),
 )
 
 
@@ -207,7 +211,9 @@ class YotoClient:
             except YotoError as err:
                 _LOGGER.warning(
                     "%s - update_player_info failed for %s: %s",
-                    DOMAIN, device_id, err,
+                    DOMAIN,
+                    device_id,
+                    err,
                 )
 
     def refresh(self) -> None:
@@ -243,15 +249,9 @@ class YotoClient:
             card.description = get_child_value(item, "card.metadata.description")
             card.author = get_child_value(item, "card.metadata.author")
             card.category = get_child_value(item, "card.metadata.stories")
-            card.cover_image_large = get_child_value(
-                item, "card.metadata.cover.imageL"
-            )
-            card.series_order = get_child_value(
-                item, "card.metadata.cover.seriesorder"
-            )
-            card.series_title = get_child_value(
-                item, "card.metadata.cover.seriestitle"
-            )
+            card.cover_image_large = get_child_value(item, "card.metadata.cover.imageL")
+            card.series_order = get_child_value(item, "card.metadata.cover.seriesorder")
+            card.series_title = get_child_value(item, "card.metadata.cover.seriestitle")
 
     def update_card_detail(self, card_id: str) -> None:
         """GET /card/{cardId} — populate chapters/tracks on the card."""
@@ -262,11 +262,7 @@ class YotoClient:
         if card.chapters is None:
             card.chapters = {}
         response = self._rest.get_card_detail(token, card_id)
-        chapters = (
-            response.get("card", {})
-            .get("content", {})
-            .get("chapters", [])
-        )
+        chapters = response.get("card", {}).get("content", {}).get("chapters", [])
         for chapter_item in chapters:
             key = get_raw_value(chapter_item, "key")
             if key is None:
@@ -346,9 +342,7 @@ class YotoClient:
             auto = fields.pop(auto_key, None)
             value = fields.pop(value_key, None)
             if auto is True and value is not None:
-                raise YotoError(
-                    f"{auto_key} and {value_key} are mutually exclusive"
-                )
+                raise YotoError(f"{auto_key} and {value_key} are mutually exclusive")
             if auto is True:
                 payload[api_key] = "auto"
             elif value is not None:
@@ -390,9 +384,7 @@ class YotoClient:
         if player is not None:
             player.info.config.alarms = list(alarms)
 
-    def set_alarm_enabled(
-        self, device_id: str, index: int, enabled: bool
-    ) -> None:
+    def set_alarm_enabled(self, device_id: str, index: int, enabled: bool) -> None:
         """Toggle one alarm's enabled flag while preserving the others.
 
         Reads `players[device_id].info.config.alarms`, mutates the entry
@@ -621,9 +613,7 @@ class YotoClient:
             except Exception:
                 _LOGGER.exception("%s - update callback raised", DOMAIN)
 
-    def _apply_playback_event(
-        self, player: YotoPlayer, event: PlaybackEvent
-    ) -> None:
+    def _apply_playback_event(self, player: YotoPlayer, event: PlaybackEvent) -> None:
         """Merge an MQTT PlaybackEvent into the player's `last_event`.
 
         Yoto emits partial events (e.g. a volume change carries only

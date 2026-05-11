@@ -10,7 +10,7 @@ class PlayerInfo:
 
     device_id: str
     name: Optional[str] = None
-    firmware_version: Optional[str] = None    # from device.releaseChannelVersion
+    firmware_version: Optional[str] = None  # from device.releaseChannelVersion
     pop_code: Optional[str] = None
     activation_pop_code: Optional[str] = None
     release_channel_id: Optional[str] = None

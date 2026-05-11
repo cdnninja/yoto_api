@@ -38,9 +38,12 @@ class PlayCardKwargsOnlyTests(unittest.TestCase):
     def test_kwargs_work(self) -> None:
         self.client.play_card("dev1", "card1", chapter_key="01", track_key="02")
         self.client._mqtt.card_play.assert_called_once_with(
-            "dev1", "card1",
-            seconds_in=None, cutoff=None,
-            chapter_key="01", track_key="02",
+            "dev1",
+            "card1",
+            seconds_in=None,
+            cutoff=None,
+            chapter_key="01",
+            track_key="02",
         )
 
     def test_command_without_mqtt_raises(self) -> None:
@@ -57,7 +60,9 @@ class UpdateAllPlayerInfoToleranceTests(unittest.TestCase):
         client.token = fresh_token()
         client.players["good"] = YotoPlayer(device=Device(device_id="good", name="ok"))
         client.players["bad"] = YotoPlayer(device=Device(device_id="bad", name="bad"))
-        client.players["also_good"] = YotoPlayer(device=Device(device_id="also_good", name="ok2"))
+        client.players["also_good"] = YotoPlayer(
+            device=Device(device_id="also_good", name="ok2")
+        )
 
         def fake_get_player_info(token, device_id):
             if device_id == "bad":
@@ -104,7 +109,9 @@ class MqttSurfaceTests(unittest.TestCase):
             MqttClass.return_value = instance
 
             client.connect_events(
-                ["a", "b", "c"], on_update=update_cb, on_disconnect=disconnect_cb,
+                ["a", "b", "c"],
+                on_update=update_cb,
+                on_disconnect=disconnect_cb,
             )
             client.reconnect_events()
 
@@ -124,10 +131,12 @@ class DynamicPlayerSubscribeTests(unittest.TestCase):
 
         existing = Device(device_id="known", name="Known")
         new = Device(device_id="new", name="New")
-        client._rest.list_devices = MagicMock(side_effect=[
-            [(existing, True)],
-            [(existing, True), (new, True)],
-        ])
+        client._rest.list_devices = MagicMock(
+            side_effect=[
+                [(existing, True)],
+                [(existing, True), (new, True)],
+            ]
+        )
 
         client.update_player_list()
         client._mqtt.add_player.assert_called_once_with("known")
@@ -143,10 +152,12 @@ class DynamicPlayerSubscribeTests(unittest.TestCase):
 
         a = Device(device_id="a", name="A")
         b = Device(device_id="b", name="B")
-        client._rest.list_devices = MagicMock(side_effect=[
-            [(a, True), (b, False)],
-            [(a, True)],
-        ])
+        client._rest.list_devices = MagicMock(
+            side_effect=[
+                [(a, True), (b, False)],
+                [(a, True)],
+            ]
+        )
 
         client.update_player_list()
         client.update_player_list()
@@ -168,7 +179,8 @@ class SetPlayerConfigTests(unittest.TestCase):
             repeat_all=True,
         )
         self.client._rest.update_settings.assert_called_once_with(
-            self.client.token, "dev1",
+            self.client.token,
+            "dev1",
             {"dayTime": "07:30", "repeatAll": True},
         )
 
@@ -226,7 +238,9 @@ class SetPlayerConfigTests(unittest.TestCase):
 
     def test_serializes_bool_to_01_string(self) -> None:
         self.client.set_player_config(
-            "dev1", day_sounds_off=True, bluetooth_enabled=False,
+            "dev1",
+            day_sounds_off=True,
+            bluetooth_enabled=False,
         )
         payload = self.client._rest.update_settings.call_args.args[2]
         self.assertEqual(payload["daySoundsOff"], "1")
@@ -272,28 +286,49 @@ class SetAlarmsTests(unittest.TestCase):
 
     def test_sends_full_alarm_list_encoded(self) -> None:
         alarms = [
-            Alarm(days_enabled="1111100", time=datetime.time(7, 30),
-                  sound_id="s1", volume=8, enabled=True),
-            Alarm(days_enabled="0000011", time=datetime.time(9, 0),
-                  sound_id="s2", volume=4, enabled=False),
+            Alarm(
+                days_enabled="1111100",
+                time=datetime.time(7, 30),
+                sound_id="s1",
+                volume=8,
+                enabled=True,
+            ),
+            Alarm(
+                days_enabled="0000011",
+                time=datetime.time(9, 0),
+                sound_id="s2",
+                volume=4,
+                enabled=False,
+            ),
         ]
         self.client.set_alarms("dev1", alarms)
         payload = self.client._rest.update_settings.call_args.args[2]
-        self.assertEqual(payload["alarms"], [
-            "1111100,07:30,s1,,,8,1",
-            "0000011,09:00,s2,,,4,0",
-        ])
+        self.assertEqual(
+            payload["alarms"],
+            [
+                "1111100,07:30,s1,,,8,1",
+                "0000011,09:00,s2,,,4,0",
+            ],
+        )
 
     def test_writes_through_to_local_state(self) -> None:
         device = Device(device_id="dev1", name="A")
         # info is auto-created empty by __post_init__; we just need a
         # player object to write through.
         self.client.players["dev1"] = YotoPlayer(device=device)
-        new_alarms = [Alarm(days_enabled="1111111", time=datetime.time(6, 0),
-                            sound_id="s", volume=5, enabled=True)]
+        new_alarms = [
+            Alarm(
+                days_enabled="1111111",
+                time=datetime.time(6, 0),
+                sound_id="s",
+                volume=5,
+                enabled=True,
+            )
+        ]
         self.client.set_alarms("dev1", new_alarms)
         self.assertEqual(
-            self.client.players["dev1"].info.config.alarms, new_alarms,
+            self.client.players["dev1"].info.config.alarms,
+            new_alarms,
         )
 
 
@@ -305,10 +340,20 @@ class SetAlarmEnabledTests(unittest.TestCase):
         device = Device(device_id="dev1", name="A")
         player = YotoPlayer(device=device)
         player.info.config.alarms = [
-            Alarm(days_enabled="1111100", time=datetime.time(7, 30),
-                  sound_id="s1", volume=8, enabled=True),
-            Alarm(days_enabled="0000011", time=datetime.time(9, 0),
-                  sound_id="s2", volume=4, enabled=True),
+            Alarm(
+                days_enabled="1111100",
+                time=datetime.time(7, 30),
+                sound_id="s1",
+                volume=8,
+                enabled=True,
+            ),
+            Alarm(
+                days_enabled="0000011",
+                time=datetime.time(9, 0),
+                sound_id="s2",
+                volume=4,
+                enabled=True,
+            ),
         ]
         # The lib gates on info_refreshed_at, so simulate update_player_info
         # having actually run.
@@ -318,10 +363,13 @@ class SetAlarmEnabledTests(unittest.TestCase):
     def test_toggles_only_target_index(self) -> None:
         self.client.set_alarm_enabled("dev1", 1, False)
         payload = self.client._rest.update_settings.call_args.args[2]
-        self.assertEqual(payload["alarms"], [
-            "1111100,07:30,s1,,,8,1",
-            "0000011,09:00,s2,,,4,0",
-        ])
+        self.assertEqual(
+            payload["alarms"],
+            [
+                "1111100,07:30,s1,,,8,1",
+                "0000011,09:00,s2,,,4,0",
+            ],
+        )
 
     def test_requires_info_loaded(self) -> None:
         device = Device(device_id="dev2", name="B")
@@ -418,7 +466,8 @@ class PlaybackEventMergeTests(unittest.TestCase):
         self.client._on_mqtt_message(event)
         self.assertEqual(self.player.last_event.card_id, "abc")
         self.assertEqual(
-            self.player.last_event.playback_status, PlaybackStatus.PLAYING,
+            self.player.last_event.playback_status,
+            PlaybackStatus.PLAYING,
         )
 
     def test_partial_event_only_overwrites_present_fields(self) -> None:
@@ -437,7 +486,8 @@ class PlaybackEventMergeTests(unittest.TestCase):
         self.assertEqual(self.player.last_event.card_id, "abc")
         self.assertEqual(self.player.last_event.chapter_key, "01")
         self.assertEqual(
-            self.player.last_event.playback_status, PlaybackStatus.PLAYING,
+            self.player.last_event.playback_status,
+            PlaybackStatus.PLAYING,
         )
 
 
@@ -469,6 +519,7 @@ class StatusFallbackTests(unittest.TestCase):
 
     def test_falls_back_when_scope_missing(self) -> None:
         from yoto_api.models.status import PlayerStatus
+
         client = YotoClient()
         client.token = fresh_token()
         client.players["d1"] = YotoPlayer(device=Device(device_id="d1", name="x"))
@@ -477,7 +528,8 @@ class StatusFallbackTests(unittest.TestCase):
         result = client.update_player_status("d1")
         self.assertIs(result, fallback_status)
         self.assertEqual(
-            client.players["d1"].status.battery_level_percentage, 42,
+            client.players["d1"].status.battery_level_percentage,
+            42,
         )
 
 
@@ -490,6 +542,7 @@ class LegacySetAlarmRemovedTests(unittest.TestCase):
 
     def test_alarm_request_not_exported(self) -> None:
         import yoto_api as v3
+
         self.assertFalse(hasattr(v3, "AlarmRequest"))
 
 

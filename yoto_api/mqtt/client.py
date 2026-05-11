@@ -80,7 +80,9 @@ class YotoMqttClient:
             self._client.on_disconnect = self._on_disconnect
             self._client.on_message = self._on_message
             self._client.tls_set()
-            self._client.connect(host=self.URL, port=self.PORT, keepalive=self.KEEPALIVE)
+            self._client.connect(
+                host=self.URL, port=self.PORT, keepalive=self.KEEPALIVE
+            )
             self._client.loop_start()
         except Exception as err:
             raise YotoMQTTError(f"MQTT connect failed: {err}") from err
@@ -178,9 +180,7 @@ class YotoMqttClient:
             payload["trackKey"] = str(track_key)
         if seconds_in is not None:
             payload["secondsIn"] = int(seconds_in)
-        self._publish(
-            f"device/{player_id}/command/card/start", json.dumps(payload)
-        )
+        self._publish(f"device/{player_id}/command/card/start", json.dumps(payload))
         self.request_status_push(player_id)
 
     def restart(self, player_id: str) -> None:

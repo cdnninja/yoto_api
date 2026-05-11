@@ -81,9 +81,9 @@ class Auth:
 
             if response.ok:
                 _LOGGER.debug("%s - Authorization successful", DOMAIN)
-                return _build_token(body, scope=body.get(
-                    "scope", "openid profile offline_access"
-                ))
+                return _build_token(
+                    body, scope=body.get("scope", "openid profile offline_access")
+                )
 
             if response.status_code == 403:
                 error = body.get("error")
@@ -93,7 +93,9 @@ class Auth:
                 if error == "slow_down":
                     interval += 5
                     _LOGGER.debug(
-                        "%s - slow_down, increasing interval to %ss", DOMAIN, interval,
+                        "%s - slow_down, increasing interval to %ss",
+                        DOMAIN,
+                        interval,
                     )
                     time.sleep(interval)
                     continue

@@ -11,7 +11,9 @@ from yoto_api.Token import Token
 
 def fake_jwt(payload: dict) -> str:
     """Build a JWT-shaped string with the given payload (no signature check)."""
-    encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).rstrip(b"=").decode()
+    encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode()).rstrip(b"=").decode()
+    )
     return f"header.{encoded}.signature"
 
 

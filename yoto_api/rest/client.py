@@ -36,9 +36,7 @@ from . import endpoints
 
 _LOGGER = logging.getLogger(__name__)
 
-_USER_AGENT = (
-    "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4"
-)
+_USER_AGENT = "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4"
 
 
 DEFAULT_TIMEOUT_SECONDS = 30.0
@@ -64,13 +62,13 @@ class RestClient:
             items = response["devices"]
         except (KeyError, TypeError) as err:
             raise YotoAPIError(f"List devices response malformed: {err}") from err
-        return [(_parse_device(item), bool(item.get("online", False))) for item in items]
+        return [
+            (_parse_device(item), bool(item.get("online", False))) for item in items
+        ]
 
     # ─── Player config + status ───────────────────────────────────
 
-    def get_player_info(
-        self, token: Token, device_id: str
-    ) -> tuple[PlayerInfo, bool]:
+    def get_player_info(self, token: Token, device_id: str) -> tuple[PlayerInfo, bool]:
         """Return (PlayerInfo, online) from /config.
 
         `online` is split out because it's mutable state — it belongs on
@@ -81,9 +79,7 @@ class RestClient:
         )
         try:
             info = _parse_player_info(response)
-            online = bool(
-                (response.get("device") or {}).get("online", False)
-            )
+            online = bool((response.get("device") or {}).get("online", False))
             return info, online
         except (KeyError, TypeError, ValueError) as err:
             raise YotoAPIError(
@@ -108,7 +104,8 @@ class RestClient:
             if not _is_scope_403(err):
                 raise
             _LOGGER.debug(
-                "%s - /status forbidden, falling back to /config.device.status", DOMAIN,
+                "%s - /status forbidden, falling back to /config.device.status",
+                DOMAIN,
             )
 
         config = self._get(
@@ -208,14 +205,13 @@ class RestClient:
             text = err.response.text if err.response is not None else ""
             if status == 401:
                 raise AuthenticationError(f"{what} unauthorized: {text}") from err
-            raise YotoAPIError(
-                f"{what} failed (HTTP {status}): {text or err}"
-            ) from err
+            raise YotoAPIError(f"{what} failed (HTTP {status}): {text or err}") from err
         except (requests.RequestException, ValueError) as err:
             raise YotoAPIError(f"{what} failed: {err}") from err
 
 
 # ─── Response parsers (private helpers) ──────────────────────────────
+
 
 def _parse_device(item: Dict[str, Any]) -> Device:
     # `online` is intentionally not on Device — it's mutable state
