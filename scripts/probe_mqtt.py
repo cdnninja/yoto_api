@@ -62,7 +62,9 @@ def main() -> int:
         print(line)
 
     probe_start = time.monotonic()
-    diag(f"target: {target.device.name} ({device_id}) family={target.device.device_family}")
+    diag(
+        f"target: {target.device.name} ({device_id}) family={target.device.device_family}"
+    )
     diag(f"is_online (per REST): {target.status.is_online}")
 
     client = mqtt.Client(
@@ -99,9 +101,7 @@ def main() -> int:
             payload = msg.payload.decode("utf-8", errors="replace")
         if len(samples[msg.topic]) < 2:
             samples[msg.topic].append(payload)
-        full_log.append(
-            {"ts": time.time(), "topic": msg.topic, "payload": payload}
-        )
+        full_log.append({"ts": time.time(), "topic": msg.topic, "payload": payload})
 
     client.on_connect = on_connect
     client.on_disconnect = on_disconnect
