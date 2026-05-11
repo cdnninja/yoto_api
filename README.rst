@@ -248,9 +248,7 @@ A few things worth knowing about how the player actually behaves
   ``wifiStrength``, ``ssid``, ``temp``, ``upTime``, ``utcTime``,
   ``utcOffset``, ``totalDisk`` are REST-only. To keep those fresh, poll
   ``client.update_player_status()`` on a slower timer.
-- AWS IoT wildcards (``device/+/...``) and Shadow topics
-  (``$aws/things/...``) are denied by the IoT policy — subscribing
-  causes the broker to close the connection (rc=7).
+
 
 Other notes
 ===========
