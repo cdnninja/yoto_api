@@ -196,6 +196,19 @@ E2E tests are read-only and safe to re-run. They're skipped by default
 (the ``e2e`` marker is opt-in) so the unit suite stays fast and runs
 without credentials.
 
+Check for unmapped API fields
+-----------------------------
+
+Yoto occasionally adds new fields to its REST and MQTT payloads. To list
+keys that the lib doesn't currently parse, run::
+
+    python scripts/check_unmapped.py
+
+It uses the same ``.env`` as the e2e tests, hits all six surfaces
+(``device`` metadata, ``device.config``, ``device.status``, ``/status``,
+MQTT ``data/events``, MQTT ``data/status``), and prints any unmapped
+field with sample values. Read-only.
+
 Other notes
 ===========
 

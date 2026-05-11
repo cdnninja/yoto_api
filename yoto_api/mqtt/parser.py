@@ -81,9 +81,9 @@ def _parse_events(device_id: str, body: Dict[str, Any]) -> PlaybackEvent:
     )
 
 
-# Known keys per topic. Co-located with the parsers so unmapped-keys
-# tests can import them without duplicating the lists. Update when
-# adding fields to `_parse_events` / `_parse_status`.
+# Known keys per topic. Co-located with the parsers so
+# `scripts/check_unmapped.py` can import them without duplicating the
+# lists. Update when adding fields to `_parse_events` / `_parse_status`.
 KNOWN_EVENT_KEYS = frozenset(
     {
         "eventUtc",

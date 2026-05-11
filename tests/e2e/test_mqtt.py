@@ -12,7 +12,6 @@ import pytest
 
 from yoto_api import YotoClient
 from yoto_api.mqtt.client import YotoMqttClient
-from yoto_api.mqtt.parser import KNOWN_EVENT_KEYS, KNOWN_STATUS_KEYS
 
 pytestmark = pytest.mark.e2e
 
@@ -87,73 +86,6 @@ def test_mqtt_status_message_arrived(
         "no data/status payload arrived — request_status_push or "
         "command/status/request didn't trigger a response"
     )
-
-
-def test_mqtt_log_unparsed_event_keys(
-    captured_mqtt: list[tuple[str, dict[str, Any]]],
-) -> None:
-    """Lists keys + sample values in `data/events` payloads we don't
-    currently parse. Doesn't fail; just informational."""
-    samples = _collect_unparsed(
-        captured_mqtt,
-        "/data/events",
-        KNOWN_EVENT_KEYS,
-    )
-    if samples:
-        print("\n[unmapped] data/events fields:")
-        for key, values in sorted(samples.items()):
-            print(f"  {key} = {_format_values(values)}")
-
-
-def test_mqtt_log_unparsed_status_keys(
-    captured_mqtt: list[tuple[str, dict[str, Any]]],
-) -> None:
-    """Lists keys + sample values in `data/status` payloads we don't
-    currently parse. Yoto wraps the payload in `{"status": {...}}` — we
-    look at the inner dict."""
-    samples = _collect_unparsed(
-        captured_mqtt,
-        "/data/status",
-        KNOWN_STATUS_KEYS,
-        unwrap_status=True,
-    )
-    if samples:
-        print("\n[unmapped] data/status fields:")
-        for key, values in sorted(samples.items()):
-            print(f"  {key} = {_format_values(values)}")
-
-
-def _collect_unparsed(
-    captured: list[tuple[str, dict[str, Any]]],
-    topic_suffix: str,
-    parsed_keys: frozenset[str],
-    unwrap_status: bool = False,
-) -> dict[str, list[Any]]:
-    """For each unparsed field, gather every value observed across messages."""
-    samples: dict[str, list[Any]] = {}
-    for topic, body in captured:
-        if not topic.endswith(topic_suffix):
-            continue
-        payload = body.get("status", body) if unwrap_status else body
-        if not isinstance(payload, dict):
-            continue
-        for key, value in payload.items():
-            if key in parsed_keys:
-                continue
-            samples.setdefault(key, []).append(value)
-    return samples
-
-
-def _format_values(values: list[Any]) -> str:
-    """Up to 3 unique sample values per field (most are constant during
-    a session, so 1-3 covers the variance)."""
-    seen: list[Any] = []
-    for v in values:
-        if v not in seen:
-            seen.append(v)
-        if len(seen) >= 3:
-            break
-    return ", ".join(repr(v) for v in seen)
 
 
 def test_mqtt_state_propagates_to_player(

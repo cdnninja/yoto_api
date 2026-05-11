@@ -216,7 +216,8 @@ class RestClient:
 # ─── Known keys (for unmapped-keys detection) ────────────────────────
 #
 # Co-located with the parsers below so they're easy to keep in sync.
-# Tests import these to flag new fields Yoto starts sending.
+# `scripts/check_unmapped.py` imports these to flag new fields Yoto
+# starts sending.
 
 KNOWN_DEVICE_KEYS = frozenset(
     {

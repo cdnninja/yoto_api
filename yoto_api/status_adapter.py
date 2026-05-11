@@ -30,8 +30,8 @@ from .models.status import (
 
 
 # Raw `device.status` keys we know about. Kept here (next to the parser)
-# so unmapped-keys tests can import it without duplicating the list.
-# Update when adding fields to `adapt_raw_status`.
+# so `scripts/check_unmapped.py` can import it without duplicating the
+# list. Update when adding fields to `adapt_raw_status`.
 KNOWN_RAW_STATUS_KEYS = frozenset(
     {
         "activeCard",
