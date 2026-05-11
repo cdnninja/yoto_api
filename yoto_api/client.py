@@ -463,10 +463,20 @@ class YotoClient:
         self._require_mqtt().restart(device_id)
 
     def request_status_push(self, device_id: str) -> None:
-        """Documented HTTP trigger to make the player push its current status.
-        Useful right after an action when you want a fresh /status on MQTT."""
-        token = self.check_and_refresh_token()
-        self._rest.request_status_push(token, device_id)
+        """Ask the player to push a fresh `data/status` on MQTT.
+
+        Goes through MQTT (`command/status/request`); the firmware
+        responds with a `data/status` within ~150ms. Requires MQTT to be
+        connected. The documented REST `POST /command/status` endpoint
+        is only acked, not actually wired to a push — verified with
+        `scripts/probe_mqtt.py`.
+        """
+        if self._mqtt is None or not self._mqtt.is_connected:
+            raise YotoError(
+                "MQTT not connected; can't request a status push. "
+                "Call connect_events() first."
+            )
+        self._mqtt.request_status_push(device_id)
 
     def seek(self, device_id: str, position: int) -> None:
         """Resume the current card at `position` seconds in."""

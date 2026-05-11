@@ -209,6 +209,49 @@ It uses the same ``.env`` as the e2e tests, hits all six surfaces
 MQTT ``data/events``, MQTT ``data/status``), and prints any unmapped
 field with sample values. Read-only.
 
+Live debugger
+-------------
+
+A rich TUI that picks a player, hydrates its state, then watches MQTT
+messages in real time. Helpful when you poke at the device and want to
+see what the lib observes::
+
+    python scripts/debug.py
+
+Auth → device picker → live view with status, last event, config, and a
+log of recent updates. Read-only.
+
+Probe MQTT
+----------
+
+One-shot diagnostic that connects, subscribes to the documented MQTT
+topics, fires a couple of ``command/status/request`` publishes, and
+writes everything received over 30s to ``mqtt_probe.log``. Useful for
+checking firmware behaviour or spotting new payload shapes::
+
+    python scripts/probe_mqtt.py
+
+MQTT vs REST notes
+------------------
+
+A few things worth knowing about how the player actually behaves
+(verified with ``scripts/probe_mqtt.py``):
+
+- ``data/events`` is pushed in real time on user actions (volume, card,
+  play/pause). Subscribe and react.
+- ``data/status`` is **never** pushed spontaneously. The firmware
+  responds to MQTT ``command/status/request`` with a fresh ``data/status``
+  within ~150ms. The REST ``POST /command/status`` endpoint is acked but
+  doesn't trigger an MQTT push despite what its docs imply — use
+  ``YotoClient.request_status_push`` (which routes through MQTT).
+- ``data/status`` is a subset of REST ``device.status``: ``powerSrc``,
+  ``wifiStrength``, ``ssid``, ``temp``, ``upTime``, ``utcTime``,
+  ``utcOffset``, ``totalDisk`` are REST-only. To keep those fresh, poll
+  ``client.update_player_status()`` on a slower timer.
+- AWS IoT wildcards (``device/+/...``) and Shadow topics
+  (``$aws/things/...``) are denied by the IoT policy — subscribing
+  causes the broker to close the connection (rc=7).
+
 Other notes
 ===========
 

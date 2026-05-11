@@ -3,3 +3,4 @@ requests
 paho-mqtt
 pytest
 python-dotenv
+rich
