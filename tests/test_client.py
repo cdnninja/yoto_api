@@ -396,6 +396,56 @@ class RefreshTests(unittest.TestCase):
         self.assertEqual(order, ["list", "info"])
 
 
+class StatusFallback403Tests(unittest.TestCase):
+    """`get_player_status` falls back to /config when /status returns 403,
+    detected via the `status_code` attribute on `YotoAPIError` (no string
+    matching on the message)."""
+
+    def test_403_triggers_fallback(self) -> None:
+        from yoto_api import YotoAPIError
+        from yoto_api.models.status import PlayerStatus
+        from yoto_api.rest.client import RestClient
+
+        rest = RestClient()
+        token = fresh_token()
+
+        calls: list[str] = []
+
+        def fake_get(token, path, what, **_):
+            calls.append(path)
+            if path.endswith("/status"):
+                raise YotoAPIError("scope missing", status_code=403)
+            # /config call returns the device.status sub-block
+            return {
+                "device": {
+                    "online": True,
+                    "status": {"batteryLevel": 42, "wifiStrength": -55},
+                },
+            }
+
+        rest._get = fake_get
+        result = rest.get_player_status(token, "dev1")
+
+        self.assertIsInstance(result, PlayerStatus)
+        self.assertEqual(result.battery_level_percentage, 42)
+        self.assertEqual(result.wifi_strength, -55)
+        self.assertTrue(result.is_online)  # carried from device.online
+        # /status was tried first, then /config
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(calls[0].endswith("/status"))
+        self.assertIn("/config", calls[1])
+
+    def test_non_403_propagates(self) -> None:
+        from yoto_api import YotoAPIError
+        from yoto_api.rest.client import RestClient
+
+        rest = RestClient()
+        rest._get = MagicMock(side_effect=YotoAPIError("server boom", status_code=500))
+        with self.assertRaises(YotoAPIError) as ctx:
+            rest.get_player_status(fresh_token(), "dev1")
+        self.assertEqual(ctx.exception.status_code, 500)
+
+
 class OnlineConsolidationTests(unittest.TestCase):
     """status.is_online is the single source. Three writers feed it."""
 

@@ -205,7 +205,10 @@ class RestClient:
             text = err.response.text if err.response is not None else ""
             if status == 401:
                 raise AuthenticationError(f"{what} unauthorized: {text}") from err
-            raise YotoAPIError(f"{what} failed (HTTP {status}): {text or err}") from err
+            raise YotoAPIError(
+                f"{what} failed (HTTP {status}): {text or err}",
+                status_code=status,
+            ) from err
         except (requests.RequestException, ValueError) as err:
             raise YotoAPIError(f"{what} failed: {err}") from err
 
@@ -364,5 +367,10 @@ def _parse_documented_temp(value: Any) -> Optional[int]:
 
 
 def _is_scope_403(err: YotoAPIError) -> bool:
-    """Heuristic: did we get a 403 because of a missing scope?"""
-    return "HTTP 403" in str(err) and "scope" in str(err).lower()
+    """Did we get a 403 because of a missing OAuth scope?
+
+    Yoto returns 403 for both unauthorized routes and missing scopes;
+    we treat any 403 as "fall back to /config", which is the only
+    actionable case anyway.
+    """
+    return err.status_code == 403

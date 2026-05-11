@@ -1,129 +1,182 @@
 Introduction
 ============
 
-This is a Python wrapper for the Yoto API.  It allows you to interact with the Yoto API to control your Yoto players, update your library, and get information about your players and cards.
+This is a Python wrapper for the Yoto API. It allows you to control your
+Yoto players, refresh your card library, and react to live playback
+events from the player.
 
-You need a client ID to use this API.  You can get this from here: https://yoto.dev/get-started/start-here/.
+You need a client ID to use this API. Get one from
+https://yoto.dev/get-started/start-here/.
 
 Credit
 ======
 
-A big thank you to @buzzeddesign for helping to sniff some of the API and make sense of it.  Thank you to @fuatakgun for creating the core architecture which is based on kia_uvo.
+A big thank you to @buzzeddesign for helping to sniff some of the API
+and make sense of it. Thank you to @fuatakgun for the original v2.x
+architecture which was based on kia_uvo.
 
+Quick start
+===========
 
-Example Test Code
-=================
+Authenticate via the device-code flow, list your players, and start
+listening to live MQTT events::
 
-To run this code for test I am doing::
-
-    from pathlib import Path
     import logging
-    import sys
-    import os
+    import time
+    from yoto_api import YotoClient
 
-    path_root = r"C:path to files GitHub\main\yoto_api"
-    sys.path.append(str(path_root))
-    from yoto_api import *
+    logging.basicConfig(level=logging.DEBUG)
 
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format='%(asctime)s %(name)s %(levelname)s:%(message)s')
-    logger = logging.getLogger(__name__)
+    client = YotoClient(client_id="your_client_id")
 
-    ym = YotoManager(client_id="clientID")
-    print(ym.device_code_flow_start())
-    #complete the link, present to user
-    time.sleep(15)
-    ym.device_code_flow_complete()
-    ym.update_player_status()
-    print (ym.players)
-    ym.connect_to_events()
-    # Pauses the first player
-    ym.pause_player(next(iter(ym.players)))
-    # Sleep will let the terminal show events coming back. For dev today.
+    # Device-code flow: present the verification URL to the user, then
+    # poll until they complete it in their browser.
+    auth = client.device_code_flow_start()
+    print(auth["verification_uri_complete"])
+    client.device_code_flow_complete(auth)
+
+    # Save the refresh token for next time so you don't redo device-code.
+    refresh_token = client.token.refresh_token
+
+    # Pull the device list + per-player config (mac, firmware, alarms).
+    client.refresh()
+    for player_id, player in client.players.items():
+        print(player_id, player.name, player.model)
+
+    # Subscribe to MQTT for live state. on_update fires on each message.
+    def on_update(player):
+        print(player.id, player.last_event.playback_status, player.status.battery_level_percentage)
+
+    client.connect_events(list(client.players), on_update=on_update)
+
+    # Send a command (MQTT direct, low-latency).
+    client.pause(next(iter(client.players)))
+
     time.sleep(60)
+    client.disconnect_events()
 
-    # If you have already linked save the token.
-    refresh_token = ym.token.refresh_token
+If you already have a refresh token::
 
-    instead of device code flow user:
-    ym.set_refresh_token(refresh_token)
-    #Refresh token - maybe it is old. Auto run by set refresh token
-    ym.check_and_refresh_token()
+    client = YotoClient(client_id="your_client_id")
+    client.set_refresh_token(refresh_token)
+    client.check_and_refresh_token()
+    client.refresh()
 
-Usage
-=====
+Or, if your consumer manages OAuth tokens externally (e.g. the Home
+Assistant core integration), construct without a client_id and assign
+the token directly::
 
-For additional methods not mentioned below follow the file here for all functionality:
-https://github.com/cdnninja/yoto_api/blob/master/yoto_api/YotoManager.py
+    from yoto_api import YotoClient, Token
+    client = YotoClient()  # client_id not required
+    client.token = Token(access_token=..., refresh_token=..., ...)
 
-To use this API you need to create a YotoManager object with your client ID.  You can get this from the Yoto app.  It is in the URL when you log in.  It is the long string after "client_id=".
+Data model
+==========
 
-    ym = YotoManager(client_id="your_client_id")
+`YotoPlayer` aggregates four typed sub-objects, one per data source:
 
-Start the device code flow.  This will return a dictionary with the device code and other information.  You will need to present this to the user to complete the login. ::
+- ``player.device`` (``Device``): immutable identity (id, name, family,
+  generation, etc.) from ``GET /devices/mine``.
+- ``player.info`` (``PlayerInfo``): settings, mac, firmware from
+  ``GET /config``. User-editable via ``set_player_config(...)``.
+- ``player.status`` (``PlayerStatus``): runtime telemetry (battery,
+  wifi, charging, online, etc.) updated by REST polling and MQTT push.
+- ``player.last_event`` (``PlaybackEvent``): live playback state pushed
+  on MQTT ``data/events`` (track, position, volume, sleep timer).
 
-    ym.device_code_flow_start()
+All four are always present (default-initialised); the per-source
+``*_refreshed_at`` / ``last_event_received_at`` timestamps tell you
+whether data has actually been received.
 
-Complete the device code flow.  This will poll the API for the token.  You will need to wait a few seconds before calling this after presenting the device code to the user. ::
-    ym.device_code_flow_complete()
+Common methods
+==============
 
-If you have a token already you can set it directly.  This is useful if you have already logged in and want to use the API without going through the device code flow again. ::
+Refresh / setup::
 
-    ym.set_token(token: Token)
+    client.update_player_list()    # GET /devices/mine, identity + online
+    client.update_player_info(id)  # GET /config, settings + mac + firmware
+    client.update_library()        # GET /card/family/library
+    client.refresh()               # convenience: list + all info
 
+MQTT lifecycle::
 
-Check and refresh token will pull the first set of data.   It also should be run regularly if you keep your code running for days.  It will check if the token is valid.  If it isn't it will refresh the token.  If this is first run of the command and no data has been pulled it will also run update_player_status() and update_cards() for you. ::
+    client.connect_events(player_ids, on_update=cb, on_disconnect=cb)
+    client.is_mqtt_connected
+    client.reconnect_events()
+    client.disconnect_events()
 
-    ym.check_and_refresh_token()
+Player commands (MQTT, ~50 ms)::
 
-Check and refresh token will pull the first set of data.   It also should be run regularly if you keep your code running for days.  It will check if the token is valid.  If it isn't it will refresh the token.  If this is first run of the command and no data has been pulled it will also run update_player_status() and update_cards() for you. ::
+    client.play_card(player_id, "card_id", chapter_key="01", track_key="01")
+    client.pause(player_id)
+    client.resume(player_id)
+    client.stop(player_id)
+    client.set_volume(player_id, 50)        # 0-100 percentage
+    client.set_sleep_timer(player_id, 600)  # seconds
+    client.set_ambients(player_id, 255, 0, 0)  # RGB
+    client.next_track(player_id)
+    client.previous_track(player_id)
+    client.seek(player_id, position=30)
 
-    ym.update_player_status()
+Settings writes (REST PUT)::
 
-Connects to the MQTT broker.  This must be run before any command and also get get useful data. ::
+    import datetime
+    client.set_player_config(
+        player_id,
+        day_time=datetime.time(7, 30),
+        night_max_volume_limit=8,
+        day_ambient_colour="#40bfd9",
+        repeat_all=True,
+        day_display_brightness_auto=True,
+        # or: day_display_brightness=80
+    )
+    client.set_alarms(player_id, alarms=[...])  # full list, replaces existing
+    client.set_alarm_enabled(player_id, index=0, enabled=False)
 
-    ym.connect_to_events()
+Account identifier (no API call)::
 
-Pauses the player for the player ID sent. ID can be found in ym.players.keys() ::
+    from yoto_api import get_account_id
+    account_id = get_account_id(client.token.access_token)
 
-    ym.pause_player(player_id: str)
+Errors
+======
 
-Updates the library of cards.   This is done as part of check_refresh_token so only needed if data is stale. ::
+All library failures raise a subclass of ``YotoError``::
 
-    ym.update_cards()
+    from yoto_api import YotoError, AuthenticationError, YotoAPIError, YotoMQTTError
 
-Contains player object with data values you can access. ::
+    try:
+        client.refresh()
+    except AuthenticationError:
+        ...  # token expired or invalid
+    except YotoAPIError as err:
+        ...  # transport / HTTP / parsing failure (err.status_code on 4xx/5xx)
+    except YotoMQTTError:
+        ...  # paho / MQTT failure
+    except YotoError:
+        ...  # catch-all
 
-    ym.players
+Migration from 2.x
+==================
 
-Contains the library of cards.  Each card being an object with the data values you can use. ::
+See ``MIGRATION_3.md`` for the full guide. Short version: ``YotoManager``
+is replaced by ``YotoClient``, and ``YotoPlayer`` no longer has flat
+fields (use ``player.device``, ``player.info``, ``player.status``,
+``player.last_event``).
 
-    ym.library
+Development
+===========
 
-Get Set Up For Development
-==========================
-
-Set up pyenv::
-
-    pyenv install
-
-Install the dependencies::
+Install dependencies::
 
     pip install -r requirements.txt
     pip install -r requirements_dev.txt
 
-Tests
-=====
+Run tests (no credentials needed; pure unit tests)::
 
-Create a .env file in the root of the project with the following content::
+    python -m pytest tests/
 
-    YOTO_USERNAME=your_username
-    YOTO_PASSWORD=your_password
-
-Run the tests with::
-
-        python -m pytest
-
-Other Notes
+Other notes
 ===========
 
-This is not associated or affiliated with yoto play in any way.
+This project is not associated or affiliated with Yoto Play in any way.
