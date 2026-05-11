@@ -72,3 +72,6 @@ class PlayerStatus:
     day_mode: Optional[DayMode] = None
     ambient_light_sensor_reading: Optional[int] = None
     temperature_celcius: Optional[int] = None  # Yoto's typo preserved
+    # Effective display brightness right now (0-100). Tracks auto-dim,
+    # ALS, day/night transitions. MQTT-pushed (`dnowBrightness`).
+    current_display_brightness: Optional[int] = None

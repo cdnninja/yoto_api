@@ -172,9 +172,29 @@ Install dependencies::
     pip install -r requirements.txt
     pip install -r requirements_dev.txt
 
-Run tests (no credentials needed; pure unit tests)::
+Run unit tests (no credentials needed)::
 
     python -m pytest tests/
+
+Run end-to-end tests against the real Yoto API. Create a ``.env`` file
+at the repo root with your client id::
+
+    YOTO_CLIENT_ID=your_client_id
+    YOTO_REFRESH_TOKEN=optional_refresh_token  # left blank on first run
+
+Then::
+
+    python -m pytest tests/e2e -m e2e -s
+
+The first run prints a verification URL; open it in your browser to
+authorise the test session. The fixture writes the new refresh token
+back to ``.env`` so subsequent runs go through silently. ``-s`` keeps
+pytest from swallowing the prompt; you can drop it once a token is
+stored.
+
+E2E tests are read-only and safe to re-run. They're skipped by default
+(the ``e2e`` marker is opt-in) so the unit suite stays fast and runs
+without credentials.
 
 Other notes
 ===========

@@ -43,6 +43,9 @@ class PlaybackEvent:
     sleep_timer_seconds: Optional[int] = None
     sleep_timer_active: Optional[bool] = None
 
+    # Player is buffering / waiting between tracks (firmware-pushed bool).
+    playback_wait: Optional[bool] = None
+
     request_id: Optional[str] = None
 
     @property

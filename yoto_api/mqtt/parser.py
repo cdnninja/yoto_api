@@ -76,6 +76,7 @@ def _parse_events(device_id: str, body: Dict[str, Any]) -> PlaybackEvent:
         volume_max=as_int(body.get("volumeMax")),
         sleep_timer_seconds=as_int(body.get("sleepTimerSeconds")),
         sleep_timer_active=as_bool(body.get("sleepTimerActive")),
+        playback_wait=as_bool(body.get("playbackWait")),
         request_id=_optional_str(body.get("requestId")),
     )
 
@@ -96,6 +97,7 @@ _STATUS_VALUE_FIELDS = (
     ("upTime", "uptime", as_int),
     ("utcTime", "utc_time", as_int),
     ("utcOffset", "utc_offset_seconds", as_int),
+    ("dnowBrightness", "current_display_brightness", as_int),
 )
 
 _STATUS_BOOL_FIELDS = (
