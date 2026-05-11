@@ -254,5 +254,3 @@ def test_config_top_level_keys(client: YotoClient, first_device_id: str) -> None
     for key in ("deviceId", "mac", "releaseChannelVersion", "config"):
         assert key in device, f"`device.{key}` missing from /config response"
     assert isinstance(device["config"], dict)
-
-
