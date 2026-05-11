@@ -262,9 +262,7 @@ def test_config_top_level_keys(client: YotoClient, first_device_id: str) -> None
 # ─── Unmapped-keys detector (informational, never fails a CI run) ────
 
 
-def test_log_unparsed_config_fields(
-    client: YotoClient, first_device_id: str
-) -> None:
+def test_log_unparsed_config_fields(client: YotoClient, first_device_id: str) -> None:
     """Lists `device.config` keys we don't currently parse."""
     raw = client._rest._get(
         client.token,

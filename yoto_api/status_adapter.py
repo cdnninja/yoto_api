@@ -32,14 +32,32 @@ from .models.status import (
 # Raw `device.status` keys we know about. Kept here (next to the parser)
 # so unmapped-keys tests can import it without duplicating the list.
 # Update when adding fields to `adapt_raw_status`.
-KNOWN_RAW_STATUS_KEYS = frozenset({
-    "activeCard", "ssid", "wifiStrength", "nightlightMode",
-    "batteryLevel", "volume", "userVolume", "als",
-    "freeDisk", "totalDisk", "upTime", "utcTime", "utcOffset",
-    "charging", "headphones", "bluetoothHp", "bgDownload",
-    "powerSrc", "cardInserted", "day",
-    "temp", "updatedAt",
-})
+KNOWN_RAW_STATUS_KEYS = frozenset(
+    {
+        "activeCard",
+        "ssid",
+        "wifiStrength",
+        "nightlightMode",
+        "batteryLevel",
+        "volume",
+        "userVolume",
+        "als",
+        "freeDisk",
+        "totalDisk",
+        "upTime",
+        "utcTime",
+        "utcOffset",
+        "charging",
+        "headphones",
+        "bluetoothHp",
+        "bgDownload",
+        "powerSrc",
+        "cardInserted",
+        "day",
+        "temp",
+        "updatedAt",
+    }
+)
 
 
 def adapt_raw_status(raw: Dict[str, Any], device_id: str) -> PlayerStatus:

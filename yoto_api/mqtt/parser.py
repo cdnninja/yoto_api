@@ -84,20 +84,55 @@ def _parse_events(device_id: str, body: Dict[str, Any]) -> PlaybackEvent:
 # Known keys per topic. Co-located with the parsers so unmapped-keys
 # tests can import them without duplicating the lists. Update when
 # adding fields to `_parse_events` / `_parse_status`.
-KNOWN_EVENT_KEYS = frozenset({
-    "eventUtc", "cardId", "chapterKey", "chapterTitle", "trackKey",
-    "trackTitle", "trackLength", "position", "source", "playbackStatus",
-    "repeatAll", "streaming", "volume", "volumeMax",
-    "sleepTimerSeconds", "sleepTimerActive", "playbackWait", "requestId",
-})
+KNOWN_EVENT_KEYS = frozenset(
+    {
+        "eventUtc",
+        "cardId",
+        "chapterKey",
+        "chapterTitle",
+        "trackKey",
+        "trackTitle",
+        "trackLength",
+        "position",
+        "source",
+        "playbackStatus",
+        "repeatAll",
+        "streaming",
+        "volume",
+        "volumeMax",
+        "sleepTimerSeconds",
+        "sleepTimerActive",
+        "playbackWait",
+        "requestId",
+    }
+)
 
-KNOWN_STATUS_KEYS = frozenset({
-    "activeCard", "ssid", "wifiStrength", "nightlightMode", "batteryLevel",
-    "volume", "userVolume", "als", "freeDisk", "totalDisk", "upTime",
-    "utcTime", "utcOffset", "dnowBrightness",
-    "charging", "headphones", "bluetoothHp", "bgDownload",
-    "powerSrc", "cardInserted", "day", "temp",
-})
+KNOWN_STATUS_KEYS = frozenset(
+    {
+        "activeCard",
+        "ssid",
+        "wifiStrength",
+        "nightlightMode",
+        "batteryLevel",
+        "volume",
+        "userVolume",
+        "als",
+        "freeDisk",
+        "totalDisk",
+        "upTime",
+        "utcTime",
+        "utcOffset",
+        "dnowBrightness",
+        "charging",
+        "headphones",
+        "bluetoothHp",
+        "bgDownload",
+        "powerSrc",
+        "cardInserted",
+        "day",
+        "temp",
+    }
+)
 
 
 # (raw_key, dest_key, coercer) for the data/status payload.
