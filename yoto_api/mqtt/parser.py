@@ -51,8 +51,10 @@ def _parse_topic(topic: str) -> Optional[Tuple[str, TopicKind]]:
     """Expect `device/{device_id}/data/{events|status}`."""
     parts = topic.split("/")
     if len(parts) != 4 or parts[0] != "device" or parts[2] != "data":
+        _LOGGER.debug("MQTT topic %r doesn't match device/{id}/data/* shape", topic)
         return None
     if parts[3] not in ("events", "status"):
+        _LOGGER.debug("MQTT topic %r has unknown data subtopic %r", topic, parts[3])
         return None
     return parts[1], parts[3]
 
@@ -137,7 +139,7 @@ KNOWN_STATUS_KEYS = frozenset(
 
 # (raw_key, dest_key, coercer) for the data/status payload.
 # Same naming as `/config.device.status` (Yoto's two endpoints share the
-# raw firmware shape — see yoto_api/v3/status_adapter.py).
+# raw firmware shape — see yoto_api/status_adapter.py).
 _STATUS_VALUE_FIELDS = (
     ("ssid", "network_ssid", lambda v: v),
     ("nightlightMode", "nightlight_mode", lambda v: v),

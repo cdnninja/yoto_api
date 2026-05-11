@@ -34,7 +34,7 @@ DisconnectCallback = Callable[[int], None]
 class YotoMqttClient:
     URL = "aqrphjqbp3u2z-ats.iot.eu-west-2.amazonaws.com"
     PORT = 443
-    KEEPALIVE = 120
+    KEEPALIVE = 60
     AUTH_NAME = "PublicJWTAuthorizer"
 
     def __init__(self) -> None:
@@ -190,15 +190,6 @@ class YotoMqttClient:
         self._publish(
             f"device/{player_id}/command/ambients/set",
             json.dumps({"r": int(r), "g": int(g), "b": int(b)}),
-        )
-
-    def bluetooth(
-        self, player_id: str, action: str, name: str = "", mac: str = ""
-    ) -> None:
-        suffix = "on" if action == "on" else "off"
-        self._publish(
-            f"device/{player_id}/command/bluetooth/{suffix}",
-            json.dumps({"action": action, "name": name, "mac": mac}),
         )
 
     # ─── Per-player metadata fed in by the consumer ──────────────

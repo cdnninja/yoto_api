@@ -68,6 +68,19 @@ class StatusAdapterTests(unittest.TestCase):
         status = adapt_raw_status({"powerSrc": 99}, device_id="d")
         self.assertIsNone(status.power_source)
 
+    def test_card_insertion_streaming(self) -> None:
+        """`cardInserted: 3` is undocumented but pushed when streaming
+        sources (Yoto Radio, etc.) are active. Best-guess STREAMING."""
+        cases = [
+            (0, CardInsertionState.NONE),
+            (1, CardInsertionState.PHYSICAL),
+            (2, CardInsertionState.REMOTE),
+            (3, CardInsertionState.STREAMING),
+        ]
+        for raw, expected in cases:
+            status = adapt_raw_status({"cardInserted": raw}, device_id="d")
+            self.assertEqual(status.card_insertion_state, expected, msg=raw)
+
 
 if __name__ == "__main__":
     unittest.main()
