@@ -1,0 +1,40 @@
+"""Capabilities by device family.
+
+Centralised so callers don't sprinkle `if family == "mini"` across the codebase.
+Unknown families fall back to V2 caps with a logged warning, mirroring the
+fallback the official Yoto Android app uses.
+"""
+
+import logging
+from dataclasses import dataclass
+
+from .models.device import Device
+
+_LOGGER = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class Capabilities:
+    has_ambient_light: bool
+    has_display: bool
+    has_battery_percentage: bool
+    uses_legacy_settings: bool
+
+
+_CAPABILITIES = {
+    "v1":   Capabilities(has_ambient_light=True,  has_display=True,  has_battery_percentage=False, uses_legacy_settings=True),
+    "v2":   Capabilities(has_ambient_light=True,  has_display=True,  has_battery_percentage=False, uses_legacy_settings=False),
+    "v3":   Capabilities(has_ambient_light=True,  has_display=True,  has_battery_percentage=True,  uses_legacy_settings=False),
+    "mini": Capabilities(has_ambient_light=False, has_display=False, has_battery_percentage=True,  uses_legacy_settings=False),
+}
+
+
+def caps_for(device: Device) -> Capabilities:
+    family = (device.device_family or "").lower()
+    if family in _CAPABILITIES:
+        return _CAPABILITIES[family]
+    _LOGGER.warning(
+        "Unknown device_family %r for %s — falling back to v2 capabilities",
+        device.device_family, device.device_id,
+    )
+    return _CAPABILITIES["v2"]
