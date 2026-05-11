@@ -16,16 +16,14 @@ _LOGGER = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class Capabilities:
     has_ambient_light: bool
-    has_display: bool
-    has_battery_percentage: bool
     uses_legacy_settings: bool
 
 
 _CAPABILITIES = {
-    "v1":   Capabilities(has_ambient_light=True,  has_display=True,  has_battery_percentage=False, uses_legacy_settings=True),
-    "v2":   Capabilities(has_ambient_light=True,  has_display=True,  has_battery_percentage=False, uses_legacy_settings=False),
-    "v3":   Capabilities(has_ambient_light=True,  has_display=True,  has_battery_percentage=True,  uses_legacy_settings=False),
-    "mini": Capabilities(has_ambient_light=False, has_display=False, has_battery_percentage=True,  uses_legacy_settings=False),
+    "v1":   Capabilities(has_ambient_light=True,  uses_legacy_settings=True),
+    "v2":   Capabilities(has_ambient_light=True,  uses_legacy_settings=False),
+    "v3":   Capabilities(has_ambient_light=True,  uses_legacy_settings=False),
+    "mini": Capabilities(has_ambient_light=False, uses_legacy_settings=False),
 }
 
 
