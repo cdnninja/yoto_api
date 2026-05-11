@@ -24,20 +24,55 @@ _WAIT_AFTER_PUSH_S = 3.0
 
 # Keys we currently parse on each topic. Mirror of `mqtt/parser.py`.
 # Anything Yoto sends that isn't in here is "drift".
-_PARSED_EVENT_KEYS = frozenset({
-    "eventUtc", "cardId", "chapterKey", "chapterTitle", "trackKey",
-    "trackTitle", "trackLength", "position", "source", "playbackStatus",
-    "repeatAll", "streaming", "volume", "volumeMax",
-    "sleepTimerSeconds", "sleepTimerActive", "playbackWait", "requestId",
-})
+_PARSED_EVENT_KEYS = frozenset(
+    {
+        "eventUtc",
+        "cardId",
+        "chapterKey",
+        "chapterTitle",
+        "trackKey",
+        "trackTitle",
+        "trackLength",
+        "position",
+        "source",
+        "playbackStatus",
+        "repeatAll",
+        "streaming",
+        "volume",
+        "volumeMax",
+        "sleepTimerSeconds",
+        "sleepTimerActive",
+        "playbackWait",
+        "requestId",
+    }
+)
 
-_PARSED_STATUS_KEYS = frozenset({
-    "activeCard", "ssid", "wifiStrength", "nightlightMode", "batteryLevel",
-    "volume", "userVolume", "als", "freeDisk", "totalDisk", "upTime",
-    "utcTime", "utcOffset", "dnowBrightness",
-    "charging", "headphones", "bluetoothHp", "bgDownload",
-    "powerSrc", "cardInserted", "day", "temp",
-})
+_PARSED_STATUS_KEYS = frozenset(
+    {
+        "activeCard",
+        "ssid",
+        "wifiStrength",
+        "nightlightMode",
+        "batteryLevel",
+        "volume",
+        "userVolume",
+        "als",
+        "freeDisk",
+        "totalDisk",
+        "upTime",
+        "utcTime",
+        "utcOffset",
+        "dnowBrightness",
+        "charging",
+        "headphones",
+        "bluetoothHp",
+        "bgDownload",
+        "powerSrc",
+        "cardInserted",
+        "day",
+        "temp",
+    }
+)
 
 
 @pytest.fixture(scope="module")
@@ -94,7 +129,7 @@ def test_mqtt_connects_and_receives_messages(
 
 
 def test_mqtt_status_message_arrived(
-    captured_mqtt: list[tuple[str, dict[str, Any]]]
+    captured_mqtt: list[tuple[str, dict[str, Any]]],
 ) -> None:
     """request_status_push should yield at least one data/status message."""
     status_msgs = [
@@ -107,12 +142,14 @@ def test_mqtt_status_message_arrived(
 
 
 def test_mqtt_log_unparsed_event_keys(
-    captured_mqtt: list[tuple[str, dict[str, Any]]]
+    captured_mqtt: list[tuple[str, dict[str, Any]]],
 ) -> None:
     """Lists keys + sample values in `data/events` payloads we don't
     currently parse. Doesn't fail; just informational drift detection."""
     samples = _collect_unparsed(
-        captured_mqtt, "/data/events", _PARSED_EVENT_KEYS,
+        captured_mqtt,
+        "/data/events",
+        _PARSED_EVENT_KEYS,
     )
     if samples:
         print("\n[drift] Unparsed data/events fields:")
@@ -121,13 +158,16 @@ def test_mqtt_log_unparsed_event_keys(
 
 
 def test_mqtt_log_unparsed_status_keys(
-    captured_mqtt: list[tuple[str, dict[str, Any]]]
+    captured_mqtt: list[tuple[str, dict[str, Any]]],
 ) -> None:
     """Lists keys + sample values in `data/status` payloads we don't
     currently parse. Yoto wraps the payload in `{"status": {...}}` — we
     look at the inner dict."""
     samples = _collect_unparsed(
-        captured_mqtt, "/data/status", _PARSED_STATUS_KEYS, unwrap_status=True,
+        captured_mqtt,
+        "/data/status",
+        _PARSED_STATUS_KEYS,
+        unwrap_status=True,
     )
     if samples:
         print("\n[drift] Unparsed data/status fields:")
@@ -169,7 +209,8 @@ def _format_values(values: list[Any]) -> str:
 
 
 def test_mqtt_state_propagates_to_player(
-    client: YotoClient, online_device_id: str,
+    client: YotoClient,
+    online_device_id: str,
     captured_mqtt: list[tuple[str, dict[str, Any]]],
 ) -> None:
     """After receiving messages, player.status should be populated and

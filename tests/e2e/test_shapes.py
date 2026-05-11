@@ -19,7 +19,6 @@ from yoto_api import (
     CardInsertionState,
     DayMode,
     Device,
-    PlaybackEvent,
     PlayerConfig,
     PlayerInfo,
     PlayerStatus,
@@ -97,9 +96,7 @@ def test_player_info_shape(client: YotoClient, first_device_id: str) -> None:
         )
 
 
-def test_player_config_field_types(
-    client: YotoClient, first_device_id: str
-) -> None:
+def test_player_config_field_types(client: YotoClient, first_device_id: str) -> None:
     """The whole point of v3 typing: settings must be proper Python types,
     not strings."""
     client.update_player_info(first_device_id)
@@ -124,7 +121,9 @@ def test_player_config_field_types(
     ):
         value = getattr(config, name)
         if value is not None:
-            assert isinstance(value, int), f"{name} should be int, got {type(value).__name__}"
+            assert isinstance(value, int), (
+                f"{name} should be int, got {type(value).__name__}"
+            )
 
     # Booleans — bool, not "1"/"0" string
     for name in (
@@ -140,7 +139,9 @@ def test_player_config_field_types(
     ):
         value = getattr(config, name)
         if value is not None:
-            assert isinstance(value, bool), f"{name} should be bool, got {type(value).__name__}"
+            assert isinstance(value, bool), (
+                f"{name} should be bool, got {type(value).__name__}"
+            )
 
     # Brightness split — auto/value mutually consistent
     for prefix in ("day", "night"):
@@ -228,9 +229,7 @@ def test_player_status_shape(client: YotoClient, first_device_id: str) -> None:
 
 def test_devices_mine_top_level_keys(client: YotoClient) -> None:
     """Catches Yoto removing or renaming the top-level `devices` array."""
-    raw = client._rest._get(
-        client.token, "/device-v2/devices/mine", "raw shape probe"
-    )
+    raw = client._rest._get(client.token, "/device-v2/devices/mine", "raw shape probe")
     assert "devices" in raw
     assert isinstance(raw["devices"], list)
     if raw["devices"]:
@@ -257,9 +256,7 @@ def test_config_top_level_keys(client: YotoClient, first_device_id: str) -> None
 # ─── Drift detector (informational, never fails a CI run) ────────────
 
 
-def test_log_unparsed_config_fields(
-    client: YotoClient, first_device_id: str
-) -> None:
+def test_log_unparsed_config_fields(client: YotoClient, first_device_id: str) -> None:
     """Lists raw `device.config` keys + values we don't currently parse —
     useful to spot new Yoto features. Doesn't fail; just informational."""
     raw = client._rest._get(
@@ -270,15 +267,38 @@ def test_log_unparsed_config_fields(
     raw_config = (raw.get("device") or {}).get("config") or {}
     # All API keys we do parse (mirror of _CONFIG_FIELD_TO_API_KEY in client.py)
     known_keys = {
-        "dayTime", "dayDisplayBrightness", "ambientColour", "maxVolumeLimit",
-        "dayYotoDaily", "dayYotoRadio", "daySoundsOff",
-        "nightTime", "nightDisplayBrightness", "nightAmbientColour",
-        "nightMaxVolumeLimit", "nightYotoDaily", "nightYotoRadio", "nightSoundsOff",
-        "clockFace", "hourFormat", "bluetoothEnabled", "btHeadphonesEnabled",
-        "headphonesVolumeLimited", "repeatAll", "shutdownTimeout",
-        "displayDimTimeout", "displayDimBrightness", "locale", "timezone",
-        "systemVolume", "volumeLevel", "logLevel", "showDiagnostics",
-        "pauseVolumeDown", "pausePowerButton", "alarms",
+        "dayTime",
+        "dayDisplayBrightness",
+        "ambientColour",
+        "maxVolumeLimit",
+        "dayYotoDaily",
+        "dayYotoRadio",
+        "daySoundsOff",
+        "nightTime",
+        "nightDisplayBrightness",
+        "nightAmbientColour",
+        "nightMaxVolumeLimit",
+        "nightYotoDaily",
+        "nightYotoRadio",
+        "nightSoundsOff",
+        "clockFace",
+        "hourFormat",
+        "bluetoothEnabled",
+        "btHeadphonesEnabled",
+        "headphonesVolumeLimited",
+        "repeatAll",
+        "shutdownTimeout",
+        "displayDimTimeout",
+        "displayDimBrightness",
+        "locale",
+        "timezone",
+        "systemVolume",
+        "volumeLevel",
+        "logLevel",
+        "showDiagnostics",
+        "pauseVolumeDown",
+        "pausePowerButton",
+        "alarms",
     }
     unparsed = {k: v for k, v in raw_config.items() if k not in known_keys}
     if unparsed:

@@ -49,12 +49,14 @@ def test_get_player_status(client: YotoClient, first_device_id: str) -> None:
     assert isinstance(status, PlayerStatus)
     assert status.device_id == first_device_id
     # At least one telemetry field should be populated for an online player
-    has_data = any([
-        status.battery_level_percentage is not None,
-        status.is_charging is not None,
-        status.network_ssid is not None,
-        status.system_volume_percentage is not None,
-    ])
+    has_data = any(
+        [
+            status.battery_level_percentage is not None,
+            status.is_charging is not None,
+            status.network_ssid is not None,
+            status.system_volume_percentage is not None,
+        ]
+    )
     assert has_data, "no telemetry returned from /status or /config fallback"
 
 
