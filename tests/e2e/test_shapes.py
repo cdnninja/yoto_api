@@ -26,6 +26,12 @@ from yoto_api import (
     YotoClient,
 )
 from yoto_api.models.config import Alarm
+from yoto_api.rest.client import (
+    KNOWN_CONFIG_KEYS,
+    KNOWN_DEVICE_KEYS,
+    KNOWN_STATUS_ENDPOINT_KEYS,
+)
+from yoto_api.status_adapter import KNOWN_RAW_STATUS_KEYS
 
 pytestmark = pytest.mark.e2e
 
@@ -253,55 +259,79 @@ def test_config_top_level_keys(client: YotoClient, first_device_id: str) -> None
     assert isinstance(device["config"], dict)
 
 
-# ─── Drift detector (informational, never fails a CI run) ────────────
+# ─── Unmapped-keys detector (informational, never fails a CI run) ────
 
 
-def test_log_unparsed_config_fields(client: YotoClient, first_device_id: str) -> None:
-    """Lists raw `device.config` keys + values we don't currently parse —
-    useful to spot new Yoto features. Doesn't fail; just informational."""
+def test_log_unparsed_config_fields(
+    client: YotoClient, first_device_id: str
+) -> None:
+    """Lists `device.config` keys we don't currently parse."""
     raw = client._rest._get(
         client.token,
         f"/device-v2/{first_device_id}/config",
-        "drift probe",
+        "unmapped probe",
     )
     raw_config = (raw.get("device") or {}).get("config") or {}
-    # All API keys we do parse (mirror of _CONFIG_FIELD_TO_API_KEY in client.py)
-    known_keys = {
-        "dayTime",
-        "dayDisplayBrightness",
-        "ambientColour",
-        "maxVolumeLimit",
-        "dayYotoDaily",
-        "dayYotoRadio",
-        "daySoundsOff",
-        "nightTime",
-        "nightDisplayBrightness",
-        "nightAmbientColour",
-        "nightMaxVolumeLimit",
-        "nightYotoDaily",
-        "nightYotoRadio",
-        "nightSoundsOff",
-        "clockFace",
-        "hourFormat",
-        "bluetoothEnabled",
-        "btHeadphonesEnabled",
-        "headphonesVolumeLimited",
-        "repeatAll",
-        "shutdownTimeout",
-        "displayDimTimeout",
-        "displayDimBrightness",
-        "locale",
-        "timezone",
-        "systemVolume",
-        "volumeLevel",
-        "logLevel",
-        "showDiagnostics",
-        "pauseVolumeDown",
-        "pausePowerButton",
-        "alarms",
-    }
-    unparsed = {k: v for k, v in raw_config.items() if k not in known_keys}
-    if unparsed:
-        print("\n[drift] Unparsed device.config fields:")
-        for key in sorted(unparsed):
-            print(f"  {key} = {unparsed[key]!r}")
+    _log_unparsed("device.config", raw_config, KNOWN_CONFIG_KEYS)
+
+
+def test_log_unparsed_device_metadata_fields(
+    client: YotoClient, first_device_id: str
+) -> None:
+    """Lists `device` top-level keys (mac, firmware, popCode, etc.) we
+    don't currently parse."""
+    raw = client._rest._get(
+        client.token,
+        f"/device-v2/{first_device_id}/config",
+        "unmapped probe",
+    )
+    device = raw.get("device") or {}
+    # Skip nested objects — they have their own unmapped-keys tests.
+    flat_metadata = {k: v for k, v in device.items() if not isinstance(v, dict)}
+    _log_unparsed("device (metadata)", flat_metadata, KNOWN_DEVICE_KEYS)
+
+
+def test_log_unparsed_config_device_status_fields(
+    client: YotoClient, first_device_id: str
+) -> None:
+    """Lists `device.status` sub-block keys we don't currently parse.
+
+    This is the fallback used when /status returns 403 (HA core scope).
+    Mirrors the `adapt_raw_status` mapping in `status_adapter.py`."""
+    raw = client._rest._get(
+        client.token,
+        f"/device-v2/{first_device_id}/config",
+        "unmapped probe",
+    )
+    raw_status = (raw.get("device") or {}).get("status") or {}
+    _log_unparsed("device.status", raw_status, KNOWN_RAW_STATUS_KEYS)
+
+
+def test_log_unparsed_status_endpoint_fields(
+    client: YotoClient, first_device_id: str
+) -> None:
+    """Lists `/status` endpoint keys (long field names) we don't currently
+    parse. Skipped when the token doesn't carry the
+    `family:device-status:view` scope."""
+    from yoto_api import YotoAPIError
+
+    try:
+        raw = client._rest._get(
+            client.token,
+            f"/device-v2/{first_device_id}/status",
+            "unmapped probe",
+        )
+    except YotoAPIError as err:
+        if err.status_code == 403:
+            pytest.skip("token lacks family:device-status:view scope")
+        raise
+    _log_unparsed("/status", raw, KNOWN_STATUS_ENDPOINT_KEYS)
+
+
+def _log_unparsed(label: str, payload: dict, known_keys: set[str]) -> None:
+    """Print unmapped (key, value) pairs from a payload. Doesn't fail."""
+    unmapped = {k: v for k, v in payload.items() if k not in known_keys}
+    if unmapped:
+        print(f"\n[unmapped] {label} fields:")
+        for key in sorted(unmapped):
+            print(f"  {key} = {unmapped[key]!r}")

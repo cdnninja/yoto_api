@@ -213,6 +213,46 @@ class RestClient:
             raise YotoAPIError(f"{what} failed: {err}") from err
 
 
+# ─── Known keys (for unmapped-keys detection) ────────────────────────
+#
+# Co-located with the parsers below so they're easy to keep in sync.
+# Tests import these to flag new fields Yoto starts sending.
+
+KNOWN_DEVICE_KEYS = frozenset({
+    "deviceId", "name", "errorCode", "fwVersion", "popCode",
+    "releaseChannelId", "releaseChannelVersion", "activationPopCode",
+    "registrationCode", "deviceType", "deviceFamily", "deviceGroup",
+    "generation", "formFactor", "mac", "online", "geoTimezone",
+    "getPosix",
+})
+
+KNOWN_CONFIG_KEYS = frozenset({
+    "dayTime", "dayDisplayBrightness", "ambientColour", "maxVolumeLimit",
+    "dayYotoDaily", "dayYotoRadio", "daySoundsOff",
+    "nightTime", "nightDisplayBrightness", "nightAmbientColour",
+    "nightMaxVolumeLimit", "nightYotoDaily", "nightYotoRadio", "nightSoundsOff",
+    "clockFace", "hourFormat", "bluetoothEnabled", "btHeadphonesEnabled",
+    "headphonesVolumeLimited", "repeatAll", "shutdownTimeout",
+    "displayDimTimeout", "displayDimBrightness", "locale", "timezone",
+    "systemVolume", "volumeLevel", "logLevel", "showDiagnostics",
+    "pauseVolumeDown", "pausePowerButton", "alarms",
+})
+
+KNOWN_STATUS_ENDPOINT_KEYS = frozenset({
+    "deviceId", "isOnline", "updatedAt", "uptime", "utcTime",
+    "utcOffsetSeconds",
+    "batteryLevelPercentage", "isCharging", "powerSource",
+    "networkSsid", "wifiStrength",
+    "averageDownloadSpeedBytesSecond", "isBackgroundDownloadActive",
+    "freeDiskSpaceBytes", "totalDiskSpaceBytes",
+    "activeCard", "cardInsertionState",
+    "systemVolumePercentage", "userVolumePercentage",
+    "isAudioDeviceConnected", "isBluetoothAudioConnected",
+    "nightlightMode", "dayMode", "ambientLightSensorReading",
+    "temperatureCelcius",
+})
+
+
 # ─── Response parsers (private helpers) ──────────────────────────────
 
 

@@ -12,6 +12,7 @@ import pytest
 
 from yoto_api import YotoClient
 from yoto_api.mqtt.client import YotoMqttClient
+from yoto_api.mqtt.parser import KNOWN_EVENT_KEYS, KNOWN_STATUS_KEYS
 
 pytestmark = pytest.mark.e2e
 
@@ -20,59 +21,6 @@ pytestmark = pytest.mark.e2e
 # subscribe + initial state push takes a couple of seconds.
 _WAIT_AFTER_CONNECT_S = 8.0
 _WAIT_AFTER_PUSH_S = 3.0
-
-
-# Keys we currently parse on each topic. Mirror of `mqtt/parser.py`.
-# Anything Yoto sends that isn't in here is "drift".
-_PARSED_EVENT_KEYS = frozenset(
-    {
-        "eventUtc",
-        "cardId",
-        "chapterKey",
-        "chapterTitle",
-        "trackKey",
-        "trackTitle",
-        "trackLength",
-        "position",
-        "source",
-        "playbackStatus",
-        "repeatAll",
-        "streaming",
-        "volume",
-        "volumeMax",
-        "sleepTimerSeconds",
-        "sleepTimerActive",
-        "playbackWait",
-        "requestId",
-    }
-)
-
-_PARSED_STATUS_KEYS = frozenset(
-    {
-        "activeCard",
-        "ssid",
-        "wifiStrength",
-        "nightlightMode",
-        "batteryLevel",
-        "volume",
-        "userVolume",
-        "als",
-        "freeDisk",
-        "totalDisk",
-        "upTime",
-        "utcTime",
-        "utcOffset",
-        "dnowBrightness",
-        "charging",
-        "headphones",
-        "bluetoothHp",
-        "bgDownload",
-        "powerSrc",
-        "cardInserted",
-        "day",
-        "temp",
-    }
-)
 
 
 @pytest.fixture(scope="module")
@@ -145,14 +93,14 @@ def test_mqtt_log_unparsed_event_keys(
     captured_mqtt: list[tuple[str, dict[str, Any]]],
 ) -> None:
     """Lists keys + sample values in `data/events` payloads we don't
-    currently parse. Doesn't fail; just informational drift detection."""
+    currently parse. Doesn't fail; just informational."""
     samples = _collect_unparsed(
         captured_mqtt,
         "/data/events",
-        _PARSED_EVENT_KEYS,
+        KNOWN_EVENT_KEYS,
     )
     if samples:
-        print("\n[drift] Unparsed data/events fields:")
+        print("\n[unmapped] data/events fields:")
         for key, values in sorted(samples.items()):
             print(f"  {key} = {_format_values(values)}")
 
@@ -166,11 +114,11 @@ def test_mqtt_log_unparsed_status_keys(
     samples = _collect_unparsed(
         captured_mqtt,
         "/data/status",
-        _PARSED_STATUS_KEYS,
+        KNOWN_STATUS_KEYS,
         unwrap_status=True,
     )
     if samples:
-        print("\n[drift] Unparsed data/status fields:")
+        print("\n[unmapped] data/status fields:")
         for key, values in sorted(samples.items()):
             print(f"  {key} = {_format_values(values)}")
 
