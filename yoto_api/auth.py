@@ -118,9 +118,7 @@ class Auth:
                     body.get("error_description", body.get("error", "Unknown error"))
                 )
 
-            raise AuthenticationError(
-                f"Token request failed: {status} {text}"
-            )
+            raise AuthenticationError(f"Token request failed: {status} {text}")
 
         raise AuthenticationError("Authentication timed out. Please try again.")
 

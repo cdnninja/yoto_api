@@ -55,9 +55,7 @@ class PlayCardKwargsOnlyTests(_ClientTestCase):
             await self.client.play_card("dev1", "card1", 5)
 
     async def test_kwargs_work(self) -> None:
-        await self.client.play_card(
-            "dev1", "card1", chapter_key="01", track_key="02"
-        )
+        await self.client.play_card("dev1", "card1", chapter_key="01", track_key="02")
         self.client._mqtt.card_play.assert_awaited_once_with(
             "dev1",
             "card1",
@@ -472,9 +470,7 @@ class StatusFallback403Tests(_ClientTestCase):
         from yoto_api.rest.client import RestClient
 
         rest = RestClient(session=MagicMock())
-        rest._get = AsyncMock(
-            side_effect=YotoAPIError("server boom", status_code=500)
-        )
+        rest._get = AsyncMock(side_effect=YotoAPIError("server boom", status_code=500))
         with self.assertRaises(YotoAPIError) as ctx:
             await rest.get_player_status(fresh_token(), "dev1")
         self.assertEqual(ctx.exception.status_code, 500)

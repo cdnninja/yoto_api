@@ -32,11 +32,7 @@ async def test_settings_change_and_revert(client: YotoClient) -> None:
     are visible on screen during the visual pause."""
     await client.update_player_list()
     device_id = next(
-        (
-            did
-            for did, p in client.players.items()
-            if p.device.device_family != "mini"
-        ),
+        (did for did, p in client.players.items() if p.device.device_family != "mini"),
         None,
     )
     if device_id is None:

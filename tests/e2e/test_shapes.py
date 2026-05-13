@@ -187,9 +187,7 @@ async def test_alarm_shape(client: YotoClient, first_device_id: str) -> None:
 # ─── PlayerStatus (from /status or /config.device.status fallback) ───
 
 
-async def test_player_status_shape(
-    client: YotoClient, first_device_id: str
-) -> None:
+async def test_player_status_shape(client: YotoClient, first_device_id: str) -> None:
     status = await client.update_player_status(first_device_id)
     assert isinstance(status, PlayerStatus)
 
@@ -248,9 +246,7 @@ async def test_devices_mine_top_level_keys(client: YotoClient) -> None:
             assert key in item, f"`{key}` missing from /devices/mine item"
 
 
-async def test_config_top_level_keys(
-    client: YotoClient, first_device_id: str
-) -> None:
+async def test_config_top_level_keys(client: YotoClient, first_device_id: str) -> None:
     """Catches Yoto removing or renaming the `device`/`config` blocks."""
     raw = await client._rest._get(
         client.token,

@@ -84,9 +84,7 @@ async def _run(client: YotoClient) -> int:
     return 0
 
 
-async def _authenticate(
-    client_id: str, refresh_token: str | None
-) -> YotoClient:
+async def _authenticate(client_id: str, refresh_token: str | None) -> YotoClient:
     client = YotoClient(client_id=client_id)
     if refresh_token:
         client.token = Token(refresh_token=refresh_token)

@@ -132,9 +132,7 @@ async def _run(yoto: YotoClient) -> int:
                 elapsed = time.monotonic() - probe_start
                 if mqtt_pushes and elapsed >= mqtt_pushes[0]:
                     mqtt_pushes.pop(0)
-                    await client.publish(
-                        f"device/{device_id}/command/status/request"
-                    )
+                    await client.publish(f"device/{device_id}/command/status/request")
                     diag("PUB command/status/request")
                 await asyncio.sleep(0.5)
     except aiomqtt.MqttError as err:
@@ -149,9 +147,7 @@ async def _run(yoto: YotoClient) -> int:
 
     out_path = Path(__file__).resolve().parent.parent / "mqtt_probe.log"
     with out_path.open("w") as f:
-        f.write(
-            f"# MQTT probe — device {device_id} — {len(full_log)} messages\n\n"
-        )
+        f.write(f"# MQTT probe — device {device_id} — {len(full_log)} messages\n\n")
         f.write("=== Diagnostics ===\n\n")
         for line in diagnostics:
             f.write(line + "\n")
@@ -187,9 +183,7 @@ def _pick_device(yoto: YotoClient):
     table.add_column("Status")
     for i, p in enumerate(players, start=1):
         status = "[green]online[/]" if p.status.is_online else "[red]offline[/]"
-        table.add_row(
-            str(i), p.device.name, p.device.device_family or "?", status
-        )
+        table.add_row(str(i), p.device.name, p.device.device_family or "?", status)
     console.print(table)
 
     try:
@@ -203,9 +197,7 @@ def _pick_device(yoto: YotoClient):
     return players[choice - 1]
 
 
-async def _authenticate(
-    client_id: str, refresh_token: str | None
-) -> YotoClient:
+async def _authenticate(client_id: str, refresh_token: str | None) -> YotoClient:
     yoto = YotoClient(client_id=client_id)
     if refresh_token:
         yoto.token = Token(refresh_token=refresh_token)

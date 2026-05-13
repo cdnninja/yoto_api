@@ -60,9 +60,7 @@ class RestClient:
         `online` is split out because it's mutable state — it belongs on
         `PlayerStatus.is_online`, not on the immutable `Device` identity.
         """
-        response = await self._get(
-            token, endpoints.DEVICES_MINE, "list devices"
-        )
+        response = await self._get(token, endpoints.DEVICES_MINE, "list devices")
         try:
             items = response["devices"]
         except (KeyError, TypeError) as err:
