@@ -9,6 +9,7 @@ view of state change in real time.
 Read-only — never mutates device state. Ctrl+C to exit.
 """
 
+import asyncio
 import os
 import time
 from collections import deque
@@ -34,7 +35,7 @@ _ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 console = Console()
 
 
-def main() -> int:
+async def main() -> int:
     load_dotenv()
     client_id = os.environ.get("YOTO_CLIENT_ID")
     if not client_id:
@@ -42,10 +43,10 @@ def main() -> int:
         return 1
 
     initial_refresh_token = os.environ.get("YOTO_REFRESH_TOKEN")
-    client = _authenticate(client_id, initial_refresh_token)
+    client = await _authenticate(client_id, initial_refresh_token)
 
     try:
-        return _run(client)
+        return await _run(client)
     finally:
         if (
             client.token
@@ -53,11 +54,12 @@ def main() -> int:
             and client.token.refresh_token != initial_refresh_token
         ):
             _persist_refresh_token(client.token.refresh_token)
+        await client.close()
 
 
-def _run(client: YotoClient) -> int:
+async def _run(client: YotoClient) -> int:
     with console.status("Loading devices…"):
-        client.update_player_list()
+        await client.update_player_list()
     if not client.players:
         console.print("[red]No devices on this account.[/]")
         return 1
@@ -68,17 +70,17 @@ def _run(client: YotoClient) -> int:
 
     with console.status("Hydrating state…"):
         try:
-            client.update_player_info(device_id)
+            await client.update_player_info(device_id)
         except Exception as err:
             console.print(f"[yellow]warn: update_player_info failed: {err}[/]")
         try:
-            client.update_player_status(device_id)
+            await client.update_player_status(device_id)
         except Exception as err:
             console.print(f"[yellow]warn: update_player_status failed: {err}[/]")
 
     log: Deque[Tuple[str, str]] = deque(maxlen=15)
 
-    def on_update(player: YotoPlayer) -> None:
+    async def on_update(player: YotoPlayer) -> None:
         ts = datetime.now().strftime("%H:%M:%S")
         snapshot = _snapshot(player)
         # Diff against the previous snapshot to log only what changed.
@@ -90,7 +92,7 @@ def _run(client: YotoClient) -> int:
 
     on_update.snapshot = _snapshot(client.players[device_id])  # type: ignore[attr-defined]
 
-    client.connect_events([device_id], on_update=on_update)
+    await client.connect_events([device_id], on_update=on_update)
 
     # The firmware never pushes data/status spontaneously, but it does
     # respond to MQTT command/status/request with a fresh push within
@@ -110,16 +112,16 @@ def _run(client: YotoClient) -> int:
                 now = time.monotonic()
                 if client._mqtt is not None and now - last_push >= push_interval_s:
                     try:
-                        client._mqtt.request_status_push(device_id)
+                        await client._mqtt.request_status_push(device_id)
                     except Exception:
                         pass
                     last_push = now
                 live.update(_render(client.players[device_id], log))
-                time.sleep(0.25)
-    except KeyboardInterrupt:
+                await asyncio.sleep(0.25)
+    except (KeyboardInterrupt, asyncio.CancelledError):
         pass
     finally:
-        client.disconnect_events()
+        await client.disconnect_events()
     return 0
 
 
@@ -225,23 +227,24 @@ def _snapshot(player: YotoPlayer) -> dict:
 # ─── Auth + device picker ────────────────────────────────────────────
 
 
-def _authenticate(client_id: str, refresh_token: str | None) -> YotoClient:
+async def _authenticate(client_id: str, refresh_token: str | None) -> YotoClient:
     client = YotoClient(client_id=client_id)
     if refresh_token:
         client.token = Token(refresh_token=refresh_token)
         try:
-            client.check_and_refresh_token()
+            await client.check_and_refresh_token()
             return client
         except AuthenticationError:
             console.print(
                 "[yellow]Stored refresh token invalid; using device-code flow.[/]"
             )
 
-    auth = client.device_code_flow_start()
+    auth = await client.device_code_flow_start()
     console.print(
-        f"\n[bold cyan]Open this URL to authorise:[/]\n  {auth['verification_uri_complete']}\n"
+        f"\n[bold cyan]Open this URL to authorise:[/]\n  "
+        f"{auth['verification_uri_complete']}\n"
     )
-    client.device_code_flow_complete(auth)
+    await client.device_code_flow_complete(auth)
     return client
 
 
@@ -286,4 +289,4 @@ def _persist_refresh_token(new_token: str) -> None:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(asyncio.run(main()))

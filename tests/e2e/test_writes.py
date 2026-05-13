@@ -10,8 +10,8 @@ disrupt the device. The revert lives in `finally` so a mid-test crash
 still attempts to restore state.
 """
 
+import asyncio
 import datetime
-import time
 
 import pytest
 
@@ -24,20 +24,24 @@ pytestmark = pytest.mark.e2e
 _VISUAL_PAUSE_S = 2.0
 
 
-def test_settings_change_and_revert(client: YotoClient) -> None:
+async def test_settings_change_and_revert(client: YotoClient) -> None:
     """One batch PUT exercising the time, int, and bool serializers.
     Skips fields not set on this device.
 
     Picks the first non-Mini device so cosmetic changes (hour_format)
     are visible on screen during the visual pause."""
-    client.update_player_list()
+    await client.update_player_list()
     device_id = next(
-        (did for did, p in client.players.items() if p.device.device_family != "mini"),
+        (
+            did
+            for did, p in client.players.items()
+            if p.device.device_family != "mini"
+        ),
         None,
     )
     if device_id is None:
         pytest.skip("no non-Mini device on this account")
-    config = _config(client, device_id)
+    config = await _config(client, device_id)
 
     changes: dict = {}
     if config.day_time is not None:
@@ -56,16 +60,16 @@ def test_settings_change_and_revert(client: YotoClient) -> None:
 
     originals = {key: getattr(config, key) for key in changes}
     try:
-        client.set_player_config(device_id, **changes)
-        updated = _config(client, device_id)
+        await client.set_player_config(device_id, **changes)
+        updated = await _config(client, device_id)
         for key, expected in changes.items():
             assert getattr(updated, key) == expected, f"{key} did not update"
         if _VISUAL_PAUSE_S > 0:
-            time.sleep(_VISUAL_PAUSE_S)
+            await asyncio.sleep(_VISUAL_PAUSE_S)
     finally:
-        client.set_player_config(device_id, **originals)
+        await client.set_player_config(device_id, **originals)
 
 
-def _config(client: YotoClient, device_id: str) -> PlayerConfig:
-    info = client.update_player_info(device_id)
+async def _config(client: YotoClient, device_id: str) -> PlayerConfig:
+    info = await client.update_player_info(device_id)
     return info.config

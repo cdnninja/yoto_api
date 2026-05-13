@@ -13,15 +13,15 @@ from yoto_api.models.status import PlayerStatus
 pytestmark = pytest.mark.e2e
 
 
-def test_token_refresh_works(client: YotoClient) -> None:
+async def test_token_refresh_works(client: YotoClient) -> None:
     """The conftest fixture already calls check_and_refresh_token; if we
     got here, the access token was issued."""
     assert client.token is not None
     assert client.token.access_token
 
 
-def test_list_devices_populates_players(client: YotoClient) -> None:
-    client.update_player_list()
+async def test_list_devices_populates_players(client: YotoClient) -> None:
+    await client.update_player_list()
     assert client.players, "no devices found on this account"
     for player_id, player in client.players.items():
         assert player.device.device_id == player_id
@@ -30,8 +30,8 @@ def test_list_devices_populates_players(client: YotoClient) -> None:
         assert player.status.is_online in (True, False)
 
 
-def test_get_player_info(client: YotoClient, first_device_id: str) -> None:
-    info = client.update_player_info(first_device_id)
+async def test_get_player_info(client: YotoClient, first_device_id: str) -> None:
+    info = await client.update_player_info(first_device_id)
     assert isinstance(info, PlayerInfo)
     assert info.device_id == first_device_id
     # Hardware metadata should be populated by the /config response
@@ -42,10 +42,10 @@ def test_get_player_info(client: YotoClient, first_device_id: str) -> None:
     assert player.info_refreshed_at is not None
 
 
-def test_get_player_status(client: YotoClient, first_device_id: str) -> None:
+async def test_get_player_status(client: YotoClient, first_device_id: str) -> None:
     """Works whether or not the token has the device-status:view scope —
     the lib falls back to /config.device.status on 403."""
-    status = client.update_player_status(first_device_id)
+    status = await client.update_player_status(first_device_id)
     assert isinstance(status, PlayerStatus)
     assert status.device_id == first_device_id
     # At least one telemetry field should be populated for an online player
@@ -60,15 +60,15 @@ def test_get_player_status(client: YotoClient, first_device_id: str) -> None:
     assert has_data, "no telemetry returned from /status or /config fallback"
 
 
-def test_full_refresh(client: YotoClient) -> None:
+async def test_full_refresh(client: YotoClient) -> None:
     """`refresh()` chains list_devices + per-player info."""
-    client.refresh()
+    await client.refresh()
     assert client.players
     for player in client.players.values():
         assert player.info_refreshed_at is not None
 
 
-def test_account_id_from_token(client: YotoClient) -> None:
+async def test_account_id_from_token(client: YotoClient) -> None:
     """`get_account_id` decodes the Auth0 sub claim from the access token."""
     from yoto_api import get_account_id
 
@@ -79,11 +79,11 @@ def test_account_id_from_token(client: YotoClient) -> None:
     assert "|" in account_id, f"unexpected account_id format: {account_id!r}"
 
 
-def test_caps_for_known_devices(client: YotoClient) -> None:
+async def test_caps_for_known_devices(client: YotoClient) -> None:
     """caps_for returns the right capability set for each family."""
     from yoto_api import caps_for
 
-    client.update_player_list()
+    await client.update_player_list()
     for player in client.players.values():
         caps = caps_for(player.device)
         if player.device.device_family == "mini":
@@ -92,9 +92,9 @@ def test_caps_for_known_devices(client: YotoClient) -> None:
             assert caps.has_ambient_light is True
 
 
-def test_update_library(client: YotoClient) -> None:
+async def test_update_library(client: YotoClient) -> None:
     """`update_library` populates self.library with cards."""
-    client.update_library()
+    await client.update_library()
     if not client.library:
         pytest.skip("no cards in this account's library")
 
@@ -104,14 +104,14 @@ def test_update_library(client: YotoClient) -> None:
         assert card.title, f"card {card_id} has no title"
 
 
-def test_update_card_detail(client: YotoClient) -> None:
+async def test_update_card_detail(client: YotoClient) -> None:
     """`update_card_detail` populates chapters + tracks for one card."""
-    client.update_library()
+    await client.update_library()
     if not client.library:
         pytest.skip("no cards in library")
     card_id = next(iter(client.library))
 
-    client.update_card_detail(card_id)
+    await client.update_card_detail(card_id)
     card = client.library[card_id]
     assert card.chapters, f"no chapters loaded for card {card_id}"
 

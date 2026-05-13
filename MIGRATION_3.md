@@ -1,22 +1,21 @@
 # Migrating from yoto-api 2.x to 3.0
 
-3.0 is a full rewrite. This guide covers the consumer-facing changes
-you need to make.
+3.0 is a full rewrite.
 
 ## TL;DR
 
-- Replace `YotoManager` with `YotoClient`.
-- `YotoPlayer` no longer has flat fields. Read from `player.device`,
-  `player.info`, `player.status`, `player.last_event` depending on the
-  data source.
-- Most config setters are unified into a single
-  `client.set_player_config(device_id, **fields)`.
-- `set_alarm` is removed; use `set_alarms` (full list) or
+- **Async.** Every public method on `YotoClient` is a coroutine.
+  `requests` → `aiohttp`, `paho-mqtt` → `aiomqtt`.
+- `YotoManager` → `YotoClient`. Use as `async with` so the session +
+  MQTT task are closed for you.
+- `YotoPlayer` no longer has flat fields. Use `player.device`,
+  `player.info`, `player.status`, `player.last_event`.
+- Settings consolidated into `set_player_config(device_id, **fields)`
+  with proper Python types.
+- `set_alarm` removed. Use `set_alarms` (full list) or
   `set_alarm_enabled` (toggle one).
-- `Family` and the `update_family` flow are gone. Use `get_account_id`
-  to derive a stable per-account identifier from the access token.
-- The library no longer requires the `family:device-status:view` OAuth
-  scope.
+- `Family` / `update_family` gone. Use `get_account_id(token.access_token)`.
+- The `family:device-status:view` OAuth scope is no longer required.
 
 ## Imports
 
@@ -25,115 +24,101 @@ you need to make.
 +from yoto_api import YotoClient
 ```
 
-`YotoAPI` and `YotoMQTTClient` are gone (consolidated inside
-`YotoClient`). All exceptions still importable from `yoto_api`.
-
 ## Construction
 
 ```diff
 -manager = YotoManager(client_id="...")
-+client = YotoClient(client_id="...")
-+
-+# Or, if you manage tokens externally (e.g. HA core OAuth):
-+client = YotoClient()
-+client.token = Token(access_token=..., refresh_token=..., ...)
++async with YotoClient(client_id="...") as client:
++    ...
+```
+
+For HA core (or any consumer managing OAuth + session externally):
+
+```python
+client = YotoClient(session=my_aiohttp_session)
+client.token = Token(access_token=..., refresh_token=..., ...)
+# caller owns the session — won't be closed by client.close()
 ```
 
 ## Reading player data
 
-The flat `YotoPlayer` is split by source. Same data, more honest about
-where it comes from.
+The flat `YotoPlayer` is split by source.
 
-| 2.x access                        | 3.0 access                                                    | Source                     |
-| --------------------------------- | ------------------------------------------------------------- | -------------------------- |
-| `player.id`                       | `player.id` (still works as a property)                       | identity                   |
-| `player.name`                     | `player.name` (property)                                      | identity                   |
-| `player.online`                   | `player.status.is_online`                                     | REST + MQTT                |
-| `player.firmware_version`         | `player.info.firmware_version`                                | REST `/config`             |
-| `player.device_type`              | `player.device.device_type`                                   | identity                   |
-| `player.battery_level_percentage` | `player.status.battery_level_percentage`                      | REST + MQTT                |
-| `player.charging`                 | `player.status.is_charging`                                   | REST + MQTT                |
-| `player.is_playing`               | `player.last_event.playback_status == PlaybackStatus.PLAYING` | MQTT                       |
-| `player.volume`                   | `player.last_event.volume` (raw 0-16)                         | MQTT                       |
-| `player.system_volume`            | `player.status.system_volume_percentage` (0-100)              | REST + MQTT                |
-| `player.track_position`           | `player.last_event.position`                                  | MQTT                       |
-| `player.track_title`              | `player.last_event.track_title`                               | MQTT                       |
-| `player.chapter_title`            | `player.last_event.chapter_title`                             | MQTT                       |
-| `player.card_id`                  | `player.last_event.card_id`                                   | MQTT                       |
-| `player.config.alarms`            | `player.info.config.alarms`                                   | REST `/config`             |
-| `player.night_light_mode`         | `player.status.nightlight_mode`                               | REST + MQTT (occasionally) |
+| 2.x                               | 3.0                                                           |
+| --------------------------------- | ------------------------------------------------------------- |
+| `player.online`                   | `player.status.is_online`                                     |
+| `player.firmware_version`         | `player.info.firmware_version`                                |
+| `player.device_type`              | `player.device.device_type`                                   |
+| `player.battery_level_percentage` | `player.status.battery_level_percentage`                      |
+| `player.charging`                 | `player.status.is_charging`                                   |
+| `player.is_playing`               | `player.last_event.playback_status == PlaybackStatus.PLAYING` |
+| `player.volume`                   | `player.last_event.volume` (raw 0-16)                         |
+| `player.system_volume`            | `player.status.system_volume_percentage` (0-100)              |
+| `player.track_position`           | `player.last_event.position`                                  |
+| `player.track_title`              | `player.last_event.track_title`                               |
+| `player.chapter_title`            | `player.last_event.chapter_title`                             |
+| `player.card_id`                  | `player.last_event.card_id`                                   |
+| `player.config.alarms`            | `player.info.config.alarms`                                   |
+| `player.night_light_mode`         | `player.status.nightlight_mode`                               |
 
-The `player.X` shortcuts you used to use for telemetry (battery,
-charging, etc.) are intentionally not added back: each platform should
-read from the layer that owns the data, so it's clear which refresh
-cadence applies (REST poll vs MQTT push vs `/devices/mine` rediscovery).
+No flat shortcuts. Each platform reads from the layer that owns the data
+so the refresh cadence (REST poll vs MQTT push) is explicit.
 
 ## Refresh + lifecycle
 
 ```diff
 -manager.update_players_status()
 -manager.connect_to_events(callback)
-+client.refresh()                              # /devices/mine + /config for all
-+client.connect_events(
-+    list(client.players),
-+    on_update=on_update,                      # called per-message
-+    on_disconnect=on_disconnect,              # for watchdog/reconnect
-+)
-+# ...
-+if not client.is_mqtt_connected:
-+    client.reconnect_events()
++await client.refresh()
++await client.connect_events(player_ids, on_update=cb, on_disconnect=cb)
 ```
 
-`update_players_status` is removed. Equivalent in 3.0 is
-`client.refresh()` (REST) plus `client.connect_events(...)` (MQTT).
+MQTT auto-reconnects with exponential backoff. `on_disconnect(err)`
+fires on each drop with the underlying exception. Both callbacks may be
+sync or async.
 
 ## Settings
-
-Most `set_*_config` getters/setters consolidate into one method:
 
 ```diff
 -manager.set_player_config(device_id, day_time="07:30")
 -manager.set_max_volume(device_id, 8, mode="day")
 +import datetime
-+client.set_player_config(
++await client.set_player_config(
 +    device_id,
-+    day_time=datetime.time(7, 30),     # was str "07:30"
-+    day_max_volume_limit=8,            # was str "8"
++    day_time=datetime.time(7, 30),     # was str
++    day_max_volume_limit=8,            # was str
 +    day_ambient_colour="#40bfd9",
 +    repeat_all=True,
 +)
 ```
 
-`PlayerConfig` is now properly typed. Time fields are `datetime.time`,
-volume/brightness limits are `int`, booleans are `bool`. The brightness
-field is split into a `_auto: bool` + `: int` pair (mutually exclusive
-in a single call).
+`PlayerConfig` is properly typed: `datetime.time`, `int`, `bool`.
+Brightness is split into a `_auto: bool` + `: int` pair (mutually
+exclusive in a single call).
 
 ## Alarms
 
 ```diff
--manager.set_alarm(device_id, alarm)            # silently wiped other alarms
-+client.set_alarms(device_id, alarms=[...])     # full list, replaces existing
-+client.set_alarm_enabled(device_id, index=0, enabled=False)  # toggle one
+-manager.set_alarm(device_id, alarm)            # silently wiped others
++await client.set_alarms(device_id, alarms=[...])
++await client.set_alarm_enabled(device_id, index=0, enabled=False)
 ```
 
-`set_alarm` is removed because it overwrote the entire alarm list with
-a single entry. `set_alarms` makes that semantics explicit; use
-`set_alarm_enabled` for the common "toggle one without losing the
-others" case (it does the read-modify-write automatically).
+`set_alarms` requires the full list (Yoto's `PUT /config` interprets it
+as a replacement). `set_alarm_enabled` does the read-modify-write so
+you can toggle one without re-sending the others.
 
-## Account identifier
+## Account ID
 
-If you used `manager.update_family()` followed by `manager.family.familyId`
-to identify a config entry, switch to:
-
-```python
-from yoto_api import get_account_id
-account_id = get_account_id(client.token.access_token)
+```diff
+-manager.update_family()
+-account_id = manager.family.familyId
++from yoto_api import get_account_id
++account_id = get_account_id(client.token.access_token)
 ```
 
-This decodes the Auth0 `sub` claim from the JWT, no API call required.
-The `/user/family` endpoint and `Family` dataclass are gone.
+Decodes the Auth0 `sub` claim. No API call. The `Family` dataclass and
+`/user/family` endpoint are gone.
 
 ## Errors
 
@@ -141,39 +126,31 @@ The `/user/family` endpoint and `Family` dataclass are gone.
 -from yoto_api import AuthenticationError
 -try:
 -    manager.update_players_status()
--except requests.RequestException as err:
--    ...
--except AuthenticationError:
+-except requests.RequestException:
 -    ...
 +from yoto_api import YotoError, AuthenticationError, YotoAPIError, YotoMQTTError
 +try:
-+    client.refresh()
-+except AuthenticationError:
-+    ...                          # 401, token expired
-+except YotoAPIError as err:
-+    if err.status_code == 403:
-+        ...                      # missing scope
-+    ...                          # other transport / parsing failure
++    await client.refresh()
++except AuthenticationError:        # 401, token expired
++    ...
++except YotoAPIError as err:        # err.status_code on 4xx/5xx
++    ...
 +except YotoMQTTError:
-+    ...                          # paho / MQTT failure
++    ...
 +except YotoError:
-+    ...                          # catch-all
++    ...
 ```
 
-`requests.RequestException` is no longer raised by the library; all
-transport failures are wrapped in `YotoAPIError` (chained via
-`__cause__`).
+Transport errors from `aiohttp` / `aiomqtt` are wrapped into
+`YotoAPIError` / `YotoMQTTError` (chained via `__cause__`).
 
 ## OAuth scope
 
-If your consumer doesn't have `family:device-status:view`, 3.0 handles
-that transparently. Telemetry that was previously unreachable (battery,
-wifi, charging, temperature) is read from the `device.status` sub-block
-of `GET /config` instead. No code change required on your side.
+3.0 no longer needs `family:device-status:view`. When `/status` returns
+403, the lib transparently reads `device.status` from `/config`.
 
-## Things that didn't change
+## Unchanged
 
-- `Card`, `Chapter`, `Track` (library browsing) keep the same shape.
-- `Token` keeps the same shape.
-- The constants in `yoto_api.const` (`HEX_COLORS`, `LIGHT_COLORS`, etc.)
-  are still exported.
+- `Card`, `Chapter`, `Track` (library browsing).
+- `Token`.
+- Constants in `yoto_api.const`.

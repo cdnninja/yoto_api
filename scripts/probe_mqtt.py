@@ -1,12 +1,13 @@
 """One-shot MQTT discovery probe.
 
-Subscribes broadly (`device/{id}/#`, AWS IoT Shadow, multi-player
-wildcard) for ~60s and reports which topics actually delivered messages.
-Used to discover undocumented topics or confirm policy permissions.
+Subscribes to the documented topics for ~30s and reports which ones
+delivered messages, with the raw payloads. Used to verify the broker
+behaviour against new firmware versions.
 
     python scripts/probe_mqtt.py
 """
 
+import asyncio
 import json
 import os
 import time
@@ -15,7 +16,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
 
-import paho.mqtt.client as mqtt
+import aiomqtt
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import IntPrompt
@@ -31,7 +32,7 @@ _ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 _LISTEN_S = 30.0
 
 
-def main() -> int:
+async def main() -> int:
     load_dotenv()
     client_id = os.environ.get("YOTO_CLIENT_ID")
     if not client_id:
@@ -39,9 +40,21 @@ def main() -> int:
         return 1
 
     initial_refresh_token = os.environ.get("YOTO_REFRESH_TOKEN")
-    yoto = _authenticate(client_id, initial_refresh_token)
+    yoto = await _authenticate(client_id, initial_refresh_token)
 
-    yoto.update_player_list()
+    try:
+        return await _run(yoto)
+    finally:
+        if (
+            initial_refresh_token != yoto.token.refresh_token
+            and yoto.token.refresh_token
+        ):
+            _persist_refresh_token(yoto.token.refresh_token)
+        await yoto.close()
+
+
+async def _run(yoto: YotoClient) -> int:
+    await yoto.update_player_list()
     if not yoto.players:
         print("No devices on this account.")
         return 1
@@ -55,79 +68,90 @@ def main() -> int:
     counts: Dict[str, int] = defaultdict(int)
     full_log: List[Dict[str, Any]] = []
     diagnostics: List[str] = []
+    probe_start = time.monotonic()
 
     def diag(msg: str) -> None:
         line = f"[t+{time.monotonic() - probe_start:.1f}s] {msg}"
         diagnostics.append(line)
         print(line)
 
-    probe_start = time.monotonic()
     diag(
-        f"target: {target.device.name} ({device_id}) family={target.device.device_family}"
+        f"target: {target.device.name} ({device_id}) "
+        f"family={target.device.device_family}"
     )
     diag(f"is_online (per REST): {target.status.is_online}")
 
-    client = mqtt.Client(
-        client_id=f"YOTOPROBE{uuid.uuid4().hex}",
-        transport="websockets",
-    )
-    client.username_pw_set(
-        username=f"_?x-amz-customauthorizer-name={YotoMqttClient.AUTH_NAME}",
-        password=yoto.token.access_token,
-    )
-    client.tls_set()
+    topics = _probe_topics(device_id)
 
-    def on_connect(c, userdata, flags, rc) -> None:
-        if rc != 0:
-            diag(f"CONNACK rc={rc} (auth failure?)")
-            return
-        diag(f"connected (rc={rc})")
-        for topic in _probe_topics(device_id, list(yoto.players)):
-            result, _ = c.subscribe(topic, qos=0)
-            ok = "ok" if result == mqtt.MQTT_ERR_SUCCESS else f"err({result})"
-            diag(f"SUB {topic} -> {ok}")
-        c.publish(f"device/{device_id}/command/events/request")
-        c.publish(f"device/{device_id}/command/status/request")
-        diag("PUB command/events/request + command/status/request")
-
-    def on_disconnect(c, userdata, rc) -> None:
-        diag(f"DISCONNECT rc={rc}")
-
-    def on_message(c, userdata, msg) -> None:
-        counts[msg.topic] += 1
-        try:
-            payload = json.loads(msg.payload.decode("utf-8"))
-        except (UnicodeDecodeError, ValueError):
-            payload = msg.payload.decode("utf-8", errors="replace")
-        if len(samples[msg.topic]) < 2:
-            samples[msg.topic].append(payload)
-        full_log.append({"ts": time.time(), "topic": msg.topic, "payload": payload})
-
-    client.on_connect = on_connect
-    client.on_disconnect = on_disconnect
-    client.on_message = on_message
-    client.connect(host=YotoMqttClient.URL, port=YotoMqttClient.PORT, keepalive=15)
-    client.loop_start()
-
-    diag(f"listening for {int(_LISTEN_S)}s, MQTT status trigger at t+5s and t+15s")
+    listener_task = None
     try:
-        end = time.monotonic() + _LISTEN_S
-        mqtt_pushes = [5.0, 15.0]
-        while time.monotonic() < end:
-            elapsed = time.monotonic() - probe_start
-            if mqtt_pushes and elapsed >= mqtt_pushes[0]:
-                mqtt_pushes.pop(0)
-                client.publish(f"device/{device_id}/command/status/request")
-                diag("PUB command/status/request")
-            time.sleep(0.5)
-    except KeyboardInterrupt:
-        pass
-    client.loop_stop()
-    client.disconnect()
+        async with aiomqtt.Client(
+            hostname=YotoMqttClient.URL,
+            port=YotoMqttClient.PORT,
+            username=f"_?x-amz-customauthorizer-name={YotoMqttClient.AUTH_NAME}",
+            password=yoto.token.access_token,
+            transport="websockets",
+            tls_params=aiomqtt.TLSParameters(),
+            keepalive=15,
+            identifier=f"YOTOPROBE{uuid.uuid4().hex}",
+        ) as client:
+            diag("connected")
+            for topic in topics:
+                await client.subscribe(topic)
+                diag(f"SUB {topic}")
+            await client.publish(f"device/{device_id}/command/events/request")
+            await client.publish(f"device/{device_id}/command/status/request")
+            diag("PUB command/events/request + command/status/request")
+
+            async def consume() -> None:
+                async for message in client.messages:
+                    counts[str(message.topic)] += 1
+                    try:
+                        payload = json.loads(message.payload.decode("utf-8"))
+                    except (UnicodeDecodeError, ValueError):
+                        payload = message.payload.decode("utf-8", errors="replace")
+                    if len(samples[str(message.topic)]) < 2:
+                        samples[str(message.topic)].append(payload)
+                    full_log.append(
+                        {
+                            "ts": time.time(),
+                            "topic": str(message.topic),
+                            "payload": payload,
+                        }
+                    )
+
+            listener_task = asyncio.create_task(consume())
+
+            diag(
+                f"listening for {int(_LISTEN_S)}s, MQTT status trigger at "
+                f"t+5s and t+15s"
+            )
+            end = time.monotonic() + _LISTEN_S
+            mqtt_pushes = [5.0, 15.0]
+            while time.monotonic() < end:
+                elapsed = time.monotonic() - probe_start
+                if mqtt_pushes and elapsed >= mqtt_pushes[0]:
+                    mqtt_pushes.pop(0)
+                    await client.publish(
+                        f"device/{device_id}/command/status/request"
+                    )
+                    diag("PUB command/status/request")
+                await asyncio.sleep(0.5)
+    except aiomqtt.MqttError as err:
+        diag(f"DISCONNECT (MqttError): {err}")
+    finally:
+        if listener_task is not None:
+            listener_task.cancel()
+            try:
+                await listener_task
+            except asyncio.CancelledError:
+                pass
 
     out_path = Path(__file__).resolve().parent.parent / "mqtt_probe.log"
     with out_path.open("w") as f:
-        f.write(f"# MQTT probe — device {device_id} — {len(full_log)} messages\n\n")
+        f.write(
+            f"# MQTT probe — device {device_id} — {len(full_log)} messages\n\n"
+        )
         f.write("=== Diagnostics ===\n\n")
         for line in diagnostics:
             f.write(line + "\n")
@@ -147,9 +171,6 @@ def main() -> int:
             f.write(json.dumps(entry, default=str) + "\n")
 
     print(f"\n[wrote {len(full_log)} messages to {out_path}]")
-
-    if initial_refresh_token != yoto.token.refresh_token and yoto.token.refresh_token:
-        _persist_refresh_token(yoto.token.refresh_token)
     return 0
 
 
@@ -166,7 +187,9 @@ def _pick_device(yoto: YotoClient):
     table.add_column("Status")
     for i, p in enumerate(players, start=1):
         status = "[green]online[/]" if p.status.is_online else "[red]offline[/]"
-        table.add_row(str(i), p.device.name, p.device.device_family or "?", status)
+        table.add_row(
+            str(i), p.device.name, p.device.device_family or "?", status
+        )
     console.print(table)
 
     try:
@@ -180,28 +203,27 @@ def _pick_device(yoto: YotoClient):
     return players[choice - 1]
 
 
-def _authenticate(client_id: str, refresh_token: str | None) -> YotoClient:
+async def _authenticate(
+    client_id: str, refresh_token: str | None
+) -> YotoClient:
     yoto = YotoClient(client_id=client_id)
     if refresh_token:
         yoto.token = Token(refresh_token=refresh_token)
         try:
-            yoto.check_and_refresh_token()
+            await yoto.check_and_refresh_token()
             return yoto
         except AuthenticationError:
             print("Stored refresh token invalid; using device-code flow.")
-    auth = yoto.device_code_flow_start()
+    auth = await yoto.device_code_flow_start()
     print(f"\n  Open this URL to authorise:\n  {auth['verification_uri_complete']}\n")
-    yoto.device_code_flow_complete(auth)
+    await yoto.device_code_flow_complete(auth)
     return yoto
 
 
-def _probe_topics(device_id: str, all_device_ids: List[str]) -> List[str]:
-    # Documented topics only. The previous run subscribed to wildcards
-    # (device/{id}/#, device/+/..., $aws/things/.../shadow/...) and the
-    # AWS IoT policy responded by closing the connection (rc=7) within
-    # ~100ms. So those topics are policy-denied; sticking to the
-    # documented list lets the connection stay up so we can observe
-    # what the firmware actually pushes.
+def _probe_topics(device_id: str) -> List[str]:
+    # Documented topics only. Wildcards (device/{id}/#, device/+/...,
+    # $aws/things/.../shadow/...) are denied by the IoT policy and the
+    # broker closes the connection on subscribe.
     return [
         f"device/{device_id}/data/events",
         f"device/{device_id}/data/status",
@@ -224,4 +246,4 @@ def _persist_refresh_token(new_token: str) -> None:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(asyncio.run(main()))

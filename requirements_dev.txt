@@ -1,6 +1,8 @@
 pytz
-requests
-paho-mqtt
+aiohttp
+aiomqtt
 pytest
+pytest-asyncio
+aioresponses
 python-dotenv
 rich

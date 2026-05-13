@@ -4,14 +4,14 @@ Lives outside `rest/` because these endpoints aren't data endpoints —
 they hit Auth0, not Yoto's API server, and they have their own scope rules.
 """
 
+import asyncio
 import datetime
 import logging
-import time
 from datetime import timedelta
 from typing import Optional
 
+import aiohttp
 import pytz
-import requests
 
 from .const import DOMAIN
 from .exceptions import AuthenticationError, YotoAPIError, YotoError
@@ -24,12 +24,17 @@ _LOGGER = logging.getLogger(__name__)
 class Auth:
     """Handles OAuth flows. Stateless: takes the token in/out."""
 
-    def __init__(self, client_id: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        client_id: Optional[str] = None,
+    ) -> None:
+        self._session = session
         self.client_id = client_id
 
     # ─── Device-code flow ─────────────────────────────────────────
 
-    def device_code_flow_start(self) -> dict:
+    async def device_code_flow_start(self) -> dict:
         """Get the verification URL the user needs to visit."""
         self._require_client_id("device code authorization")
         data = {
@@ -38,23 +43,26 @@ class Auth:
             "scope": "offline_access",
         }
         try:
-            response = requests.post(
+            async with self._session.post(
                 endpoints.AUTH_URL,
                 data=data,
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-        except requests.RequestException as err:
+            ) as response:
+                if not response.ok:
+                    text = await response.text()
+                    raise AuthenticationError(
+                        f"Authorization failed: {response.status} {text}"
+                    )
+                try:
+                    return await response.json(content_type=None)
+                except ValueError as err:
+                    raise YotoAPIError(
+                        f"Authorization response malformed: {err}"
+                    ) from err
+        except aiohttp.ClientError as err:
             raise YotoAPIError(f"Authorization request failed: {err}") from err
-        if not response.ok:
-            raise AuthenticationError(
-                f"Authorization failed: {response.status_code} {response.text}"
-            )
-        try:
-            return response.json()
-        except ValueError as err:
-            raise YotoAPIError(f"Authorization response malformed: {err}") from err
 
-    def poll_for_token(self, auth_result: dict) -> Token:
+    async def poll_for_token(self, auth_result: dict) -> Token:
         """Poll until the user completes the device-code flow in their browser."""
         self._require_client_id("device code token polling")
         device_code = auth_result["device_code"]
@@ -70,25 +78,28 @@ class Auth:
                 "audience": endpoints.BASE_URL,
             }
             try:
-                response = requests.post(
+                async with self._session.post(
                     endpoints.TOKEN_URL,
                     data=data,
                     headers={"Content-Type": "application/x-www-form-urlencoded"},
-                )
-                body = response.json()
-            except (requests.RequestException, ValueError) as err:
+                ) as response:
+                    body = await response.json(content_type=None)
+                    status = response.status
+                    ok = response.ok
+                    text = await response.text() if not ok else ""
+            except (aiohttp.ClientError, ValueError) as err:
                 raise YotoAPIError(f"Token poll request failed: {err}") from err
 
-            if response.ok:
+            if ok:
                 _LOGGER.debug("%s - Authorization successful", DOMAIN)
                 return _build_token(
                     body, scope=body.get("scope", "openid profile offline_access")
                 )
 
-            if response.status_code == 403:
+            if status == 403:
                 error = body.get("error")
                 if error == "authorization_pending":
-                    time.sleep(interval)
+                    await asyncio.sleep(interval)
                     continue
                 if error == "slow_down":
                     interval += 5
@@ -97,7 +108,7 @@ class Auth:
                         DOMAIN,
                         interval,
                     )
-                    time.sleep(interval)
+                    await asyncio.sleep(interval)
                     continue
                 if error == "expired_token":
                     raise AuthenticationError(
@@ -108,14 +119,14 @@ class Auth:
                 )
 
             raise AuthenticationError(
-                f"Token request failed: {response.status_code} {response.text}"
+                f"Token request failed: {status} {text}"
             )
 
         raise AuthenticationError("Authentication timed out. Please try again.")
 
     # ─── Token refresh ────────────────────────────────────────────
 
-    def refresh(self, token: Token) -> Token:
+    async def refresh(self, token: Token) -> Token:
         """Exchange the refresh token for a new access token."""
         self._require_client_id("refresh_token")
         data = {
@@ -125,13 +136,13 @@ class Auth:
             "audience": endpoints.BASE_URL,
         }
         try:
-            response = requests.post(
+            async with self._session.post(
                 endpoints.TOKEN_URL,
                 data=data,
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-            body = response.json()
-        except (requests.RequestException, ValueError) as err:
+            ) as response:
+                body = await response.json(content_type=None)
+        except (aiohttp.ClientError, ValueError) as err:
             raise YotoAPIError(f"Refresh token request failed: {err}") from err
         _LOGGER.debug("%s - Refresh Token Response %s", DOMAIN, body)
         if body.get("error"):

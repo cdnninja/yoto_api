@@ -1,14 +1,15 @@
 """REST client for the Yoto API.
 
-Wraps `requests` with the v2 exception hierarchy. Returns typed models
-from `yoto_api.v3.models` rather than raw dicts.
+Thin wrapper around `aiohttp` that wraps transport errors into the
+`YotoError` hierarchy and returns typed models from `yoto_api.models`
+rather than raw dicts.
 """
 
 import json
 import logging
 from typing import Any, Dict, List, Optional
 
-import requests
+import aiohttp
 
 from ..const import DOMAIN
 from ..exceptions import AuthenticationError, YotoAPIError
@@ -36,28 +37,32 @@ from . import endpoints
 
 _LOGGER = logging.getLogger(__name__)
 
-_USER_AGENT = "Yoto/2.73 (com.yotoplay.Yoto; build:10405; iOS 17.4.0) Alamofire/5.6.4"
-
-
 DEFAULT_TIMEOUT_SECONDS = 30.0
 
 
 class RestClient:
-    """Stateless wrapper around the Yoto REST API. Token is passed per call."""
+    """Async wrapper around the Yoto REST API. Token is passed per call."""
 
-    def __init__(self, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> None:
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    ) -> None:
+        self._session = session
         self.base_url = endpoints.BASE_URL
-        self.timeout = timeout
+        self.timeout = aiohttp.ClientTimeout(total=timeout)
 
     # ─── Inventory ────────────────────────────────────────────────
 
-    def list_devices(self, token: Token) -> List[tuple[Device, bool]]:
+    async def list_devices(self, token: Token) -> List[tuple[Device, bool]]:
         """Return (Device, online) pairs from /devices/mine.
 
         `online` is split out because it's mutable state — it belongs on
         `PlayerStatus.is_online`, not on the immutable `Device` identity.
         """
-        response = self._get(token, endpoints.DEVICES_MINE, "list devices")
+        response = await self._get(
+            token, endpoints.DEVICES_MINE, "list devices"
+        )
         try:
             items = response["devices"]
         except (KeyError, TypeError) as err:
@@ -68,13 +73,15 @@ class RestClient:
 
     # ─── Player config + status ───────────────────────────────────
 
-    def get_player_info(self, token: Token, device_id: str) -> tuple[PlayerInfo, bool]:
+    async def get_player_info(
+        self, token: Token, device_id: str
+    ) -> tuple[PlayerInfo, bool]:
         """Return (PlayerInfo, online) from /config.
 
         `online` is split out because it's mutable state — it belongs on
         `PlayerStatus.is_online`, not on the otherwise stable `PlayerInfo`.
         """
-        response = self._get(
+        response = await self._get(
             token, endpoints.device_config(device_id), f"get player {device_id} config"
         )
         try:
@@ -86,7 +93,7 @@ class RestClient:
                 f"Player {device_id} config response malformed: {err}"
             ) from err
 
-    def get_player_status(self, token: Token, device_id: str) -> PlayerStatus:
+    async def get_player_status(self, token: Token, device_id: str) -> PlayerStatus:
         """Force a fresh telemetry snapshot.
 
         Tries the documented /status endpoint first. If the token doesn't
@@ -94,7 +101,7 @@ class RestClient:
         the `device.status` sub-block out of /config.
         """
         try:
-            raw = self._get(
+            raw = await self._get(
                 token,
                 endpoints.device_status(device_id),
                 f"get player {device_id} status",
@@ -108,7 +115,7 @@ class RestClient:
                 DOMAIN,
             )
 
-        config = self._get(
+        config = await self._get(
             token,
             endpoints.device_config(device_id),
             f"get player {device_id} config (status fallback)",
@@ -122,11 +129,11 @@ class RestClient:
 
     # ─── Settings writes ──────────────────────────────────────────
 
-    def update_settings(
+    async def update_settings(
         self, token: Token, device_id: str, payload: Dict[str, Any]
     ) -> None:
         body = {"deviceId": device_id, "config": payload}
-        self._put(
+        await self._put(
             token,
             endpoints.device_config(device_id),
             f"update player {device_id} settings",
@@ -138,9 +145,9 @@ class RestClient:
     # The other player commands (play/pause/volume/etc.) are published
     # directly over MQTT for low latency. See YotoMqttClient.
 
-    def request_status_push(self, token: Token, device_id: str) -> None:
+    async def request_status_push(self, token: Token, device_id: str) -> None:
         """Tell the player to push its current status onto MQTT now."""
-        self._post(
+        await self._post(
             token,
             endpoints.command_status(device_id),
             f"request status push {device_id}",
@@ -149,11 +156,11 @@ class RestClient:
 
     # ─── Library ──────────────────────────────────────────────────
 
-    def get_card_library(self, token: Token) -> Dict[str, Any]:
-        return self._get(token, endpoints.CARDS_LIBRARY, "get card library")
+    async def get_card_library(self, token: Token) -> Dict[str, Any]:
+        return await self._get(token, endpoints.CARDS_LIBRARY, "get card library")
 
-    def get_card_detail(self, token: Token, card_id: str) -> Dict[str, Any]:
-        return self._get(
+    async def get_card_detail(self, token: Token, card_id: str) -> Dict[str, Any]:
+        return await self._get(
             token, endpoints.card_detail(card_id), f"get card {card_id} detail"
         )
 
@@ -161,25 +168,24 @@ class RestClient:
 
     def _headers(self, token: Token) -> Dict[str, str]:
         return {
-            "User-Agent": _USER_AGENT,
             "Content-Type": "application/json",
             "Authorization": f"Bearer {token.access_token}",
         }
 
-    def _get(self, token: Token, path: str, what: str) -> Dict[str, Any]:
-        return self._request(token, "GET", path, what)
+    async def _get(self, token: Token, path: str, what: str) -> Dict[str, Any]:
+        return await self._request(token, "GET", path, what)
 
-    def _put(
+    async def _put(
         self, token: Token, path: str, what: str, body: Dict[str, Any]
     ) -> Dict[str, Any]:
-        return self._request(token, "PUT", path, what, body=body)
+        return await self._request(token, "PUT", path, what, body=body)
 
-    def _post(
+    async def _post(
         self, token: Token, path: str, what: str, body: Dict[str, Any]
     ) -> Dict[str, Any]:
-        return self._request(token, "POST", path, what, body=body)
+        return await self._request(token, "POST", path, what, body=body)
 
-    def _request(
+    async def _request(
         self,
         token: Token,
         method: str,
@@ -195,21 +201,24 @@ class RestClient:
         if body is not None:
             kwargs["data"] = json.dumps(body)
         try:
-            response = requests.request(method, url, **kwargs)
-            response.raise_for_status()
-            if not response.content:
-                return {}
-            return response.json()
-        except requests.HTTPError as err:
-            status = err.response.status_code if err.response is not None else None
-            text = err.response.text if err.response is not None else ""
-            if status == 401:
-                raise AuthenticationError(f"{what} unauthorized: {text}") from err
-            raise YotoAPIError(
-                f"{what} failed (HTTP {status}): {text or err}",
-                status_code=status,
-            ) from err
-        except (requests.RequestException, ValueError) as err:
+            async with self._session.request(method, url, **kwargs) as response:
+                status = response.status
+                if status >= 400:
+                    text = await response.text()
+                    if status == 401:
+                        raise AuthenticationError(f"{what} unauthorized: {text}")
+                    raise YotoAPIError(
+                        f"{what} failed (HTTP {status}): {text}",
+                        status_code=status,
+                    )
+                raw = await response.read()
+                if not raw:
+                    return {}
+                try:
+                    return json.loads(raw)
+                except ValueError as err:
+                    raise YotoAPIError(f"{what} returned invalid JSON: {err}") from err
+        except aiohttp.ClientError as err:
             raise YotoAPIError(f"{what} failed: {err}") from err
 
 

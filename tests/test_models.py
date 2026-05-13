@@ -2,12 +2,17 @@
 
 import unittest
 
+from unittest.mock import MagicMock
+
 from yoto_api import Device, PlaybackEvent, StatusPatch, YotoClient, YotoPlayer
 
 
 class StatusPatchMergeTests(unittest.TestCase):
     def test_apply_patch_merges_only_present_fields(self) -> None:
-        client = YotoClient()
+        # `_apply_status_patch` is sync and stateless w.r.t. self; we
+        # construct a minimal client with a mock session to avoid
+        # opening a real aiohttp.ClientSession.
+        client = YotoClient(session=MagicMock())
         device = Device(device_id="d1", name="Mini", device_family="mini")
         player = YotoPlayer(device=device)
         client.players["d1"] = player

@@ -4,11 +4,12 @@ Captures raw MQTT payloads to detect fields Yoto pushes but the lib
 doesn't parse yet. Helpful to spot new firmware features.
 """
 
+import asyncio
 import json
-import time
-from typing import Any
+from typing import Any, AsyncIterator
 
 import pytest
+import pytest_asyncio
 
 from yoto_api import YotoClient
 from yoto_api.mqtt.client import YotoMqttClient
@@ -22,49 +23,49 @@ _WAIT_AFTER_CONNECT_S = 8.0
 _WAIT_AFTER_PUSH_S = 3.0
 
 
-@pytest.fixture(scope="module")
-def online_device_id(client: YotoClient) -> str:
+@pytest_asyncio.fixture(scope="module", loop_scope="session")
+async def online_device_id(client: YotoClient) -> str:
     """An online device id, since MQTT can't receive from offline players."""
-    client.update_player_list()
+    await client.update_player_list()
     for device_id, player in client.players.items():
         if player.status.is_online:
             return device_id
     pytest.skip("no online devices on this account; MQTT tests need at least one")
 
 
-@pytest.fixture(scope="module")
-def captured_mqtt(
+@pytest_asyncio.fixture(scope="module", loop_scope="session")
+async def captured_mqtt(
     client: YotoClient, online_device_id: str
-) -> list[tuple[str, dict[str, Any]]]:
+) -> AsyncIterator[list[tuple[str, dict[str, Any]]]]:
     """Connect to MQTT, capture raw payloads, then disconnect. Module-scoped:
     one connect/wait/disconnect cycle shared by all MQTT tests."""
     captured: list[tuple[str, dict[str, Any]]] = []
-    original_on_message = YotoMqttClient._on_message
+    original = YotoMqttClient._handle_message
 
-    def capturing(self, mqtt_client, userdata, message) -> None:
+    async def capturing(self, message) -> None:
         try:
             body = json.loads(message.payload.decode("utf-8"))
-            captured.append((message.topic, body))
+            captured.append((str(message.topic), body))
         except (UnicodeDecodeError, ValueError):
             pass
-        original_on_message(self, mqtt_client, userdata, message)
+        await original(self, message)
 
-    YotoMqttClient._on_message = capturing
+    YotoMqttClient._handle_message = capturing
     try:
-        client.connect_events([online_device_id])
-        time.sleep(_WAIT_AFTER_CONNECT_S)
+        await client.connect_events([online_device_id])
+        await asyncio.sleep(_WAIT_AFTER_CONNECT_S)
         # Force a fresh status push so we get at least one data/status
-        client.request_status_push(online_device_id)
-        time.sleep(_WAIT_AFTER_PUSH_S)
+        await client.request_status_push(online_device_id)
+        await asyncio.sleep(_WAIT_AFTER_PUSH_S)
+        yield captured
     finally:
         try:
-            client.disconnect_events()
+            await client.disconnect_events()
         finally:
-            YotoMqttClient._on_message = original_on_message
-    return captured
+            YotoMqttClient._handle_message = original
 
 
-def test_mqtt_connects_and_receives_messages(
+async def test_mqtt_connects_and_receives_messages(
     client: YotoClient, captured_mqtt: list[tuple[str, dict[str, Any]]]
 ) -> None:
     """The simplest possible check: we got at least one MQTT message."""
@@ -75,7 +76,7 @@ def test_mqtt_connects_and_receives_messages(
     )
 
 
-def test_mqtt_status_message_arrived(
+async def test_mqtt_status_message_arrived(
     captured_mqtt: list[tuple[str, dict[str, Any]]],
 ) -> None:
     """request_status_push should yield at least one data/status message."""
@@ -88,7 +89,7 @@ def test_mqtt_status_message_arrived(
     )
 
 
-def test_mqtt_state_propagates_to_player(
+async def test_mqtt_state_propagates_to_player(
     client: YotoClient,
     online_device_id: str,
     captured_mqtt: list[tuple[str, dict[str, Any]]],

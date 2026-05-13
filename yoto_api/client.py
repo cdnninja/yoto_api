@@ -1,15 +1,24 @@
-"""YotoClient — façade exposing the v3 API.
+"""YotoClient — async façade for the Yoto API.
 
-Wires Auth + RestClient + MqttClient together. Holds the player dict and
-applies MQTT events to the right `YotoPlayer`.
+Wires Auth + RestClient + MqttClient together. Holds the player dict
+and applies MQTT events to the right `YotoPlayer`.
+
+Use as an async context manager so the underlying aiohttp session and
+MQTT background task are torn down cleanly:
+
+    async with YotoClient(client_id="...") as client:
+        await client.update_player_list()
+        await client.connect_events([device_id], on_update=cb)
 """
 
+import asyncio
 import datetime
 import logging
 from dataclasses import fields
 from datetime import timedelta
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
+import aiohttp
 import pytz
 
 from .Card import Card, Chapter, Track
@@ -23,14 +32,15 @@ from .models.info import PlayerInfo
 from .models.player import YotoPlayer
 from .models.status import PlayerStatus
 from .mqtt import YotoMqttClient
+from .mqtt.client import _maybe_await
 from .models.config import Alarm
 from .rest import RestClient
 from .rest.requests import encode_alarms_payload
 
 _LOGGER = logging.getLogger(__name__)
 
-UpdateCallback = Callable[[YotoPlayer], None]
-DisconnectCallback = Callable[[int], None]
+UpdateCallback = Callable[[YotoPlayer], Union[None, Awaitable[None]]]
+DisconnectCallback = Callable[[Optional[Exception]], Union[None, Awaitable[None]]]
 
 
 def _serialize_hhmm(value: Any) -> str:
@@ -109,11 +119,26 @@ _BRIGHTNESS_PAIRS = (
 
 
 class YotoClient:
-    """High-level client. One instance per Yoto account."""
+    """High-level client. One instance per Yoto account.
 
-    def __init__(self, client_id: Optional[str] = None) -> None:
-        self._auth = Auth(client_id=client_id)
-        self._rest = RestClient()
+    Two ways to manage the underlying `aiohttp.ClientSession`:
+
+    1. Pass one in (`YotoClient(session=session)`) — recommended for
+       HA-style integrations that own a long-lived session.
+    2. Let the client create one — *must* construct + use inside a
+       running event loop (typically via `async with YotoClient(...)`)
+       so the session binds to the right loop.
+    """
+
+    def __init__(
+        self,
+        client_id: Optional[str] = None,
+        session: Optional[aiohttp.ClientSession] = None,
+    ) -> None:
+        self._owns_session = session is None
+        self._session = session or aiohttp.ClientSession()
+        self._auth = Auth(self._session, client_id=client_id)
+        self._rest = RestClient(self._session)
         self._mqtt: Optional[YotoMqttClient] = None
         self._update_callback: Optional[UpdateCallback] = None
         self._disconnect_callback: Optional[DisconnectCallback] = None
@@ -123,19 +148,31 @@ class YotoClient:
         self.players: Dict[str, YotoPlayer] = {}
         self.library: Dict[str, Card] = {}
 
+    async def __aenter__(self) -> "YotoClient":
+        return self
+
+    async def __aexit__(self, *_exc_info) -> None:
+        await self.close()
+
+    async def close(self) -> None:
+        """Tear down the MQTT task and (if owned) the aiohttp session."""
+        await self.disconnect_events()
+        if self._owns_session and not self._session.closed:
+            await self._session.close()
+
     # ─── Auth ─────────────────────────────────────────────────────
 
     def set_refresh_token(self, refresh_token: str) -> None:
         self.token = Token(refresh_token=refresh_token)
 
-    def device_code_flow_start(self) -> dict:
-        return self._auth.device_code_flow_start()
+    async def device_code_flow_start(self) -> dict:
+        return await self._auth.device_code_flow_start()
 
-    def device_code_flow_complete(self, auth_result: dict) -> Token:
-        self.token = self._auth.poll_for_token(auth_result)
+    async def device_code_flow_complete(self, auth_result: dict) -> Token:
+        self.token = await self._auth.poll_for_token(auth_result)
         return self.token
 
-    def check_and_refresh_token(self) -> Token:
+    async def check_and_refresh_token(self) -> Token:
         """Refresh the access token if it's expired or about to expire."""
         if self.token is None:
             raise YotoError("No token available; authenticate first")
@@ -146,23 +183,23 @@ class YotoClient:
             <= datetime.datetime.now(pytz.utc)
         ):
             _LOGGER.debug("%s - access token expired or near, refreshing", DOMAIN)
-            self.token = self._auth.refresh(self.token)
+            self.token = await self._auth.refresh(self.token)
             if self._mqtt is not None:
                 # MQTT auth uses the access token; rotate the connection
                 # while preserving the player list and callbacks.
-                self.reconnect_events()
+                await self.reconnect_events()
         return self.token
 
     # ─── Inventory ────────────────────────────────────────────────
 
-    def update_player_list(self) -> None:
+    async def update_player_list(self) -> None:
         """GET /devices/mine. Adds new players, updates identity + online state.
 
         If MQTT is connected, new players are auto-subscribed and removed
         ones are unsubscribed.
         """
-        token = self.check_and_refresh_token()
-        devices_with_online = self._rest.list_devices(token)
+        token = await self.check_and_refresh_token()
+        devices_with_online = await self._rest.list_devices(token)
         now = datetime.datetime.now(pytz.utc)
         seen_ids: set[str] = set()
         for device, online in devices_with_online:
@@ -172,7 +209,7 @@ class YotoClient:
                 player = YotoPlayer(device=device, devices_refreshed_at=now)
                 self.players[device.device_id] = player
                 if self._mqtt is not None:
-                    self._mqtt.add_player(device.device_id)
+                    await self._mqtt.add_player(device.device_id)
             else:
                 existing.device = device
                 existing.devices_refreshed_at = now
@@ -183,15 +220,15 @@ class YotoClient:
         for stale_id in set(self.players) - seen_ids:
             self.players.pop(stale_id, None)
             if self._mqtt is not None:
-                self._mqtt.remove_player(stale_id)
+                await self._mqtt.remove_player(stale_id)
 
     # ─── Per-player config + status ───────────────────────────────
 
-    def update_player_info(self, device_id: str) -> PlayerInfo:
+    async def update_player_info(self, device_id: str) -> PlayerInfo:
         """GET /config for one device. Updates `players[device_id].info`
         and `players[device_id].status.is_online`."""
-        token = self.check_and_refresh_token()
-        info, online = self._rest.get_player_info(token, device_id)
+        token = await self.check_and_refresh_token()
+        info, online = await self._rest.get_player_info(token, device_id)
         player = self.players.get(device_id)
         if player is not None:
             player.info = info
@@ -199,24 +236,32 @@ class YotoClient:
             self._set_online(player, online)
         return info
 
-    def update_all_player_info(self) -> None:
-        """Refresh /config for every known player.
+    async def update_all_player_info(self) -> None:
+        """Refresh /config for every known player in parallel.
 
         Per-player failures (offline device, transient 5xx) are logged
         and skipped so one bad device doesn't block the rest.
         """
-        for device_id in list(self.players):
-            try:
-                self.update_player_info(device_id)
-            except YotoError as err:
+        device_ids = list(self.players)
+        results = await asyncio.gather(
+            *(self.update_player_info(d) for d in device_ids),
+            return_exceptions=True,
+        )
+        for device_id, result in zip(device_ids, results):
+            if isinstance(result, asyncio.CancelledError):
+                # Propagate cancellation so the caller stops too.
+                raise result
+            if isinstance(result, YotoError):
                 _LOGGER.warning(
                     "%s - update_player_info failed for %s: %s",
                     DOMAIN,
                     device_id,
-                    err,
+                    result,
                 )
+            elif isinstance(result, BaseException):
+                raise result
 
-    def refresh(self) -> None:
+    async def refresh(self) -> None:
         """Convenience: list devices, then refresh each player's config.
 
         Equivalent to `update_player_list()` followed by
@@ -224,18 +269,18 @@ class YotoClient:
         update tick. `request_status_push` is intentionally not chained:
         refresh should stay idempotent and read-only.
         """
-        self.update_player_list()
-        self.update_all_player_info()
+        await self.update_player_list()
+        await self.update_all_player_info()
 
     # ─── Library ─────────────────────────────────────────────────
 
-    def update_library(self) -> None:
+    async def update_library(self) -> None:
         """GET /card/family/library — populate self.library with card metadata.
 
         Doesn't fetch chapters/tracks; call update_card_detail(card_id) for that.
         """
-        token = self.check_and_refresh_token()
-        response = self._rest.get_card_library(token)
+        token = await self.check_and_refresh_token()
+        response = await self._rest.get_card_library(token)
         for item in response.get("cards", []):
             card_id = get_child_value(item, "cardId")
             if card_id is None:
@@ -253,15 +298,15 @@ class YotoClient:
             card.series_order = get_child_value(item, "card.metadata.cover.seriesorder")
             card.series_title = get_child_value(item, "card.metadata.cover.seriestitle")
 
-    def update_card_detail(self, card_id: str) -> None:
+    async def update_card_detail(self, card_id: str) -> None:
         """GET /card/{cardId} — populate chapters/tracks on the card."""
-        token = self.check_and_refresh_token()
+        token = await self.check_and_refresh_token()
         if card_id not in self.library:
             self.library[card_id] = Card(id=card_id)
         card = self.library[card_id]
         if card.chapters is None:
             card.chapters = {}
-        response = self._rest.get_card_detail(token, card_id)
+        response = await self._rest.get_card_detail(token, card_id)
         chapters = response.get("card", {}).get("content", {}).get("chapters", [])
         for chapter_item in chapters:
             key = get_raw_value(chapter_item, "key")
@@ -291,10 +336,10 @@ class YotoClient:
                 track.type = get_child_value(track_item, "type")
                 track.trackUrl = get_child_value(track_item, "trackUrl")
 
-    def update_player_status(self, device_id: str) -> PlayerStatus:
+    async def update_player_status(self, device_id: str) -> PlayerStatus:
         """Force a fresh telemetry snapshot. Falls back to /config on 403."""
-        token = self.check_and_refresh_token()
-        status = self._rest.get_player_status(token, device_id)
+        token = await self.check_and_refresh_token()
+        status = await self._rest.get_player_status(token, device_id)
         player = self.players.get(device_id)
         if player is not None:
             player.status = status
@@ -303,30 +348,17 @@ class YotoClient:
 
     # ─── Settings writes ──────────────────────────────────────────
 
-    def set_player_config(self, device_id: str, **fields: Any) -> None:
-        """Update PlayerConfig settings on the device.
+    async def set_player_config(self, device_id: str, **fields: Any) -> None:
+        """Update PlayerConfig settings.
 
-        Pass any subset of `PlayerConfig`'s field names as kwargs, with
-        proper Python types — e.g.:
-            client.set_player_config(
-                "dev1",
-                day_time=datetime.time(7, 30),
-                night_max_volume_limit=8,
-                day_ambient_colour="#40bfd9",
-                repeat_all=True,
-                day_display_brightness_auto=True,        # mode auto
-                night_display_brightness=80,             # mode manual
-            )
+        Kwargs are `PlayerConfig` field names with proper Python types
+        (`datetime.time`, `int`, `bool`, ...). `None` values are
+        dropped — `PUT /config` merges, omitted fields stay unchanged.
 
-        `None` values are dropped — Yoto's `PUT /config` merges with the
-        existing settings, so omitted fields stay unchanged.
+        For each side (day / night), `display_brightness_auto=True` and
+        `display_brightness=N` are mutually exclusive in a single call.
 
-        For each side (day / night), `display_brightness_auto` and
-        `display_brightness` are mutually exclusive in a single call:
-        either turn auto on, or set a manual value.
-
-        Alarms aren't accepted here; use `set_alarms` or
-        `set_alarm_enabled` for those.
+        Alarms go through `set_alarms` / `set_alarm_enabled`.
         """
         if "alarms" in fields:
             raise YotoError(
@@ -366,31 +398,30 @@ class YotoClient:
 
         if not payload:
             return
-        token = self.check_and_refresh_token()
-        self._rest.update_settings(token, device_id, payload)
+        token = await self.check_and_refresh_token()
+        await self._rest.update_settings(token, device_id, payload)
 
-    def set_alarms(self, device_id: str, alarms: List[Alarm]) -> None:
+    async def set_alarms(self, device_id: str, alarms: List[Alarm]) -> None:
         """Replace the device's full alarm list.
 
-        Yoto's PUT /config interprets `{"alarms": [...]}` as the new
-        complete list — anything omitted is dropped. Always pass every
-        alarm you want to keep.
+        Yoto's `PUT /config` treats the list as a replacement, so always
+        pass every alarm you want to keep.
         """
-        token = self.check_and_refresh_token()
+        token = await self.check_and_refresh_token()
         payload = encode_alarms_payload(alarms)
-        self._rest.update_settings(token, device_id, payload)
+        await self._rest.update_settings(token, device_id, payload)
         # Reflect the write locally so callers don't have to re-fetch.
         player = self.players.get(device_id)
         if player is not None:
             player.info.config.alarms = list(alarms)
 
-    def set_alarm_enabled(self, device_id: str, index: int, enabled: bool) -> None:
-        """Toggle one alarm's enabled flag while preserving the others.
+    async def set_alarm_enabled(
+        self, device_id: str, index: int, enabled: bool
+    ) -> None:
+        """Toggle one alarm's enabled flag, preserving the others.
 
-        Reads `players[device_id].info.config.alarms`, mutates the entry
-        at `index`, and PUTs the full list back. Requires that
-        `update_player_info(device_id)` has run at least once so the
-        alarm list is loaded — raises `YotoError` otherwise.
+        Read-modify-write on `player.info.config.alarms`. Requires
+        `update_player_info(device_id)` to have run first.
         """
         player = self.players.get(device_id)
         if player is None or player.info_refreshed_at is None:
@@ -405,11 +436,11 @@ class YotoClient:
                 f"(have {len(alarms)})"
             )
         alarms[index].enabled = enabled
-        self.set_alarms(device_id, alarms)
+        await self.set_alarms(device_id, alarms)
 
     # ─── Player commands (MQTT direct, low latency) ──────────────
 
-    def play_card(
+    async def play_card(
         self,
         device_id: str,
         card_id: str,
@@ -421,7 +452,7 @@ class YotoClient:
     ) -> None:
         # Optional args are kwargs-only on purpose: they're easy to mix up
         # positionally and the failure mode is silent (wrong track plays).
-        self._require_mqtt().card_play(
+        await self._require_mqtt().card_play(
             device_id,
             card_id,
             seconds_in=seconds_in,
@@ -430,39 +461,34 @@ class YotoClient:
             track_key=track_key,
         )
 
-    def pause(self, device_id: str) -> None:
-        self._require_mqtt().card_pause(device_id)
+    async def pause(self, device_id: str) -> None:
+        await self._require_mqtt().card_pause(device_id)
 
-    def resume(self, device_id: str) -> None:
-        self._require_mqtt().card_resume(device_id)
+    async def resume(self, device_id: str) -> None:
+        await self._require_mqtt().card_resume(device_id)
 
-    def stop(self, device_id: str) -> None:
-        self._require_mqtt().card_stop(device_id)
+    async def stop(self, device_id: str) -> None:
+        await self._require_mqtt().card_stop(device_id)
 
-    def set_volume(self, device_id: str, volume: int) -> None:
-        """Set the player's user volume.
+    async def set_volume(self, device_id: str, volume: int) -> None:
+        """Set user volume as a 0-100 percentage.
 
-        `volume` is a percentage (0-100). The lib maps it to the player's
-        raw 0-16 hardware scale internally and clamps against
-        `last_event.volume_max` when known.
-
-        Note the asymmetry: `set_volume()` takes a percentage, but
-        `player.last_event.volume` and `volume_max` from MQTT are in the
-        raw 0-16 scale. Convert to percentage as `volume / volume_max`
-        if you need a HA-style `volume_level` between 0.0 and 1.0.
+        Asymmetry: `set_volume()` takes a percentage, but
+        `player.last_event.volume` / `volume_max` from MQTT are on the
+        raw 0-16 hardware scale.
         """
-        self._require_mqtt().set_volume(device_id, volume)
+        await self._require_mqtt().set_volume(device_id, volume)
 
-    def set_sleep_timer(self, device_id: str, seconds: int) -> None:
-        self._require_mqtt().set_sleep_timer(device_id, seconds)
+    async def set_sleep_timer(self, device_id: str, seconds: int) -> None:
+        await self._require_mqtt().set_sleep_timer(device_id, seconds)
 
-    def set_ambients(self, device_id: str, r: int, g: int, b: int) -> None:
-        self._require_mqtt().set_ambients(device_id, r, g, b)
+    async def set_ambients(self, device_id: str, r: int, g: int, b: int) -> None:
+        await self._require_mqtt().set_ambients(device_id, r, g, b)
 
-    def restart(self, device_id: str) -> None:
-        self._require_mqtt().restart(device_id)
+    async def restart(self, device_id: str) -> None:
+        await self._require_mqtt().restart(device_id)
 
-    def request_status_push(self, device_id: str) -> None:
+    async def request_status_push(self, device_id: str) -> None:
         """Ask the player to push a fresh `data/status` on MQTT.
 
         Goes through MQTT (`command/status/request`); the firmware
@@ -476,14 +502,14 @@ class YotoClient:
                 "MQTT not connected; can't request a status push. "
                 "Call connect_events() first."
             )
-        self._mqtt.request_status_push(device_id)
+        await self._mqtt.request_status_push(device_id)
 
-    def seek(self, device_id: str, position: int) -> None:
+    async def seek(self, device_id: str, position: int) -> None:
         """Resume the current card at `position` seconds in."""
         last = self._current_event(device_id)
         if last is None or last.card_id is None:
             return
-        self.play_card(
+        await self.play_card(
             device_id=device_id,
             card_id=last.card_id,
             seconds_in=position,
@@ -491,19 +517,19 @@ class YotoClient:
             track_key=last.track_key,
         )
 
-    def next_track(self, device_id: str) -> None:
-        self._skip_track(device_id, direction=1)
+    async def next_track(self, device_id: str) -> None:
+        await self._skip_track(device_id, direction=1)
 
-    def previous_track(self, device_id: str) -> None:
-        self._skip_track(device_id, direction=-1)
+    async def previous_track(self, device_id: str) -> None:
+        await self._skip_track(device_id, direction=-1)
 
-    def _skip_track(self, device_id: str, direction: int) -> None:
+    async def _skip_track(self, device_id: str, direction: int) -> None:
         last = self._current_event(device_id)
         if last is None or last.card_id is None:
             return
         card = self.library.get(last.card_id)
         if card is None or not card.chapters:
-            self.update_card_detail(last.card_id)
+            await self.update_card_detail(last.card_id)
             card = self.library.get(last.card_id)
         if card is None or not card.chapters:
             return
@@ -520,7 +546,7 @@ class YotoClient:
         if not 0 <= new_idx < len(playlist):
             return
         new_chapter_key, new_track_key = playlist[new_idx]
-        self.play_card(
+        await self.play_card(
             device_id=device_id,
             card_id=last.card_id,
             chapter_key=new_chapter_key,
@@ -540,7 +566,7 @@ class YotoClient:
 
     # ─── MQTT ─────────────────────────────────────────────────────
 
-    def connect_events(
+    async def connect_events(
         self,
         device_ids: List[str],
         on_update: Optional[UpdateCallback] = None,
@@ -548,16 +574,10 @@ class YotoClient:
     ) -> None:
         """Subscribe to MQTT for the given players.
 
-        - `on_update(player)`: fired each time a message updates a player's state.
-        - `on_disconnect(rc)`: fired from paho's network thread when the
-          broker drops us. Use it to schedule a reconnect_events() from the
-          consumer's event loop.
-
-        The broker subscribe completes asynchronously — `connect_events`
-        returns before the first MQTT message arrives. Player commands
-        (pause, set_volume, etc.) issued before subscribe completes will
-        raise `YotoError("MQTT not connected; ...")`. Either gate command
-        calls on `is_mqtt_connected` or wrap them in try/except + retry.
+        Returns once the first subscribe completes, so commands fired
+        right after won't race the broker. The connection auto-
+        reconnects on transient drops; `on_disconnect(err)` fires each
+        time. Both callbacks may be sync or async.
         """
         if self.token is None:
             raise YotoError("No token; authenticate before connecting MQTT")
@@ -565,29 +585,27 @@ class YotoClient:
         self._disconnect_callback = on_disconnect
         self._connected_player_ids = list(device_ids)
         self._mqtt = YotoMqttClient()
-        self._mqtt.connect(
+        await self._mqtt.connect(
             self.token,
             device_ids,
             self._on_mqtt_message,
             on_disconnect=on_disconnect,
         )
 
-    def disconnect_events(self) -> None:
+    async def disconnect_events(self) -> None:
         if self._mqtt is None:
             return
-        self._mqtt.disconnect()
+        await self._mqtt.disconnect()
         self._mqtt = None
 
-    def reconnect_events(self) -> None:
-        """Tear down and re-establish the MQTT connection with the same
-        player set + callbacks. Refreshes the token first if expired —
-        the access token is the MQTT credential."""
+    async def reconnect_events(self) -> None:
+        """Disconnect, refresh the token, reconnect with the same set."""
         on_update = self._update_callback
         on_disconnect = self._disconnect_callback
         device_ids = list(self._connected_player_ids)
-        self.disconnect_events()
-        self.check_and_refresh_token()
-        self.connect_events(
+        await self.disconnect_events()
+        await self.check_and_refresh_token()
+        await self.connect_events(
             device_ids,
             on_update=on_update,
             on_disconnect=on_disconnect,
@@ -598,7 +616,9 @@ class YotoClient:
         """True if MQTT is currently connected to the broker."""
         return self._mqtt is not None and self._mqtt.is_connected
 
-    def _on_mqtt_message(self, message: Union[PlaybackEvent, StatusPatch]) -> None:
+    async def _on_mqtt_message(
+        self, message: Union[PlaybackEvent, StatusPatch]
+    ) -> None:
         player = self.players.get(message.player_id)
         if player is None:
             return
@@ -607,19 +627,18 @@ class YotoClient:
         # publish — only REST `/devices/mine` and `/config` can flip it
         # back to False.
         self._set_online(player, True)
-        now = datetime.datetime.now(pytz.utc)
         if isinstance(message, StatusPatch):
             self._apply_status_patch(player, message)
         elif isinstance(message, PlaybackEvent):
             self._apply_playback_event(player, message)
-            player.last_event_received_at = now
+            player.last_event_received_at = datetime.datetime.now(pytz.utc)
             # Hand the hardware cap to the MQTT client so set_volume clamps
             # against it.
             if self._mqtt is not None and message.volume_max is not None:
                 self._mqtt.set_volume_max(message.player_id, message.volume_max)
         if self._update_callback is not None:
             try:
-                self._update_callback(player)
+                await _maybe_await(self._update_callback(player))
             except Exception:
                 _LOGGER.exception("%s - update callback raised", DOMAIN)
 

@@ -41,8 +41,8 @@ _KNOWN_GENERATIONS = {"gen1", "gen2", "gen3"}
 _KNOWN_FORM_FACTORS = {"mini", "standard"}
 
 
-def test_device_shape(client: YotoClient) -> None:
-    client.update_player_list()
+async def test_device_shape(client: YotoClient) -> None:
+    await client.update_player_list()
     assert client.players
 
     for device_id, player in client.players.items():
@@ -80,8 +80,8 @@ _MAC_RE = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
 _FIRMWARE_RE = re.compile(r"^v?\d+\.\d+\.\d+(-\d+)?$")
 
 
-def test_player_info_shape(client: YotoClient, first_device_id: str) -> None:
-    info = client.update_player_info(first_device_id)
+async def test_player_info_shape(client: YotoClient, first_device_id: str) -> None:
+    info = await client.update_player_info(first_device_id)
     assert isinstance(info, PlayerInfo)
 
     # Hardware metadata must be present and well-formed
@@ -99,10 +99,12 @@ def test_player_info_shape(client: YotoClient, first_device_id: str) -> None:
         )
 
 
-def test_player_config_field_types(client: YotoClient, first_device_id: str) -> None:
+async def test_player_config_field_types(
+    client: YotoClient, first_device_id: str
+) -> None:
     """The whole point of v3 typing: settings must be proper Python types,
     not strings."""
-    client.update_player_info(first_device_id)
+    await client.update_player_info(first_device_id)
     config = client.players[first_device_id].info.config
     assert isinstance(config, PlayerConfig)
 
@@ -161,9 +163,9 @@ def test_player_config_field_types(client: YotoClient, first_device_id: str) -> 
             assert isinstance(value, int)
 
 
-def test_alarm_shape(client: YotoClient, first_device_id: str) -> None:
+async def test_alarm_shape(client: YotoClient, first_device_id: str) -> None:
     """If alarms exist, their fields are correctly typed."""
-    client.update_player_info(first_device_id)
+    await client.update_player_info(first_device_id)
     alarms = client.players[first_device_id].info.config.alarms
 
     if not alarms:
@@ -185,8 +187,10 @@ def test_alarm_shape(client: YotoClient, first_device_id: str) -> None:
 # ─── PlayerStatus (from /status or /config.device.status fallback) ───
 
 
-def test_player_status_shape(client: YotoClient, first_device_id: str) -> None:
-    status = client.update_player_status(first_device_id)
+async def test_player_status_shape(
+    client: YotoClient, first_device_id: str
+) -> None:
+    status = await client.update_player_status(first_device_id)
     assert isinstance(status, PlayerStatus)
 
     if status.battery_level_percentage is not None:
@@ -230,9 +234,11 @@ def test_player_status_shape(client: YotoClient, first_device_id: str) -> None:
 # ─── Raw response shape (catches Yoto removing/renaming fields) ──────
 
 
-def test_devices_mine_top_level_keys(client: YotoClient) -> None:
+async def test_devices_mine_top_level_keys(client: YotoClient) -> None:
     """Catches Yoto removing or renaming the top-level `devices` array."""
-    raw = client._rest._get(client.token, "/device-v2/devices/mine", "raw shape probe")
+    raw = await client._rest._get(
+        client.token, "/device-v2/devices/mine", "raw shape probe"
+    )
     assert "devices" in raw
     assert isinstance(raw["devices"], list)
     if raw["devices"]:
@@ -242,9 +248,11 @@ def test_devices_mine_top_level_keys(client: YotoClient) -> None:
             assert key in item, f"`{key}` missing from /devices/mine item"
 
 
-def test_config_top_level_keys(client: YotoClient, first_device_id: str) -> None:
+async def test_config_top_level_keys(
+    client: YotoClient, first_device_id: str
+) -> None:
     """Catches Yoto removing or renaming the `device`/`config` blocks."""
-    raw = client._rest._get(
+    raw = await client._rest._get(
         client.token,
         f"/device-v2/{first_device_id}/config",
         "raw shape probe",

@@ -18,9 +18,10 @@ Tests are read-only and don't mutate device state.
 import os
 import sys
 from pathlib import Path
-from typing import Iterator
+from typing import AsyncIterator
 
 import pytest
+import pytest_asyncio
 from dotenv import load_dotenv
 
 from yoto_api import AuthenticationError, YotoClient
@@ -61,8 +62,8 @@ def env() -> dict[str, str | None]:
     }
 
 
-@pytest.fixture(scope="session")
-def client(env: dict[str, str | None]) -> Iterator[YotoClient]:
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
+async def client(env: dict[str, str | None]) -> AsyncIterator[YotoClient]:
     """Authenticated client, ready to use.
 
     Tries the stored refresh token first. If it's missing or invalid
@@ -77,21 +78,21 @@ def client(env: dict[str, str | None]) -> Iterator[YotoClient]:
     if initial_refresh_token:
         c.token = Token(refresh_token=initial_refresh_token)
         try:
-            c.check_and_refresh_token()
+            await c.check_and_refresh_token()
         except AuthenticationError:
             print(
                 "\n[e2e] Stored refresh token is invalid; falling back to "
                 "interactive device-code flow.",
                 file=sys.stderr,
             )
-            _interactive_login(c)
+            await _interactive_login(c)
     else:
         print(
             "\n[e2e] No YOTO_REFRESH_TOKEN in .env; starting interactive "
             "device-code flow.",
             file=sys.stderr,
         )
-        _interactive_login(c)
+        await _interactive_login(c)
 
     try:
         yield c
@@ -102,11 +103,12 @@ def client(env: dict[str, str | None]) -> Iterator[YotoClient]:
             and c.token.refresh_token != initial_refresh_token
         ):
             _persist_refresh_token(c.token.refresh_token)
+        await c.close()
 
 
-def _interactive_login(c: YotoClient) -> None:
+async def _interactive_login(c: YotoClient) -> None:
     """Run the device-code flow, blocking until the user completes it."""
-    auth = c.device_code_flow_start()
+    auth = await c.device_code_flow_start()
     print(
         f"\n[e2e] Open this URL to authorise the test session:\n"
         f"      {auth['verification_uri_complete']}\n"
@@ -114,7 +116,7 @@ def _interactive_login(c: YotoClient) -> None:
         file=sys.stderr,
     )
     sys.stderr.flush()
-    c.device_code_flow_complete(auth)
+    await c.device_code_flow_complete(auth)
 
 
 def _persist_refresh_token(new_token: str) -> None:
@@ -132,10 +134,10 @@ def _persist_refresh_token(new_token: str) -> None:
     _ENV_PATH.write_text("\n".join(lines) + "\n")
 
 
-@pytest.fixture(scope="session")
-def first_device_id(client: YotoClient) -> str:
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
+async def first_device_id(client: YotoClient) -> str:
     """A real device id from the account, for per-device tests."""
-    client.update_player_list()
+    await client.update_player_list()
     if not client.players:
         pytest.skip("no devices on this account")
     return next(iter(client.players))
