@@ -162,4 +162,9 @@ cython_debug/
 #.idea/
 pyvenv.cfg
 .vscode/*
-Scripts/*
+
+# Claude Code per-developer settings
+.claude/
+
+# Output of scripts/probe_mqtt.py
+mqtt_probe.log
