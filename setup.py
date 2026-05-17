@@ -17,13 +17,15 @@ test_requirements = [
 setup(
     author="cdnninja",
     author_email="",
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Natural Language :: English",
-        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ],
     description="A python package that makes it a bit easier to work with the yoto play API. Not associated with Yoto in any way.",
     install_requires=requirements,
