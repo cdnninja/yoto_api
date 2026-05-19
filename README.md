@@ -127,11 +127,12 @@ await client.set_alarms(player_id, alarms=[...])
 await client.set_alarm_enabled(player_id, index=0, enabled=False)
 ```
 
-Account ID (no API call, decodes the JWT sub claim):
+JWT helpers (no API call):
 
 ```python
-from yoto_api import get_account_id
+from yoto_api import get_account_id, has_scope
 account_id = get_account_id(client.token.access_token)
+can_status = has_scope(client.token.access_token, "family:device-status:view")
 ```
 
 ## Errors
