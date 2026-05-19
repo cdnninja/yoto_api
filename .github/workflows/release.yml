@@ -8,6 +8,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write     # git push + tag + create-release
+      id-token: write     # PyPI Trusted Publisher (OIDC)
+      attestations: write # Sigstore attestations on the published files
     steps:
       - uses: actions/checkout@v6
       - name: Gets semantic release info
@@ -50,16 +54,14 @@ jobs:
       - name: Build package
         if: ${{steps.semantic_release_info.outputs.version != ''}}
         run: python -m build
-      - name: Publish package to PyPi Test
+      - name: Publish package to TestPyPI
         if: ${{steps.semantic_release_info.outputs.version != ''}}
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TEST }}
-          repository_url: https://test.pypi.org/legacy/
-      - name: Publish package to PyPi Live
+          repository-url: https://test.pypi.org/legacy/
+          attestations: true
+      - name: Publish package to PyPI
         if: ${{steps.semantic_release_info.outputs.version != ''}}
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          attestations: true
