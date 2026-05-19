@@ -9,7 +9,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write     # PyPI Trusted Publisher (OIDC)
+      id-token: write # PyPI Trusted Publisher (OIDC)
       attestations: write # Sigstore attestations on the published files
     steps:
       - uses: actions/checkout@v6

@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # git push + tag + create-release
+      contents: write # git push + tag + create-release
     steps:
       - uses: actions/checkout@v6
       - name: Gets semantic release info
