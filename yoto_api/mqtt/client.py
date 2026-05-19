@@ -28,13 +28,11 @@ Message = Union[PlaybackEvent, StatusPatch]
 Callback = Callable[[Message], Union[None, Awaitable[None]]]
 DisconnectCallback = Callable[[Optional[Exception]], Union[None, Awaitable[None]]]
 
-# Topics we actually consume. The `response` topic also exists (ACKs
-# for our commands) but the lib doesn't use it, so we don't subscribe.
+# `response` (command ACKs) also exists but the lib doesn't consume it.
 _SUBSCRIBED_TOPICS = ("data/events", "data/status")
 
 
 async def _maybe_await(result) -> None:
-    """Await `result` if it's a coroutine, drop it otherwise."""
     if inspect.isawaitable(result):
         await result
 

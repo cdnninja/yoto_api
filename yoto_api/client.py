@@ -195,9 +195,8 @@ class YotoClient:
     async def update_player_list(self) -> None:
         """GET /devices/mine. Adds new players, updates identity + online state.
 
-        Does not touch MQTT subscriptions — call
-        `subscribe_player_events(id)` / `unsubscribe_player_events(id)`
-        if you want to react to newly discovered or removed devices.
+        Does not touch MQTT subscriptions. Use `subscribe_player_events`
+        / `unsubscribe_player_events` to react to discovered devices.
         """
         token = await self.check_and_refresh_token()
         devices_with_online = await self._rest.list_devices(token)
@@ -571,15 +570,10 @@ class YotoClient:
     ) -> None:
         """Subscribe to MQTT for the given players.
 
-        The subscription set is explicit: this list is what the lib
-        will track until you call `subscribe_player_events(id)` /
-        `unsubscribe_player_events(id)` to amend it, or
-        `reconnect_events` to replace the whole set.
-
-        Returns once the first subscribe completes, so commands fired
-        right after won't race the broker. The connection auto-
-        reconnects on transient drops; `on_disconnect(err)` fires each
-        time. Both callbacks may be sync or async.
+        Returns once the first subscribe completes. The connection
+        auto-reconnects on transient drops; `on_disconnect(err)` fires
+        each time. Callbacks may be sync or async. Amend the set later
+        with `subscribe_player_events` / `unsubscribe_player_events`.
         """
         if self.token is None:
             raise YotoError("No token; authenticate before connecting MQTT")
@@ -614,14 +608,12 @@ class YotoClient:
         )
 
     async def subscribe_player_events(self, device_id: str) -> None:
-        """Add a player to the live MQTT event subscription set."""
         if device_id not in self._connected_player_ids:
             self._connected_player_ids.append(device_id)
         if self._mqtt is not None:
             await self._mqtt.add_player(device_id)
 
     async def unsubscribe_player_events(self, device_id: str) -> None:
-        """Drop a player from the live MQTT event subscription set."""
         if device_id in self._connected_player_ids:
             self._connected_player_ids.remove(device_id)
         if self._mqtt is not None:
