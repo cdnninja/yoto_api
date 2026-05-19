@@ -3,7 +3,7 @@
 
 from .Card import Card, Chapter, Track
 from .Token import Token
-from .account import get_account_id
+from .account import get_account_id, has_scope
 from .capabilities import Capabilities, caps_for
 from .client import YotoClient
 from .const import HEX_COLORS, LIGHT_COLORS, POWER_SOURCE, VOLUME_MAPPING_INVERTED
@@ -57,4 +57,5 @@ __all__ = [
     "YotoPlayer",
     "caps_for",
     "get_account_id",
+    "has_scope",
 ]

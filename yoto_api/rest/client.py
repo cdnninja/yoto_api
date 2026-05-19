@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp
 
+from ..account import has_scope
 from ..const import DOMAIN
 from ..exceptions import AuthenticationError, YotoAPIError
 from ..Token import Token
@@ -94,24 +95,27 @@ class RestClient:
     async def get_player_status(self, token: Token, device_id: str) -> PlayerStatus:
         """Force a fresh telemetry snapshot.
 
-        Tries the documented /status endpoint first. If the token doesn't
-        carry `family:device-status:view` (HTTP 403), falls back to reading
-        the `device.status` sub-block out of /config.
+        Uses the documented /status endpoint when the token grants
+        `family:device-status:view`, otherwise reads the `device.status`
+        sub-block out of /config. Also falls back on a runtime 403 in
+        case the JWT claim and the API's view disagree.
         """
-        try:
-            raw = await self._get(
-                token,
-                endpoints.device_status(device_id),
-                f"get player {device_id} status",
-            )
-            return _parse_status_response(raw, device_id)
-        except YotoAPIError as err:
-            if not _is_scope_403(err):
-                raise
-            _LOGGER.debug(
-                "%s - /status forbidden, falling back to /config.device.status",
-                DOMAIN,
-            )
+        if has_scope(token.access_token, "family:device-status:view"):
+            try:
+                raw = await self._get(
+                    token,
+                    endpoints.device_status(device_id),
+                    f"get player {device_id} status",
+                )
+                return _parse_status_response(raw, device_id)
+            except YotoAPIError as err:
+                if not _is_scope_403(err):
+                    raise
+                _LOGGER.debug(
+                    "%s - /status forbidden despite scope; falling back to "
+                    "/config.device.status",
+                    DOMAIN,
+                )
 
         config = await self._get(
             token,
