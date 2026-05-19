@@ -8,7 +8,7 @@ Get a client ID at <https://yoto.dev/get-started/start-here/>.
 ## Credit
 
 Thanks to @buzzeddesign for help sniffing the API and @fuatakgun for
-the original v2.x architecture (based on kia_uvo).
+the original v2.x architecture (based on kia_uvo). Credit to piitaya for version 3.
 
 ## Quick start
 
