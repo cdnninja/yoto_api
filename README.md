@@ -87,6 +87,8 @@ MQTT:
 
 ```python
 await client.connect_events(player_ids, on_update=cb, on_disconnect=cb)
+await client.subscribe_player_events(device_id)
+await client.unsubscribe_player_events(device_id)
 client.is_mqtt_connected
 await client.reconnect_events()
 await client.disconnect_events()

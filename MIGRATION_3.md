@@ -70,7 +70,7 @@ so the refresh cadence (REST poll vs MQTT push) is explicit.
 -manager.update_players_status()
 -manager.connect_to_events(callback)
 +await client.refresh()
-+await client.connect_events(player_ids, on_update=cb, on_disconnect=cb)
++await client.connect_events(on_update=cb, on_disconnect=cb)
 ```
 
 MQTT auto-reconnects with exponential backoff. `on_disconnect(err)`
