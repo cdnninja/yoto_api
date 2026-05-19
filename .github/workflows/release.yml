@@ -42,5 +42,5 @@ jobs:
           tag_name: ${{ steps.semantic_release_info.outputs.git_tag }}
           release_name: ${{ steps.semantic_release_info.outputs.git_tag }}
           body: ${{ steps.semantic_release_info.outputs.notes }}
-          draft: false
+          draft: true
           prerelease: false
