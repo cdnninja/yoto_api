@@ -195,8 +195,8 @@ class YotoClient:
     async def update_player_list(self) -> None:
         """GET /devices/mine. Adds new players, updates identity + online state.
 
-        If MQTT is connected, new players are auto-subscribed and removed
-        ones are unsubscribed.
+        Does not touch MQTT subscriptions. Use `subscribe_player_events`
+        / `unsubscribe_player_events` to react to discovered devices.
         """
         token = await self.check_and_refresh_token()
         devices_with_online = await self._rest.list_devices(token)
@@ -208,8 +208,6 @@ class YotoClient:
             if existing is None:
                 player = YotoPlayer(device=device, devices_refreshed_at=now)
                 self.players[device.device_id] = player
-                if self._mqtt is not None:
-                    await self._mqtt.add_player(device.device_id)
             else:
                 existing.device = device
                 existing.devices_refreshed_at = now
@@ -219,8 +217,6 @@ class YotoClient:
         # Players removed from the family upstream
         for stale_id in set(self.players) - seen_ids:
             self.players.pop(stale_id, None)
-            if self._mqtt is not None:
-                await self._mqtt.remove_player(stale_id)
 
     # ─── Per-player config + status ───────────────────────────────
 
@@ -574,10 +570,10 @@ class YotoClient:
     ) -> None:
         """Subscribe to MQTT for the given players.
 
-        Returns once the first subscribe completes, so commands fired
-        right after won't race the broker. The connection auto-
-        reconnects on transient drops; `on_disconnect(err)` fires each
-        time. Both callbacks may be sync or async.
+        Returns once the first subscribe completes. The connection
+        auto-reconnects on transient drops; `on_disconnect(err)` fires
+        each time. Callbacks may be sync or async. Amend the set later
+        with `subscribe_player_events` / `unsubscribe_player_events`.
         """
         if self.token is None:
             raise YotoError("No token; authenticate before connecting MQTT")
@@ -610,6 +606,18 @@ class YotoClient:
             on_update=on_update,
             on_disconnect=on_disconnect,
         )
+
+    async def subscribe_player_events(self, device_id: str) -> None:
+        if device_id not in self._connected_player_ids:
+            self._connected_player_ids.append(device_id)
+        if self._mqtt is not None:
+            await self._mqtt.add_player(device_id)
+
+    async def unsubscribe_player_events(self, device_id: str) -> None:
+        if device_id in self._connected_player_ids:
+            self._connected_player_ids.remove(device_id)
+        if self._mqtt is not None:
+            await self._mqtt.remove_player(device_id)
 
     @property
     def is_mqtt_connected(self) -> bool:

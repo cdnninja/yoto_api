@@ -28,9 +28,11 @@ Message = Union[PlaybackEvent, StatusPatch]
 Callback = Callable[[Message], Union[None, Awaitable[None]]]
 DisconnectCallback = Callable[[Optional[Exception]], Union[None, Awaitable[None]]]
 
+# `response` (command ACKs) also exists but the lib doesn't consume it.
+_SUBSCRIBED_TOPICS = ("data/events", "data/status")
+
 
 async def _maybe_await(result) -> None:
-    """Await `result` if it's a coroutine, drop it otherwise."""
     if inspect.isawaitable(result):
         await result
 
@@ -116,7 +118,7 @@ class YotoMqttClient:
         self._volume_max.pop(player_id, None)
         if not self.is_connected:
             return
-        for suffix in ("data/events", "data/status", "response"):
+        for suffix in _SUBSCRIBED_TOPICS:
             try:
                 await self._client.unsubscribe(f"device/{player_id}/{suffix}")
             except Exception as err:
@@ -306,7 +308,7 @@ class YotoMqttClient:
     async def _subscribe_player(self, player_id: str) -> None:
         if self._client is None:
             return
-        for suffix in ("data/events", "data/status", "response"):
+        for suffix in _SUBSCRIBED_TOPICS:
             await self._client.subscribe(f"device/{player_id}/{suffix}")
         _LOGGER.debug("%s - subscribed to player %s", DOMAIN, player_id)
 
