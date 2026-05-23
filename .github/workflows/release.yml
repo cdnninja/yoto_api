@@ -5,42 +5,36 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     permissions:
       contents: write # git push + tag + create-release
     steps:
       - uses: actions/checkout@v6
-      - name: Gets semantic release info
+      - name: Get semantic release info
         id: semantic_release_info
         uses: jossef/action-semantic-release-info@v3.0.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
-      - name: Update Version and Commit
-        if: ${{steps.semantic_release_info.outputs.version != ''}}
+      - name: Bump version + tag + release
+        if: ${{ steps.semantic_release_info.outputs.version != '' }}
+        env:
+          VERSION: ${{ steps.semantic_release_info.outputs.version }}
+          TAG: ${{ steps.semantic_release_info.outputs.git_tag }}
+          NOTES: ${{ steps.semantic_release_info.outputs.notes }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          echo "Version: ${{steps.semantic_release_info.outputs.version}}"
-          sed -i "s/version=\".*\",/version=\"${{steps.semantic_release_info.outputs.version}}\",/g" setup.py
+          sed -i "s/version=\".*\",/version=\"${VERSION}\",/g" setup.py
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add -A
-          git commit -m "chore: bumping version to ${{steps.semantic_release_info.outputs.version}}"
-          git tag ${{ steps.semantic_release_info.outputs.git_tag }}
-      - name: Push changes
-        if: ${{steps.semantic_release_info.outputs.version != ''}}
-        uses: ad-m/github-push-action@v1.1.0
-        with:
-          github_token: ${{ github.token }}
-          tags: true
-      - name: Create GitHub Release
-        if: ${{steps.semantic_release_info.outputs.version != ''}}
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          tag_name: ${{ steps.semantic_release_info.outputs.git_tag }}
-          release_name: ${{ steps.semantic_release_info.outputs.git_tag }}
-          body: ${{ steps.semantic_release_info.outputs.notes }}
-          draft: false
-          prerelease: false
+          git add setup.py
+          git commit -m "chore: bumping version to ${VERSION}"
+          git tag "${TAG}"
+          git push origin HEAD:master --tags
+          gh release create "${TAG}" --title "${TAG}" --notes "${NOTES}"

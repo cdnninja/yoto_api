@@ -12,9 +12,9 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.release.tag_name }}
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version: "3.x"
+          python-version: "3.12"
       - name: Set package version from release tag
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
