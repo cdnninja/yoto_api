@@ -141,52 +141,25 @@ class MqttSurfaceTests(_ClientTestCase):
         self.assertIs(connect_calls[1][2], disconnect_cb)
 
 
-class DynamicPlayerSubscribeTests(_ClientTestCase):
-    """update_player_list should auto add/remove MQTT subscriptions."""
+class UpdatePlayerListDoesNotTouchMqttTests(_ClientTestCase):
+    """Regression guard: update_player_list manages `self.players` only,
+    never the MQTT subscription set."""
 
-    async def test_new_device_triggers_add_player(self) -> None:
+    async def test_no_auto_subscribe_on_new_device(self) -> None:
         client = self.make_client()
         client.token = fresh_token()
         client._mqtt = MagicMock()
         client._mqtt.add_player = AsyncMock()
         client._mqtt.remove_player = AsyncMock()
-
-        existing = Device(device_id="known", name="Known")
-        new = Device(device_id="new", name="New")
         client._rest.list_devices = AsyncMock(
-            side_effect=[
-                [(existing, True)],
-                [(existing, True), (new, True)],
-            ]
+            return_value=[(Device(device_id="new", name="New"), True)]
         )
 
         await client.update_player_list()
-        client._mqtt.add_player.assert_awaited_once_with("known")
 
-        client._mqtt.add_player.reset_mock()
-        await client.update_player_list()
-        client._mqtt.add_player.assert_awaited_once_with("new")
-
-    async def test_removed_device_triggers_remove_player(self) -> None:
-        client = self.make_client()
-        client.token = fresh_token()
-        client._mqtt = MagicMock()
-        client._mqtt.add_player = AsyncMock()
-        client._mqtt.remove_player = AsyncMock()
-
-        a = Device(device_id="a", name="A")
-        b = Device(device_id="b", name="B")
-        client._rest.list_devices = AsyncMock(
-            side_effect=[
-                [(a, True), (b, False)],
-                [(a, True)],
-            ]
-        )
-
-        await client.update_player_list()
-        await client.update_player_list()
-        client._mqtt.remove_player.assert_awaited_once_with("b")
-        self.assertNotIn("b", client.players)
+        client._mqtt.add_player.assert_not_awaited()
+        client._mqtt.remove_player.assert_not_awaited()
+        self.assertIn("new", client.players)
 
 
 class SetPlayerConfigTests(_ClientTestCase):

@@ -73,9 +73,11 @@ so the refresh cadence (REST poll vs MQTT push) is explicit.
 +await client.connect_events(player_ids, on_update=cb, on_disconnect=cb)
 ```
 
-MQTT auto-reconnects with exponential backoff. `on_disconnect(err)`
-fires on each drop with the underlying exception. Both callbacks may be
-sync or async.
+`player_ids` is the explicit subscription set. Amend it later with
+`subscribe_player_events(id)` / `unsubscribe_player_events(id)`.
+MQTT auto-reconnects with exponential backoff on broker drops.
+`on_disconnect(err)` fires each time with the underlying exception.
+Both callbacks may be sync or async.
 
 ## Settings
 
@@ -146,8 +148,11 @@ Transport errors from `aiohttp` / `aiomqtt` are wrapped into
 
 ## OAuth scope
 
-3.0 no longer needs `family:device-status:view`. When `/status` returns
-403, the lib transparently reads `device.status` from `/config`.
+3.0 no longer needs `family:device-status:view`. The lib pre-checks
+the scope on the JWT and reads `device.status` from `/config` directly
+when missing. The `/status` 403 fallback stays in place if the JWT
+disagrees with the API. Use `has_scope(access_token, scope)` if you
+need to gate features on what's granted.
 
 ## Unchanged
 
