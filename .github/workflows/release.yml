@@ -1,44 +1,46 @@
-name: Publish to PyPI
-
+name: Release
+# Bumps the version on push to master via semantic-release.
+# The PyPI publish runs in publish.yml on `release: published`.
 on:
-  release:
-    types: [published]
-
+  push:
+    branches: [master]
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # git push + tag + create-release
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-      - name: Set package version from release tag
+      - name: Gets semantic release info
+        id: semantic_release_info
+        uses: jossef/action-semantic-release-info@v3.0.0
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: sed -i "s/version=\".*\",/version=\"${RELEASE_TAG#v}\",/" setup.py
-      - name: Install build deps
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Update Version and Commit
+        if: ${{steps.semantic_release_info.outputs.version != ''}}
         run: |
-          python -m pip install --upgrade pip
-          pip install build
-      - name: Build package
-        run: python -m build
-      - uses: actions/upload-artifact@v4
+          echo "Version: ${{steps.semantic_release_info.outputs.version}}"
+          sed -i "s/version=\".*\",/version=\"${{steps.semantic_release_info.outputs.version}}\",/g" setup.py
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git commit -m "chore: bumping version to ${{steps.semantic_release_info.outputs.version}}"
+          git tag ${{ steps.semantic_release_info.outputs.git_tag }}
+      - name: Push changes
+        if: ${{steps.semantic_release_info.outputs.version != ''}}
+        uses: ad-m/github-push-action@v1.1.0
         with:
-          name: dist
-          path: dist/
-
-  publish:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      id-token: write
-      attestations: write
-    steps:
-      - uses: actions/download-artifact@v4
+          github_token: ${{ github.token }}
+          tags: true
+      - name: Create GitHub Release
+        if: ${{steps.semantic_release_info.outputs.version != ''}}
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
-          name: dist
-          path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          attestations: true
+          tag_name: ${{ steps.semantic_release_info.outputs.git_tag }}
+          release_name: ${{ steps.semantic_release_info.outputs.git_tag }}
+          body: ${{ steps.semantic_release_info.outputs.notes }}
+          draft: false
+          prerelease: false
