@@ -1,6 +1,7 @@
 name: Release
-# Bumps the version on push to master via semantic-release.
-# The PyPI publish runs in publish.yml on `release: published`.
+# Bumps the version, tags, creates a GitHub Release, and publishes to
+# PyPI in a single job. PyPI auth uses Trusted Publisher (OIDC), no
+# static token. Distribution files carry Sigstore attestations.
 on:
   push:
     branches: [master]
@@ -9,8 +10,11 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: pypi
     permissions:
       contents: write # git push + tag + create-release
+      id-token: write # PyPI Trusted Publisher (OIDC)
+      attestations: write # Sigstore attestations on the published files
     steps:
       - uses: actions/checkout@v6
         with:
@@ -36,3 +40,17 @@ jobs:
           git tag "${TAG}"
           git push origin HEAD:master --tags
           gh release create "${TAG}" --title "${TAG}" --notes "${NOTES}"
+      - if: ${{ steps.semantic_release_info.outputs.version != '' }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+      - name: Build package
+        if: ${{ steps.semantic_release_info.outputs.version != '' }}
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: Publish to PyPI
+        if: ${{ steps.semantic_release_info.outputs.version != '' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: true
