@@ -13,6 +13,8 @@ jobs:
       contents: write # git push + tag + create-release
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # semantic-release needs full history to find prior tags
       - name: Get semantic release info
         id: semantic_release_info
         uses: jossef/action-semantic-release-info@v3.0.0
