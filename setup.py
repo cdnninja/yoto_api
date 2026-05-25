@@ -26,6 +26,7 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ],
     description="A python package that makes it a bit easier to work with the yoto play API. Not associated with Yoto in any way.",
     install_requires=requirements,
