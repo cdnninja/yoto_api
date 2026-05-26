@@ -498,6 +498,33 @@ class OnlineConsolidationTests(_ClientTestCase):
         # presence proof to start with.
         self.assertFalse(player.status.is_online)
 
+    async def test_going_offline_clears_battery_level(self) -> None:
+        # The device sends a shutdown MQTT status with a stale batteryLevel
+        # reading before powering off. _set_online(False) must clear it so
+        # callers see unknown rather than a misleading value.
+        client = self.make_client()
+        device = Device(device_id="d1", name="x")
+        player = YotoPlayer(device=device)
+        client.players["d1"] = player
+        # Simulate the shutdown MQTT status arriving (battery=86, still "online").
+        await client._on_mqtt_message(
+            StatusPatch(player_id="d1", fields={"battery_level_percentage": 86}),
+        )
+        self.assertEqual(player.status.battery_level_percentage, 86)
+        # REST poll detects offline.
+        client._set_online(player, False)
+        self.assertIsNone(player.status.battery_level_percentage)
+
+    async def test_going_online_preserves_battery_level(self) -> None:
+        # Flipping back online must not wipe a legitimate reading.
+        client = self.make_client()
+        device = Device(device_id="d1", name="x")
+        player = YotoPlayer(device=device)
+        client.players["d1"] = player
+        player.status.battery_level_percentage = 42
+        client._set_online(player, True)
+        self.assertEqual(player.status.battery_level_percentage, 42)
+
 
 class PlaybackEventMergeTests(_ClientTestCase):
     """Yoto emits partial MQTT events; lib must merge non-None fields

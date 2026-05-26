@@ -673,4 +673,10 @@ class YotoClient:
 
     def _set_online(self, player: YotoPlayer, online: bool) -> None:
         player.status.is_online = online
+        if not online:
+            # The device sends a final MQTT data/status before shutting down.
+            # That message carries a stale batteryLevel reading from the
+            # firmware's shutdown sequence, not the actual level at power-off.
+            # Clear it so callers see unknown rather than a misleading value.
+            player.status.battery_level_percentage = None
         player.status_refreshed_at = datetime.datetime.now(pytz.utc)
