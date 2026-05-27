@@ -117,6 +117,5 @@ async def test_update_card_detail(client: YotoClient) -> None:
 
     for chapter_key, chapter in card.chapters.items():
         assert chapter.key == chapter_key
-        if chapter.tracks:
-            for track_key, track in chapter.tracks.items():
-                assert track.key == track_key
+        for track_key, track in chapter.tracks.items():
+            assert track.key == track_key

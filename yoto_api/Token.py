@@ -8,9 +8,9 @@ import datetime as dt
 class Token:
     """Token"""
 
-    access_token: str = None
-    refresh_token: str = None
-    id_token: str = None
-    scope: str = None
+    access_token: str | None = None
+    refresh_token: str | None = None
+    id_token: str | None = None
+    scope: str | None = None
     valid_until: dt.datetime = dt.datetime.min
-    token_type: str = None
+    token_type: str | None = None
