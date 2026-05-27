@@ -284,7 +284,6 @@ class YotoClient:
             card = self.library.get(card_id)
             if card is None:
                 card = Card(id=card_id)
-                card.chapters = {}
                 self.library[card_id] = card
             card.title = get_child_value(item, "card.title")
             card.description = get_child_value(item, "card.metadata.description")
@@ -300,8 +299,6 @@ class YotoClient:
         if card_id not in self.library:
             self.library[card_id] = Card(id=card_id)
         card = self.library[card_id]
-        if card.chapters is None:
-            card.chapters = {}
         response = await self._rest.get_card_detail(token, card_id)
         chapters = response.get("card", {}).get("content", {}).get("chapters", [])
         for chapter_item in chapters:
@@ -319,8 +316,6 @@ class YotoClient:
                 track_key = get_raw_value(track_item, "key")
                 if track_key is None:
                     continue
-                if chapter.tracks is None:
-                    chapter.tracks = {}
                 if track_key not in chapter.tracks:
                     chapter.tracks[track_key] = Track(key=track_key)
                 track = chapter.tracks[track_key]
@@ -533,7 +528,7 @@ class YotoClient:
         playlist = [
             (chapter_key, track_key)
             for chapter_key, chapter in card.chapters.items()
-            for track_key in (chapter.tracks or {})
+            for track_key in chapter.tracks
         ]
         current = (last.chapter_key, last.track_key)
         if current not in playlist:
