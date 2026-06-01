@@ -7,7 +7,7 @@ rather than raw dicts.
 
 import json
 import logging
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 
 import aiohttp
 
@@ -167,21 +167,12 @@ class RestClient:
         )
 
     async def get_card_groups(self, token: Token) -> List[Dict[str, Any]]:
-        """GET /card/family/library/groups.
-
-        Unlike the other endpoints this returns a top-level JSON array of
-        group objects. We tolerate a dict-wrapped variant defensively.
-        """
+        """GET /card/family/library/groups — a top-level JSON array of groups
+        (unlike the other endpoints, which return objects)."""
         raw: Any = await self._get(
             token, endpoints.CARDS_LIBRARY_GROUPS, "get card groups"
         )
-        if isinstance(raw, list):
-            return cast(List[Dict[str, Any]], raw)
-        if isinstance(raw, dict):
-            groups = raw.get("groups") or raw.get("cards")
-            if isinstance(groups, list):
-                return cast(List[Dict[str, Any]], groups)
-        return []
+        return raw if isinstance(raw, list) else []
 
     # ─── Internals ────────────────────────────────────────────────
 

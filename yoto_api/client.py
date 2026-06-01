@@ -66,19 +66,14 @@ def _serialize_passthrough(value: Any) -> Any:
 
 
 def _extract_group_card_ids(item: Dict[str, Any]) -> List[str]:
-    """Pull the card IDs out of a group payload, in order, de-duplicated.
-
-    Yoto returns either a simplified `items` array ([{contentId, addedAt}])
-    or a full `cards` array. Prefer `items`; fall back to `cards`.
-    """
+    """Card IDs in this group, from `items[].contentId`, in order, deduped."""
     ids: List[str] = []
     seen: set[str] = set()
-    for source_key, id_key in (("items", "contentId"), ("cards", "cardId")):
-        for entry in item.get(source_key) or []:
-            card_id = get_raw_value(entry, id_key)
-            if card_id and card_id not in seen:
-                seen.add(card_id)
-                ids.append(card_id)
+    for entry in item.get("items") or []:
+        card_id = get_raw_value(entry, "contentId")
+        if card_id and card_id not in seen:
+            seen.add(card_id)
+            ids.append(card_id)
     return ids
 
 

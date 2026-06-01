@@ -686,13 +686,6 @@ class UpdateGroupsTests(_ClientTestCase):
         self.assertEqual(group.last_modified_at, datetime.datetime(2024, 2, 3, 4, 5, 6))
         self.assertEqual(group.card_ids, ["cardA", "cardB"])
 
-    async def test_falls_back_to_cards_array(self) -> None:
-        client = self._make_client(
-            [{"id": "g1", "cards": [{"cardId": "cardA"}, {"cardId": "cardB"}]}]
-        )
-        await client.update_groups()
-        self.assertEqual(client.groups["g1"].card_ids, ["cardA", "cardB"])
-
     async def test_skips_entries_without_id(self) -> None:
         client = self._make_client([{"name": "no id here"}, {"id": "g2"}])
         await client.update_groups()
@@ -721,8 +714,8 @@ class UpdateGroupsTests(_ClientTestCase):
 
 
 class GetCardGroupsResponseShapeTests(_ClientTestCase):
-    """RestClient.get_card_groups returns a list whether Yoto sends a
-    top-level array or a dict-wrapped variant."""
+    """get_card_groups returns the top-level array, or [] if the response
+    isn't a list."""
 
     def _rest(self):
         from yoto_api.rest.client import RestClient
@@ -734,12 +727,7 @@ class GetCardGroupsResponseShapeTests(_ClientTestCase):
         rest._get = AsyncMock(return_value=[{"id": "g1"}])
         self.assertEqual(await rest.get_card_groups(fresh_token()), [{"id": "g1"}])
 
-    async def test_dict_wrapped(self) -> None:
-        rest = self._rest()
-        rest._get = AsyncMock(return_value={"groups": [{"id": "g1"}]})
-        self.assertEqual(await rest.get_card_groups(fresh_token()), [{"id": "g1"}])
-
-    async def test_empty_object_yields_empty_list(self) -> None:
+    async def test_non_list_yields_empty(self) -> None:
         rest = self._rest()
         rest._get = AsyncMock(return_value={})
         self.assertEqual(await rest.get_card_groups(fresh_token()), [])
