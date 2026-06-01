@@ -11,7 +11,6 @@ from datetime import timedelta
 from typing import Optional
 
 import aiohttp
-import pytz
 
 from .const import DOMAIN
 from .exceptions import AuthenticationError, YotoAPIError, YotoError
@@ -142,7 +141,6 @@ class Auth:
                 body = await response.json(content_type=None)
         except (aiohttp.ClientError, ValueError) as err:
             raise YotoAPIError(f"Refresh token request failed: {err}") from err
-        _LOGGER.debug("%s - Refresh Token Response %s", DOMAIN, body)
         if body.get("error"):
             raise AuthenticationError("Refresh token invalid")
         return _build_token(body, scope=token.scope)
@@ -156,7 +154,7 @@ class Auth:
 
 def _build_token(body: dict, scope: Optional[str]) -> Token:
     try:
-        valid_until = datetime.datetime.now(pytz.utc) + timedelta(
+        valid_until = datetime.datetime.now(datetime.timezone.utc) + timedelta(
             seconds=int(body["expires_in"])
         )
         return Token(

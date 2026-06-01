@@ -1,9 +1,9 @@
-"""utils.py"""
+"""Small helpers: nested dict/list lookups, datetime parsing, volume mapping."""
 
 import datetime
 import re
 from bisect import bisect_left
-from typing import Any
+from typing import Any, Optional
 
 
 def get_child_value(data: Any, key: str) -> Any:
@@ -33,23 +33,27 @@ def get_raw_value(data: Any, key: str) -> Any:
         try:
             value = value[x]
             continue
-        except Exception:
+        except (KeyError, TypeError):
             pass
 
         try:
             value = value[int(x)]
             continue
-        except Exception:
+        except (KeyError, IndexError, TypeError, ValueError):
             return None
     return value
 
 
-def parse_datetime(value: str, timezone) -> datetime.datetime:
+def parse_datetime(
+    value: Optional[str], timezone: datetime.tzinfo
+) -> datetime.datetime:
     if value is None:
         return datetime.datetime(2000, 1, 1, tzinfo=timezone)
 
     value = value.replace("-", "").replace("T", "").replace(":", "").replace("Z", "")
     m = re.match(r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})", value)
+    if m is None:
+        return datetime.datetime(2000, 1, 1, tzinfo=timezone)
     return datetime.datetime(
         year=int(m.group(1)),
         month=int(m.group(2)),
@@ -61,19 +65,16 @@ def parse_datetime(value: str, timezone) -> datetime.datetime:
     )
 
 
-def take_closest(list: list, number: int) -> int:
-    """
-    Assumes list is sorted. Returns closest value to number. Used for volume mapping.
-
-    If two numbers are equally close, return the smallest number.
-    """
-    pos = bisect_left(list, number)
+def take_closest(values: list, number: int) -> int:
+    """Return the value in sorted `values` closest to `number`. Ties go to the
+    smaller value. Used for volume mapping."""
+    pos = bisect_left(values, number)
     if pos == 0:
-        return list[0]
-    if pos == len(list):
-        return list[-1]
-    before = list[pos - 1]
-    after = list[pos]
+        return values[0]
+    if pos == len(values):
+        return values[-1]
+    before = values[pos - 1]
+    after = values[pos]
     if after - number < number - before:
         return after
     else:

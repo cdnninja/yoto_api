@@ -19,7 +19,6 @@ from datetime import timedelta
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
 import aiohttp
-import pytz
 
 from .Card import Card, Chapter, Track
 from .const import DOMAIN
@@ -180,7 +179,7 @@ class YotoClient:
             self.token.access_token is None
             or self.token.valid_until is None
             or self.token.valid_until - timedelta(hours=1)
-            <= datetime.datetime.now(pytz.utc)
+            <= datetime.datetime.now(datetime.timezone.utc)
         ):
             _LOGGER.debug("%s - access token expired or near, refreshing", DOMAIN)
             self.token = await self._auth.refresh(self.token)
@@ -200,7 +199,7 @@ class YotoClient:
         """
         token = await self.check_and_refresh_token()
         devices_with_online = await self._rest.list_devices(token)
-        now = datetime.datetime.now(pytz.utc)
+        now = datetime.datetime.now(datetime.timezone.utc)
         seen_ids: set[str] = set()
         for device, online in devices_with_online:
             seen_ids.add(device.device_id)
@@ -228,7 +227,7 @@ class YotoClient:
         player = self.players.get(device_id)
         if player is not None:
             player.info = info
-            player.info_refreshed_at = datetime.datetime.now(pytz.utc)
+            player.info_refreshed_at = datetime.datetime.now(datetime.timezone.utc)
             self._set_online(player, online)
         return info
 
@@ -334,7 +333,7 @@ class YotoClient:
         player = self.players.get(device_id)
         if player is not None:
             player.status = status
-            player.status_refreshed_at = datetime.datetime.now(pytz.utc)
+            player.status_refreshed_at = datetime.datetime.now(datetime.timezone.utc)
         return status
 
     # ─── Settings writes ──────────────────────────────────────────
@@ -634,7 +633,7 @@ class YotoClient:
             self._apply_status_patch(player, message)
         elif isinstance(message, PlaybackEvent):
             self._apply_playback_event(player, message)
-            player.last_event_received_at = datetime.datetime.now(pytz.utc)
+            player.last_event_received_at = datetime.datetime.now(datetime.timezone.utc)
             # Hand the hardware cap to the MQTT client so set_volume clamps
             # against it.
             if self._mqtt is not None and message.volume_max is not None:
@@ -664,8 +663,8 @@ class YotoClient:
             if value is None:
                 continue
             setattr(player.status, field_name, value)
-        player.status_refreshed_at = datetime.datetime.now(pytz.utc)
+        player.status_refreshed_at = datetime.datetime.now(datetime.timezone.utc)
 
     def _set_online(self, player: YotoPlayer, online: bool) -> None:
         player.status.is_online = online
-        player.status_refreshed_at = datetime.datetime.now(pytz.utc)
+        player.status_refreshed_at = datetime.datetime.now(datetime.timezone.utc)
