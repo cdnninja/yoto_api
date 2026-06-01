@@ -79,9 +79,15 @@ Refresh:
 await client.update_player_list()           # /devices/mine
 await client.update_player_info(device_id)  # /config — info + info.config
 await client.update_player_status(device_id)
-await client.update_library()
+await client.update_library()               # /card/family/library — client.library
+await client.update_groups()                # /card/family/library/groups — client.groups
 await client.refresh()                      # list + all info
 ```
+
+Groups are user-defined labels over library cards (a card can sit in
+several groups at once). Each `Group` in `client.groups` carries the
+card IDs in `card_ids`; cross-reference them against `client.library`
+for the card metadata.
 
 MQTT:
 

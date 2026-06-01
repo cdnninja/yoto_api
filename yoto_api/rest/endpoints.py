@@ -22,6 +22,7 @@ def command_status(device_id: str) -> str:
 
 
 CARDS_LIBRARY = "/card/family/library"
+CARDS_LIBRARY_GROUPS = "/card/family/library/groups"
 
 
 def card_detail(card_id: str) -> str:
