@@ -378,7 +378,7 @@ class YotoClient:
             if group is None:
                 group = Group(id=group_id)
                 self.groups[group_id] = group
-            group.name = get_child_value(item, "name")
+            group.name = get_raw_value(item, "name")
             group.family_id = get_raw_value(item, "familyId")
             group.image_id = get_raw_value(item, "imageId")
             group.image_url = get_raw_value(item, "imageUrl")

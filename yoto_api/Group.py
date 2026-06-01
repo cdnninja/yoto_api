@@ -12,15 +12,14 @@ from datetime import datetime
 
 @dataclass
 class Group:
-    id: str  # $.[0].id e.g. "wXyZ1"
-    name: str | None = None  # $.[0].name e.g. "Bedtime"
-    family_id: str | None = None  # $.[0].familyId
-    image_id: str | None = None  # $.[0].imageId
-    image_url: str | None = (
-        None  # $.[0].imageUrl e.g. "https://card-content.yotoplay.com/yoto/..."
-    )
-    created_at: datetime | None = None  # $.[0].createdAt (ISO8601)
-    last_modified_at: datetime | None = None  # $.[0].lastModifiedAt (ISO8601)
-    card_ids: list[str] = field(
-        default_factory=list
-    )  # $.[0].items[].contentId (card IDs in this group)
+    """Maps the /card/family/library/groups payload: id, name, familyId,
+    imageId, imageUrl, createdAt, lastModifiedAt, items[].contentId."""
+
+    id: str
+    name: str | None = None
+    family_id: str | None = None
+    image_id: str | None = None
+    image_url: str | None = None
+    created_at: datetime | None = None  # ISO8601 in the payload
+    last_modified_at: datetime | None = None  # ISO8601 in the payload
+    card_ids: list[str] = field(default_factory=list)
