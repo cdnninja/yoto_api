@@ -6,6 +6,8 @@ from yoto_api import (
     DayMode,
     EventPatch,
     PlaybackStatus,
+    PowerSource,
+    PresenceEvent,
     StatusPatch,
 )
 from yoto_api.mqtt.parser import parse_message
@@ -51,13 +53,16 @@ class MqttParserTests(unittest.TestCase):
         self.assertEqual(result.fields["source"], "remote")
 
     def test_status_topic_returns_status_patch(self) -> None:
+        # data/status (statusVersion 1) — the minimal set. No temp / wifi /
+        # power source here; those are status/full-only (see below).
         payload = (
             b'{"status":{"batteryLevel":73,"charging":1,"volume":50,'
-            b'"userVolume":40,"als":12,"day":0,"temp":"24:18",'
+            b'"userVolume":40,"als":12,"day":0,'
             b'"nightlightMode":"off","headphones":1}}'
         )
         result = parse_message("device/dev1/data/status", payload)
         self.assertIsInstance(result, StatusPatch)
+        self.assertFalse(result.full)
         self.assertEqual(result.player_id, "dev1")
         self.assertEqual(result.fields["battery_level_percentage"], 73)
         self.assertTrue(result.fields["is_charging"])
@@ -66,9 +71,10 @@ class MqttParserTests(unittest.TestCase):
         self.assertEqual(result.fields["user_volume_percentage"], 40)
         self.assertEqual(result.fields["ambient_light_sensor_reading"], 12)
         self.assertEqual(result.fields["day_mode"], DayMode.NIGHT)
-        self.assertEqual(result.fields["battery_temperature"], 24)
-        self.assertEqual(result.fields["temperature_celcius"], 18)
         self.assertEqual(result.fields["nightlight_mode"], "off")
+        # statusVersion-3-only fields must NOT come from data/status.
+        self.assertNotIn("temperature_celcius", result.fields)
+        self.assertNotIn("battery_temperature", result.fields)
 
     def test_status_patch_omits_absent_fields(self) -> None:
         payload = b'{"status":{"batteryLevel":50}}'
@@ -106,6 +112,40 @@ class MqttParserTests(unittest.TestCase):
         self.assertIs(result.fields["repeat_all"], True)
         self.assertIs(result.fields["streaming"], False)
         self.assertIs(result.fields["sleep_timer_active"], False)
+
+    def test_status_full_topic_returns_status_patch_with_battery_extras(self) -> None:
+        # statusVersion 3 payload from device/<id>/status/full.
+        payload = (
+            b'{"status":{"statusVersion":3,"batteryLevel":98,"batteryLevelRaw":59,'
+            b'"battery":3775,"batteryProfile":"LJDX30X-4500","batteryTemp":22,'
+            b'"temp":"24:18","ssid":"X","powerSrc":0}}'
+        )
+        result = parse_message("device/dev1/status/full", payload)
+        self.assertIsInstance(result, StatusPatch)
+        self.assertTrue(result.full)
+        self.assertEqual(result.player_id, "dev1")
+        self.assertEqual(result.fields["battery_level_percentage"], 98)
+        self.assertEqual(result.fields["battery_level_raw"], 59)
+        self.assertEqual(result.fields["battery_voltage_mv"], 3775)
+        self.assertEqual(result.fields["battery_profile"], "LJDX30X-4500")
+        self.assertEqual(result.fields["network_ssid"], "X")
+        self.assertEqual(result.fields["power_source"], PowerSource.BATTERY)
+        # temperature_celcius comes from the `temp` pair (device side, v3-only).
+        self.assertEqual(result.fields["temperature_celcius"], 18)
+        # batteryTemp (direct) wins over the `temp` battery side (24).
+        self.assertEqual(result.fields["battery_temperature"], 22)
+
+    def test_presence_online(self) -> None:
+        result = parse_message("device/dev1/presence", b'{"state":"online","ts":123}')
+        self.assertIsInstance(result, PresenceEvent)
+        self.assertEqual(result.player_id, "dev1")
+        self.assertIs(result.is_online, True)
+        self.assertEqual(result.ts, 123)
+
+    def test_presence_offline(self) -> None:
+        result = parse_message("device/dev1/presence", b'{"state":"offline"}')
+        self.assertIsInstance(result, PresenceEvent)
+        self.assertIs(result.is_online, False)
 
 
 if __name__ == "__main__":

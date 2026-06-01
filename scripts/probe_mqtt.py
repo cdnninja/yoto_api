@@ -29,7 +29,15 @@ from yoto_api.Token import Token
 console = Console()
 
 _ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
-_LISTEN_S = 30.0
+_LISTEN_S = 38.0
+
+# Trigger schedule (seconds from probe start). Each phase fires a different
+# status-refresh mechanism so we can attribute downstream messages to the
+# trigger that caused them. See PR #187 discussion.
+_PHASE_BASELINE = "baseline"
+_PHASE_MQTT_REQUEST = "mqtt:command/status/request"
+_PHASE_REST_POST = "rest:POST /command/status"
+_PHASE_MQTT_DIRECT = "mqtt:command/status+requestId"
 
 
 async def main() -> int:
@@ -79,7 +87,7 @@ async def _run(yoto: YotoClient) -> int:
         f"target: {target.device.name} ({device_id}) "
         f"family={target.device.device_family}"
     )
-    diag(f"is_online (per REST): {target.status.is_online}")
+    diag(f"is_online (per REST): {target.is_online}")
 
     topics = _probe_topics(device_id)
 
@@ -99,9 +107,8 @@ async def _run(yoto: YotoClient) -> int:
             for topic in topics:
                 await client.subscribe(topic)
                 diag(f"SUB {topic}")
-            await client.publish(f"device/{device_id}/command/events/request")
-            await client.publish(f"device/{device_id}/command/status/request")
-            diag("PUB command/events/request + command/status/request")
+
+            phase = [_PHASE_BASELINE]
 
             async def consume() -> None:
                 async for message in client.messages:
@@ -115,6 +122,7 @@ async def _run(yoto: YotoClient) -> int:
                     full_log.append(
                         {
                             "ts": time.time(),
+                            "phase": phase[0],
                             "topic": str(message.topic),
                             "payload": payload,
                         }
@@ -122,18 +130,48 @@ async def _run(yoto: YotoClient) -> int:
 
             listener_task = asyncio.create_task(consume())
 
+            # Each tuple: (fire_at_seconds, phase_label, coroutine factory).
+            # A clean baseline window first, then one trigger per phase with
+            # ~10s of quiet after each so its replies are unambiguous.
+            async def _mqtt_request() -> None:
+                await client.publish(f"device/{device_id}/command/events/request")
+                await client.publish(f"device/{device_id}/command/status/request")
+
+            async def _rest_post() -> None:
+                # The lib's *unused* REST trigger: POST /command/status. This
+                # is what should refresh the AWS IoT shadow and reply on
+                # device/<id>/status/full.
+                await yoto._rest.request_status_push(yoto.token, device_id)
+
+            async def _mqtt_direct() -> None:
+                # Hypothesis: the cloud's command/status publish can be sent
+                # directly over MQTT. The requestId echoes back on /response.
+                await client.publish(
+                    f"device/{device_id}/command/status",
+                    json.dumps({"requestId": uuid.uuid4().hex}),
+                )
+
+            schedule = [
+                (5.0, _PHASE_MQTT_REQUEST, _mqtt_request),
+                (18.0, _PHASE_REST_POST, _rest_post),
+                (30.0, _PHASE_MQTT_DIRECT, _mqtt_direct),
+            ]
+
             diag(
-                f"listening for {int(_LISTEN_S)}s, MQTT status trigger at "
-                f"t+5s and t+15s"
+                f"listening for {int(_LISTEN_S)}s; triggers at "
+                + ", ".join(f"t+{t:.0f}s ({label})" for t, label, _ in schedule)
             )
             end = time.monotonic() + _LISTEN_S
-            mqtt_pushes = [5.0, 15.0]
             while time.monotonic() < end:
                 elapsed = time.monotonic() - probe_start
-                if mqtt_pushes and elapsed >= mqtt_pushes[0]:
-                    mqtt_pushes.pop(0)
-                    await client.publish(f"device/{device_id}/command/status/request")
-                    diag("PUB command/status/request")
+                if schedule and elapsed >= schedule[0][0]:
+                    _, label, fire = schedule.pop(0)
+                    phase[0] = label
+                    try:
+                        await fire()
+                        diag(f"TRIGGER {label}")
+                    except Exception as err:
+                        diag(f"TRIGGER {label} FAILED: {err}")
                 await asyncio.sleep(0.5)
     except aiomqtt.MqttError as err:
         diag(f"DISCONNECT (MqttError): {err}")
@@ -162,6 +200,18 @@ async def _run(yoto: YotoClient) -> int:
                         f.write(f"    keys: {sorted(s.keys())}\n")
                     else:
                         f.write(f"    raw: {s!r}\n")
+
+        # Which trigger produced which topic? This is the whole point of the
+        # phased schedule — e.g. did status/full only show up after the REST
+        # POST, never after the MQTT command/status/request?
+        f.write("\n=== Topic x phase matrix ===\n\n")
+        by_phase: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        for entry in full_log:
+            by_phase[entry["phase"]][entry["topic"]] += 1
+        for phase_label in sorted(by_phase):
+            f.write(f"  [{phase_label}]\n")
+            for topic in sorted(by_phase[phase_label]):
+                f.write(f"    {topic}  ({by_phase[phase_label][topic]} msg)\n")
         f.write("\n=== Full message log ===\n\n")
         for entry in full_log:
             f.write(json.dumps(entry, default=str) + "\n")
@@ -182,7 +232,7 @@ def _pick_device(yoto: YotoClient):
     table.add_column("Family", style="dim")
     table.add_column("Status")
     for i, p in enumerate(players, start=1):
-        status = "[green]online[/]" if p.status.is_online else "[red]offline[/]"
+        status = "[green]online[/]" if p.is_online else "[red]offline[/]"
         table.add_row(str(i), p.device.name, p.device.device_family or "?", status)
     console.print(table)
 
@@ -213,13 +263,25 @@ async def _authenticate(client_id: str, refresh_token: str | None) -> YotoClient
 
 
 def _probe_topics(device_id: str) -> List[str]:
-    # Documented topics only. Wildcards (device/{id}/#, device/+/...,
-    # $aws/things/.../shadow/...) are denied by the IoT policy and the
-    # broker closes the connection on subscribe.
+    # Wildcards (device/{id}/#, device/+/..., $aws/things/.../shadow/...)
+    # are denied by the IoT policy and the broker closes the connection on
+    # subscribe, so every topic must be named explicitly.
+    #
+    # The first three are the lib's documented set. The rest are the
+    # candidate topics from @sethfitz's investigation on PR #187 — notably
+    # `status/full`, which carries the richest payload (statusVersion 3,
+    # raw battery mV, powerSrc, shutDown reason) and is the device's reply
+    # to a POST /device-v2/{id}/command/status. If a subscribe is denied
+    # the broker drops the connection; comment out the offending line.
     return [
         f"device/{device_id}/data/events",
         f"device/{device_id}/data/status",
         f"device/{device_id}/response",
+        f"device/{device_id}/status",
+        f"device/{device_id}/status/full",
+        f"device/{device_id}/presence",
+        f"device/{device_id}/events",
+        f"device/{device_id}/progress",
     ]
 
 

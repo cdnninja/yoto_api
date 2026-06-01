@@ -23,8 +23,8 @@ from yoto_api import (
     DayMode,
     Device,
     PlayerConfig,
+    PlayerFullStatus,
     PlayerInfo,
-    PlayerStatus,
     PowerSource,
     YotoClient,
 )
@@ -85,7 +85,6 @@ async def test_player_info_shape(client: YotoClient, first_device_id: str) -> No
     assert isinstance(info, PlayerInfo)
 
     # Hardware metadata must be present and well-formed
-    assert info.device_id == first_device_id
     assert info.mac and _MAC_RE.match(info.mac.lower()), (
         f"invalid MAC format: {info.mac!r}"
     )
@@ -184,12 +183,12 @@ async def test_alarm_shape(client: YotoClient, first_device_id: str) -> None:
         assert isinstance(alarm.enabled, bool)
 
 
-# ─── PlayerStatus (from /status or /config.device.status fallback) ───
+# ─── PlayerFullStatus (from /config.device.status shadow) ───
 
 
 async def test_player_status_shape(client: YotoClient, first_device_id: str) -> None:
-    status = await client.update_player_status(first_device_id)
-    assert isinstance(status, PlayerStatus)
+    status = await client.update_player_full_status(first_device_id)
+    assert isinstance(status, PlayerFullStatus)
 
     if status.battery_level_percentage is not None:
         assert 0 <= status.battery_level_percentage <= 100
@@ -206,9 +205,8 @@ async def test_player_status_shape(client: YotoClient, first_device_id: str) -> 
     if status.user_volume_percentage is not None:
         assert 0 <= status.user_volume_percentage <= 100
 
-    # Booleans must be actual bool (not 0/1 leaking through)
+    # Booleans must be actual bool (not 0/1 leaking through).
     for name in (
-        "is_online",
         "is_charging",
         "is_audio_device_connected",
         "is_bluetooth_audio_connected",

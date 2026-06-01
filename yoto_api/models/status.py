@@ -30,48 +30,64 @@ class DayMode(IntEnum):
 
 @dataclass
 class PlayerStatus:
-    """Runtime telemetry. Source is GET /status when scoped, otherwise the
-    /config response's device.status sub-block (see status_adapter).
+    """The player's basic live status, from the MQTT `data/status` topic.
+
+    Holds ONLY the fields that topic actually delivers — the firmware's
+    minimal set. The richer fields the player sends on `status/full` (wifi,
+    ssid, power source, temperature, raw battery, …) live on
+    `PlayerFullStatus`, so each object stays coherent with its source.
+
+    Connection state (`is_online`) and identity live on `YotoPlayer`, not here.
     """
 
-    device_id: str
-    is_online: Optional[bool] = None
+    # When this telemetry was current device-side: the device clock
+    # (status/full `utcTime`, shadow `updatedAt`), or our receive time when the
+    # payload carries none (data/status).
     updated_at: Optional[datetime] = None
-    uptime: Optional[int] = None  # seconds
-    utc_time: Optional[int] = None
-    utc_offset_seconds: Optional[int] = None
 
-    # Power
     battery_level_percentage: Optional[int] = None
-    battery_temperature: Optional[int] = None
     is_charging: Optional[bool] = None
-    power_source: Optional[PowerSource] = None
-
-    # Network
-    network_ssid: Optional[str] = None
-    wifi_strength: Optional[int] = None  # dBm
-    average_download_speed_bytes_second: Optional[int] = None
-    is_background_download_active: Optional[bool] = None
-
-    # Storage
     free_disk_space_bytes: Optional[int] = None
-    total_disk_space_bytes: Optional[int] = None
 
-    # Card / playback snapshot (live updates come via PlaybackEvent)
+    # Snapshot only — live playback updates arrive via PlaybackEvent.
     active_card: Optional[str] = None
     card_insertion_state: Optional[CardInsertionState] = None
 
-    # Audio
     system_volume_percentage: Optional[int] = None
     user_volume_percentage: Optional[int] = None
     is_audio_device_connected: Optional[bool] = None
     is_bluetooth_audio_connected: Optional[bool] = None
 
-    # Display + ambient
     nightlight_mode: Optional[str] = None  # hex code or "off"
     day_mode: Optional[DayMode] = None
     ambient_light_sensor_reading: Optional[int] = None
-    temperature_celcius: Optional[int] = None  # Yoto's typo preserved
-    # Effective display brightness right now (0-100). Tracks auto-dim,
-    # ALS, day/night transitions. MQTT-pushed (`dnowBrightness`).
+    # Effective brightness now (0-100): tracks auto-dim, ALS, day/night.
     current_display_brightness: Optional[int] = None
+
+
+@dataclass
+class PlayerFullStatus(PlayerStatus):
+    """The player's full status, from the MQTT `status/full` topic or the REST
+    `/config.device.status` shadow. Superset of `PlayerStatus`: adds the
+    fields the `data/status` topic doesn't carry.
+    """
+
+    battery_temperature: Optional[int] = None
+    power_source: Optional[PowerSource] = None
+    # Raw fuel-gauge reading before the firmware's profile smoothing — can
+    # differ from battery_level_percentage.
+    battery_level_raw: Optional[int] = None
+    # Millivolts. Only reported while live; None in an offline shadow read.
+    battery_voltage_mv: Optional[int] = None
+    battery_profile: Optional[str] = None  # e.g. "LJDX30X-4500"
+
+    network_ssid: Optional[str] = None
+    wifi_strength: Optional[int] = None  # dBm
+    is_background_download_active: Optional[bool] = None
+    average_download_speed_bytes_second: Optional[int] = None
+    total_disk_space_bytes: Optional[int] = None
+    temperature_celcius: Optional[int] = None  # Yoto's typo preserved
+
+    uptime: Optional[int] = None  # seconds
+    utc_time: Optional[int] = None
+    utc_offset_seconds: Optional[int] = None

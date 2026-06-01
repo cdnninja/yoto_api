@@ -30,9 +30,8 @@ class StatusAdapterTests(unittest.TestCase):
             "volume": 0,
             "wifiStrength": -75,
         }
-        status = adapt_raw_status(raw, device_id="d1")
+        status = adapt_raw_status(raw)
 
-        self.assertEqual(status.device_id, "d1")
         self.assertEqual(status.active_card, "8A3Lr")
         self.assertEqual(status.battery_level_percentage, 73)
         self.assertFalse(status.is_charging)
@@ -56,16 +55,24 @@ class StatusAdapterTests(unittest.TestCase):
             ({"temp": "notSupported:notSupported"}, (None, None)),
         ]
         for raw, (expected_battery, expected_device) in cases:
-            status = adapt_raw_status(raw, device_id="d")
+            status = adapt_raw_status(raw)
             self.assertEqual(status.battery_temperature, expected_battery, msg=raw)
             self.assertEqual(status.temperature_celcius, expected_device, msg=raw)
 
+    def test_empty_block_yields_all_none(self) -> None:
+        # If Yoto ever drops device.status, the `or {}` guard upstream passes
+        # an empty dict — must yield an empty status, never crash.
+        status = adapt_raw_status({})
+        self.assertIsNone(status.battery_level_percentage)
+        self.assertIsNone(status.updated_at)
+        self.assertIsNone(status.network_ssid)
+
     def test_active_card_none_string_becomes_None(self) -> None:
-        status = adapt_raw_status({"activeCard": "none"}, device_id="d")
+        status = adapt_raw_status({"activeCard": "none"})
         self.assertIsNone(status.active_card)
 
     def test_unknown_power_source_is_None(self) -> None:
-        status = adapt_raw_status({"powerSrc": 99}, device_id="d")
+        status = adapt_raw_status({"powerSrc": 99})
         self.assertIsNone(status.power_source)
 
     def test_card_insertion_streaming(self) -> None:
@@ -78,7 +85,7 @@ class StatusAdapterTests(unittest.TestCase):
             (3, CardInsertionState.STREAMING),
         ]
         for raw, expected in cases:
-            status = adapt_raw_status({"cardInserted": raw}, device_id="d")
+            status = adapt_raw_status({"cardInserted": raw})
             self.assertEqual(status.card_insertion_state, expected, msg=raw)
 
 

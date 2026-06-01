@@ -5,36 +5,50 @@ from typing import Optional
 from .device import Device
 from .event import PlaybackEvent
 from .info import PlayerInfo
-from .status import PlayerStatus
+from .status import PlayerFullStatus, PlayerStatus
 
 
 @dataclass
 class YotoPlayer:
     """Stable per-device handle. Mutable: gets updated as data arrives.
 
-    `info`, `status`, and `last_event` are always present — they're
-    initialized empty (all fields `None` except the device_id binding)
-    by `__post_init__` so consumers don't need defensive `is None`
-    guards. The "have we actually received data?" signal lives on the
-    `*_refreshed_at` / `last_event_received_at` timestamps, which stay
-    `Optional[datetime]`.
+    Each telemetry object has a single writer, so values never get mixed
+    across sources:
+      - `status` (PlayerStatus)          ← MQTT `data/status`
+      - `full_status` (PlayerFullStatus) ← MQTT `status/full`,
+        or the REST `/config.device.status` shadow when pulled explicitly
+      - `is_online`                      ← MQTT `presence` + REST list/config
+      - `last_event` (PlaybackEvent)     ← MQTT `data/events`
+
+    `info`, `status`, `full_status`, and `last_event` are always present —
+    initialized empty by `__post_init__` so consumers don't need defensive
+    `is None` guards. "Have we received data?" is signalled by the
+    `*_refreshed_at` timestamps (and `status.updated_at` for telemetry).
     """
 
     device: Device
     info: PlayerInfo = field(init=False)
     status: PlayerStatus = field(init=False)
+    full_status: PlayerFullStatus = field(init=False)
     last_event: PlaybackEvent = field(init=False)
+
+    # Connection state — distinct from telemetry. Written by presence (MQTT)
+    # and REST list/config; never lives inside a status object.
+    is_online: Optional[bool] = None
 
     devices_refreshed_at: Optional[datetime] = None
     info_refreshed_at: Optional[datetime] = None
-    status_refreshed_at: Optional[datetime] = None
+    online_refreshed_at: Optional[datetime] = None
     last_event_received_at: Optional[datetime] = None
 
     def __post_init__(self) -> None:
-        device_id = self.device.device_id
-        self.info = PlayerInfo(device_id=device_id)
-        self.status = PlayerStatus(device_id=device_id)
-        self.last_event = PlaybackEvent(player_id=device_id)
+        # last_event keeps player_id — PlaybackEvent doubles as the routed
+        # MQTT message, keyed by it. The status/info objects don't: identity
+        # lives on `device`.
+        self.info = PlayerInfo()
+        self.status = PlayerStatus()
+        self.full_status = PlayerFullStatus()
+        self.last_event = PlaybackEvent(player_id=self.device.device_id)
 
     @property
     def id(self) -> str:

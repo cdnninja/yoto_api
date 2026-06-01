@@ -18,18 +18,22 @@ from ..const import DOMAIN, VOLUME_MAPPING_INVERTED
 from ..exceptions import YotoMQTTError
 from ..Token import Token
 from ..utils import take_closest
-from ..models.event import EventPatch, StatusPatch
+from ..models.event import EventPatch, PresenceEvent, StatusPatch
 from .parser import parse_message
 
 _LOGGER = logging.getLogger(__name__)
 
 
-Message = Union[EventPatch, StatusPatch]
+Message = Union[EventPatch, StatusPatch, PresenceEvent]
 Callback = Callable[[Message], Union[None, Awaitable[None]]]
 DisconnectCallback = Callable[[Optional[Exception]], Union[None, Awaitable[None]]]
 
 # `response` (command ACKs) also exists but the lib doesn't consume it.
-_SUBSCRIBED_TOPICS = ("data/events", "data/status")
+#   data/events  — playback deltas
+#   data/status  — basic status (reply to command/status/request)
+#   status/full  — full status (reply to command/status + requestId)
+#   presence     — online/offline transitions (broker Last-Will on offline)
+_SUBSCRIBED_TOPICS = ("data/events", "data/status", "status/full", "presence")
 
 
 async def _maybe_await(result) -> None:
@@ -135,10 +139,25 @@ class YotoMqttClient:
         """Ask the player to push fresh `data/events` + `data/status`.
 
         The firmware never publishes `data/status` spontaneously; this
-        is the only way to refresh telemetry over MQTT.
+        is the only way to refresh the basic status over MQTT. For the
+        richer `status/full` payload use `request_full_status_push`.
         """
         await self._publish(f"device/{player_id}/command/events/request")
         await self._publish(f"device/{player_id}/command/status/request")
+
+    async def request_full_status_push(self, player_id: str) -> None:
+        """Ask the player to push a full `status/full`.
+
+        Publishes `command/status` with a requestId; the firmware replies
+        on `device/{id}/status/full` with the rich payload (raw battery mV,
+        batteryLevelRaw, profile, etc.). This is the same command Yoto Cloud
+        issues behind `POST /device-v2/{id}/command/status`, but direct over
+        MQTT — no REST round-trip.
+        """
+        await self._publish(
+            f"device/{player_id}/command/status",
+            json.dumps({"requestId": uuid.uuid4().hex}),
+        )
 
     # ─── Player commands ─────────────────────────────────────────
 
@@ -273,7 +292,7 @@ class YotoMqttClient:
                 await self.request_status_push(player_id)
             except Exception as err:
                 _LOGGER.debug(
-                    "%s - request_status_push at connect failed for %s: %s",
+                    "%s - status push at connect failed for %s: %s",
                     DOMAIN,
                     player_id,
                     err,

@@ -6,37 +6,24 @@ rather than raw dicts.
 """
 
 import json
-import logging
 from typing import Any, Dict, List, Optional
 
 import aiohttp
 
-from ..account import has_scope
-from ..const import DOMAIN
 from ..exceptions import AuthenticationError, YotoAPIError
 from ..Token import Token
 from .._coerce import (
     as_bool,
     as_int,
-    coerce_active_card,
     parse_brightness,
-    parse_enum,
     parse_hhmm,
-    parse_iso,
 )
 from ..models.config import Alarm, PlayerConfig
 from ..models.device import Device
 from ..models.info import PlayerInfo
-from ..models.status import (
-    CardInsertionState,
-    DayMode,
-    PlayerStatus,
-    PowerSource,
-)
+from ..models.status import PlayerFullStatus
 from ..status_adapter import adapt_raw_status
 from . import endpoints
-
-_LOGGER = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT_SECONDS = 30.0
 
@@ -59,7 +46,7 @@ class RestClient:
         """Return (Device, online) pairs from /devices/mine.
 
         `online` is split out because it's mutable state — it belongs on
-        `PlayerStatus.is_online`, not on the immutable `Device` identity.
+        `YotoPlayer.is_online`, not on the immutable `Device` identity.
         """
         response = await self._get(token, endpoints.DEVICES_MINE, "list devices")
         try:
@@ -78,7 +65,7 @@ class RestClient:
         """Return (PlayerInfo, online) from /config.
 
         `online` is split out because it's mutable state — it belongs on
-        `PlayerStatus.is_online`, not on the otherwise stable `PlayerInfo`.
+        `YotoPlayer.is_online`, not on the otherwise stable `PlayerInfo`.
         """
         response = await self._get(
             token, endpoints.device_config(device_id), f"get player {device_id} config"
@@ -92,42 +79,32 @@ class RestClient:
                 f"Player {device_id} config response malformed: {err}"
             ) from err
 
-    async def get_player_status(self, token: Token, device_id: str) -> PlayerStatus:
-        """Force a fresh telemetry snapshot.
+    async def get_player_status(
+        self, token: Token, device_id: str
+    ) -> tuple[PlayerFullStatus, Optional[bool]]:
+        """Read the last-known telemetry snapshot from the device shadow.
 
-        Uses the documented /status endpoint when the token grants
-        `family:device-status:view`, otherwise reads the `device.status`
-        sub-block out of /config. Also falls back on a runtime 403 in
-        case the JWT claim and the API's view disagree.
+        Returns `(PlayerFullStatus, online)`. Reads the `device.status`
+        sub-block out of /config — the AWS IoT shadow, which can lag until
+        refreshed (live) or hold the last-reported state (offline). Live
+        telemetry is sourced over MQTT (see YotoMqttClient); this is the
+        offline / cold-start fallback. `online` is split out because it's
+        connection state, tracked on `YotoPlayer.is_online`.
+
+        We deliberately don't use the documented /status endpoint: it needs
+        the `family:device-status:view` scope (which HA core's token lacks,
+        and Yoto is deprecating) and `/config.device.status` carries the same
+        firmware status block.
         """
-        if has_scope(token.access_token, "family:device-status:view"):
-            try:
-                raw = await self._get(
-                    token,
-                    endpoints.device_status(device_id),
-                    f"get player {device_id} status",
-                )
-                return _parse_status_response(raw, device_id)
-            except YotoAPIError as err:
-                if not _is_scope_403(err):
-                    raise
-                _LOGGER.debug(
-                    "%s - /status forbidden despite scope; falling back to "
-                    "/config.device.status",
-                    DOMAIN,
-                )
-
         config = await self._get(
             token,
             endpoints.device_config(device_id),
-            f"get player {device_id} config (status fallback)",
+            f"get player {device_id} status",
         )
         device_block = config.get("device") or {}
-        status = adapt_raw_status(device_block.get("status") or {}, device_id)
-        is_online = device_block.get("online")
-        if isinstance(is_online, bool):
-            status.is_online = is_online
-        return status
+        full_status = adapt_raw_status(device_block.get("status") or {})
+        online = device_block.get("online")
+        return full_status, online if isinstance(online, bool) else None
 
     # ─── Settings writes ──────────────────────────────────────────
 
@@ -298,44 +275,13 @@ KNOWN_CONFIG_KEYS = frozenset(
     }
 )
 
-KNOWN_STATUS_ENDPOINT_KEYS = frozenset(
-    {
-        "deviceId",
-        "isOnline",
-        "updatedAt",
-        "uptime",
-        "utcTime",
-        "utcOffsetSeconds",
-        "batteryLevelPercentage",
-        "isCharging",
-        "powerSource",
-        "networkSsid",
-        "wifiStrength",
-        "averageDownloadSpeedBytesSecond",
-        "isBackgroundDownloadActive",
-        "freeDiskSpaceBytes",
-        "totalDiskSpaceBytes",
-        "activeCard",
-        "cardInsertionState",
-        "systemVolumePercentage",
-        "userVolumePercentage",
-        "isAudioDeviceConnected",
-        "isBluetoothAudioConnected",
-        "nightlightMode",
-        "dayMode",
-        "ambientLightSensorReading",
-        "temperatureCelcius",
-    }
-)
-
-
 # ─── Response parsers (private helpers) ──────────────────────────────
 
 
 def _parse_device(item: Dict[str, Any]) -> Device:
     # `online` is intentionally not on Device — it's mutable state
-    # tracked via PlayerStatus.is_online; YotoClient.update_player_list
-    # propagates the value from this same payload onto the status.
+    # tracked via YotoPlayer.is_online; YotoClient.update_player_list
+    # propagates the value from this same payload onto the player.
     return Device(
         device_id=item["deviceId"],
         name=item.get("name") or "",
@@ -355,7 +301,6 @@ def _parse_player_info(response: Dict[str, Any]) -> PlayerInfo:
     raw_config = device.get("config") or {}
 
     return PlayerInfo(
-        device_id=device["deviceId"],
         name=device.get("name"),
         firmware_version=device.get("releaseChannelVersion"),
         pop_code=device.get("popCode"),
@@ -432,61 +377,3 @@ def _parse_alarm(encoded: str) -> Alarm:
         volume=as_int(parts[5]) if len(parts) > 5 else None,
         enabled=enabled if enabled is not None else True,
     )
-
-
-def _parse_status_response(raw: Dict[str, Any], device_id: str) -> PlayerStatus:
-    """Parse the documented /status response (long field names, typed)."""
-    return PlayerStatus(
-        device_id=device_id,
-        is_online=raw.get("isOnline"),
-        updated_at=parse_iso(raw.get("updatedAt")),
-        uptime=raw.get("uptime"),
-        utc_time=raw.get("utcTime"),
-        utc_offset_seconds=raw.get("utcOffsetSeconds"),
-        battery_level_percentage=raw.get("batteryLevelPercentage"),
-        is_charging=raw.get("isCharging"),
-        power_source=parse_enum(PowerSource, raw.get("powerSource")),
-        network_ssid=raw.get("networkSsid"),
-        wifi_strength=raw.get("wifiStrength"),
-        average_download_speed_bytes_second=raw.get("averageDownloadSpeedBytesSecond"),
-        is_background_download_active=raw.get("isBackgroundDownloadActive"),
-        free_disk_space_bytes=raw.get("freeDiskSpaceBytes"),
-        total_disk_space_bytes=raw.get("totalDiskSpaceBytes"),
-        active_card=coerce_active_card(raw.get("activeCard")),
-        card_insertion_state=parse_enum(
-            CardInsertionState, raw.get("cardInsertionState")
-        ),
-        system_volume_percentage=raw.get("systemVolumePercentage"),
-        user_volume_percentage=raw.get("userVolumePercentage"),
-        is_audio_device_connected=raw.get("isAudioDeviceConnected"),
-        is_bluetooth_audio_connected=raw.get("isBluetoothAudioConnected"),
-        nightlight_mode=raw.get("nightlightMode"),
-        day_mode=parse_enum(DayMode, raw.get("dayMode")),
-        ambient_light_sensor_reading=raw.get("ambientLightSensorReading"),
-        temperature_celcius=_parse_documented_temp(raw.get("temperatureCelcius")),
-    )
-
-
-def _parse_documented_temp(value: Any) -> Optional[int]:
-    """`/status` returns temp as a string int like "20", or "notSupported".
-
-    The raw `/config.device.status` form (`"battery:device"`) uses
-    `parse_temp_pair` instead.
-    """
-    if value in (None, "notSupported", ""):
-        return None
-    try:
-        coerced = int(value)
-    except (TypeError, ValueError):
-        return None
-    return coerced if coerced != 0 else None
-
-
-def _is_scope_403(err: YotoAPIError) -> bool:
-    """Did we get a 403 because of a missing OAuth scope?
-
-    Yoto returns 403 for both unauthorized routes and missing scopes;
-    we treat any 403 as "fall back to /config", which is the only
-    actionable case anyway.
-    """
-    return err.status_code == 403

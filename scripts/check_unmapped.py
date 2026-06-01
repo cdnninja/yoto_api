@@ -16,14 +16,10 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from yoto_api import AuthenticationError, YotoAPIError, YotoClient
+from yoto_api import AuthenticationError, YotoClient
 from yoto_api.mqtt.client import YotoMqttClient
 from yoto_api.mqtt.parser import KNOWN_EVENT_KEYS, KNOWN_STATUS_KEYS
-from yoto_api.rest.client import (
-    KNOWN_CONFIG_KEYS,
-    KNOWN_DEVICE_KEYS,
-    KNOWN_STATUS_ENDPOINT_KEYS,
-)
+from yoto_api.rest.client import KNOWN_CONFIG_KEYS, KNOWN_DEVICE_KEYS
 from yoto_api.status_adapter import KNOWN_RAW_STATUS_KEYS
 from yoto_api.Token import Token
 
@@ -71,9 +67,7 @@ async def _run(client: YotoClient) -> int:
 
     # MQTT: any one online device is enough — the broker payload shape
     # doesn't vary by device.
-    online_id = next(
-        (did for did, p in client.players.items() if p.status.is_online), None
-    )
+    online_id = next((did for did, p in client.players.items() if p.is_online), None)
     if online_id is None:
         print("\n[skip] MQTT: no online devices on this account", file=sys.stderr)
         return 0
@@ -131,23 +125,9 @@ async def _check_rest(client: YotoClient, device_id: str) -> None:
 
     _print_unmapped("device (metadata)", flat_metadata, KNOWN_DEVICE_KEYS)
     _print_unmapped("device.config", raw_config, KNOWN_CONFIG_KEYS)
+    # device.status carries the statusVersion-3 firmware block (same shape as
+    # the MQTT status/full payload), so we check it against KNOWN_STATUS_KEYS.
     _print_unmapped("device.status", raw_status, KNOWN_RAW_STATUS_KEYS)
-
-    try:
-        status = await client._rest._get(
-            client.token,
-            f"/device-v2/{device_id}/status",
-            "unmapped probe",
-        )
-    except YotoAPIError as err:
-        if err.status_code == 403:
-            print(
-                "\n[skip] /status: token lacks family:device-status:view scope",
-                file=sys.stderr,
-            )
-            return
-        raise
-    _print_unmapped("/status", status, KNOWN_STATUS_ENDPOINT_KEYS)
 
 
 async def _check_mqtt(client: YotoClient, device_id: str) -> None:
@@ -167,6 +147,7 @@ async def _check_mqtt(client: YotoClient, device_id: str) -> None:
         await client.connect_events([device_id])
         await asyncio.sleep(_MQTT_LISTEN_S)
         await client.request_status_push(device_id)
+        await client.request_full_status_push(device_id)
         await asyncio.sleep(_MQTT_AFTER_PUSH_S)
     finally:
         try:
@@ -181,6 +162,10 @@ async def _check_mqtt(client: YotoClient, device_id: str) -> None:
     _print_unmapped_samples(
         "data/status",
         _collect(captured, "/data/status", KNOWN_STATUS_KEYS, unwrap_status=True),
+    )
+    _print_unmapped_samples(
+        "status/full",
+        _collect(captured, "/status/full", KNOWN_STATUS_KEYS, unwrap_status=True),
     )
 
 

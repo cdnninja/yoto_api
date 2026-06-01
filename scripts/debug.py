@@ -74,9 +74,9 @@ async def _run(client: YotoClient) -> int:
         except Exception as err:
             console.print(f"[yellow]warn: update_player_info failed: {err}[/]")
         try:
-            await client.update_player_status(device_id)
+            await client.update_player_full_status(device_id)
         except Exception as err:
-            console.print(f"[yellow]warn: update_player_status failed: {err}[/]")
+            console.print(f"[yellow]warn: update_player_full_status failed: {err}[/]")
 
     log: Deque[Tuple[str, str]] = deque(maxlen=15)
 
@@ -94,10 +94,9 @@ async def _run(client: YotoClient) -> int:
 
     await client.connect_events([device_id], on_update=on_update)
 
-    # The firmware never pushes data/status spontaneously, but it does
-    # respond to MQTT command/status/request with a fresh push within
-    # ~150ms (verified via scripts/probe_mqtt.py). REST POST /command/status
-    # is acked but doesn't trigger an MQTT push. So nudge MQTT directly.
+    # The firmware never pushes status spontaneously, so nudge it each tick:
+    # request_status_push refreshes playback + basic status, request_full_status_push
+    # the rich telemetry.
     push_interval_s = 2.0
     last_push = 0.0
 
@@ -113,6 +112,7 @@ async def _run(client: YotoClient) -> int:
                 if client._mqtt is not None and now - last_push >= push_interval_s:
                     try:
                         await client._mqtt.request_status_push(device_id)
+                        await client._mqtt.request_full_status_push(device_id)
                     except Exception:
                         pass
                     last_push = now
@@ -136,8 +136,16 @@ def _render(player: YotoPlayer, log: Deque[Tuple[str, str]]) -> Layout:
         Layout(_log_panel(log), name="log", size=10),
     )
     layout["body"].split_row(
-        Layout(_section_panel("Status", player.status), name="status"),
+        Layout(name="statuses"),
         Layout(name="right"),
+    )
+    # status = MQTT data/status (v1) ; full_status = status/full (v3) / shadow.
+    layout["statuses"].split_column(
+        Layout(_section_panel("Status (data/status)", player.status), name="status"),
+        Layout(
+            _section_panel("Full status (status/full)", player.full_status),
+            name="full",
+        ),
     )
     # Last event is small (~12 useful fields); config takes the rest.
     layout["right"].split_column(
@@ -150,7 +158,7 @@ def _render(player: YotoPlayer, log: Deque[Tuple[str, str]]) -> Layout:
 def _header(player: YotoPlayer) -> Panel:
     online = (
         Text("● online", style="bold green")
-        if player.status.is_online
+        if player.is_online
         else Text("● offline", style="bold red")
     )
     fw = player.info.firmware_version or "?"
@@ -259,7 +267,7 @@ def _pick_device(client: YotoClient) -> str | None:
     table.add_column("Family", style="dim")
     table.add_column("Status")
     for i, p in enumerate(players, start=1):
-        status = "[green]online[/]" if p.status.is_online else "[red]offline[/]"
+        status = "[green]online[/]" if p.is_online else "[red]offline[/]"
         table.add_row(str(i), p.device.name, p.device.device_family or "?", status)
     console.print(table)
 

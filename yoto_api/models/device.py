@@ -6,10 +6,9 @@ from typing import Optional
 class Device:
     """Identity from GET /device-v2/devices/mine. Immutable per device.
 
-    Online state is tracked separately on `PlayerStatus.is_online`
-    because it changes over time (REST poll updates it both ways, MQTT
-    presence sets it to True). Keeping `Device` frozen makes identity
-    explicit and unambiguous.
+    Online state is tracked separately on `YotoPlayer.is_online` because it
+    changes over time (REST list/config and MQTT presence update it both
+    ways). Keeping `Device` frozen makes identity explicit and unambiguous.
     """
 
     device_id: str
