@@ -1,6 +1,6 @@
 from .config import Alarm, PlayerConfig
 from .device import Device
-from .event import PlaybackEvent, PlaybackStatus, StatusPatch
+from .event import EventPatch, PlaybackEvent, PlaybackStatus, StatusPatch
 from .info import PlayerInfo
 from .player import YotoPlayer
 from .status import (
@@ -15,6 +15,7 @@ __all__ = [
     "CardInsertionState",
     "DayMode",
     "Device",
+    "EventPatch",
     "PlaybackEvent",
     "PlaybackStatus",
     "PlayerConfig",

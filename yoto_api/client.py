@@ -14,7 +14,6 @@ MQTT background task are torn down cleanly:
 import asyncio
 import datetime
 import logging
-from dataclasses import fields
 from datetime import timedelta
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
@@ -26,7 +25,7 @@ from .exceptions import YotoError
 from .Token import Token
 from .utils import get_child_value, get_raw_value
 from .auth import Auth
-from .models.event import PlaybackEvent, StatusPatch
+from .models.event import EventPatch, PlaybackEvent, StatusPatch
 from .models.info import PlayerInfo
 from .models.player import YotoPlayer
 from .models.status import PlayerStatus
@@ -114,6 +113,17 @@ _BRIGHTNESS_PAIRS = (
         "night_display_brightness",
         "nightDisplayBrightness",
     ),
+)
+
+# last_event fields scoped to the active card, cleared when card_id clears.
+_CARD_SCOPED_FIELDS = (
+    "chapter_key",
+    "chapter_title",
+    "track_key",
+    "track_title",
+    "track_length",
+    "position",
+    "source",
 )
 
 
@@ -631,32 +641,36 @@ class YotoClient:
         self._set_online(player, True)
         if isinstance(message, StatusPatch):
             self._apply_status_patch(player, message)
-        elif isinstance(message, PlaybackEvent):
+        elif isinstance(message, EventPatch):
             self._apply_playback_event(player, message)
             player.last_event_received_at = datetime.datetime.now(datetime.timezone.utc)
             # Hand the hardware cap to the MQTT client so set_volume clamps
             # against it.
-            if self._mqtt is not None and message.volume_max is not None:
-                self._mqtt.set_volume_max(message.player_id, message.volume_max)
+            volume_max = message.fields.get("volume_max")
+            if self._mqtt is not None and volume_max is not None:
+                self._mqtt.set_volume_max(message.player_id, volume_max)
         if self._update_callback is not None:
             try:
                 await _maybe_await(self._update_callback(player))
             except Exception:
                 _LOGGER.exception("%s - update callback raised", DOMAIN)
 
-    def _apply_playback_event(self, player: YotoPlayer, event: PlaybackEvent) -> None:
-        """Merge an MQTT PlaybackEvent into the player's `last_event`.
+    def _apply_playback_event(self, player: YotoPlayer, patch: EventPatch) -> None:
+        """Apply an MQTT events patch onto the player's `last_event` snapshot.
 
-        Yoto emits partial events (e.g. a volume change carries only
-        `volume`); replacing wholesale would wipe playback_status and
-        flicker the state. Only non-None fields overwrite.
+        Yoto emits partial events (a volume change carries only `volume`); the
+        patch holds just the fields the payload sent, so an explicit clear
+        (`cardId: "none"` on stop -> card_id None) is applied while omitted
+        fields keep their previous value.
+
+        chapter/track/position describe the active card; on stop the device
+        clears card_id but often leaves them stale, so clear them too.
         """
-        for f in fields(event):
-            if f.name == "player_id":
-                continue
-            value = getattr(event, f.name)
-            if value is not None:
-                setattr(player.last_event, f.name, value)
+        for field_name, value in patch.fields.items():
+            setattr(player.last_event, field_name, value)
+        if "card_id" in patch.fields and patch.fields["card_id"] is None:
+            for field_name in _CARD_SCOPED_FIELDS:
+                setattr(player.last_event, field_name, None)
 
     def _apply_status_patch(self, player: YotoPlayer, patch: StatusPatch) -> None:
         for field_name, value in patch.fields.items():

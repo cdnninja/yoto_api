@@ -3,6 +3,7 @@ MQTT lifecycle, dynamic subscribe, settings + alarms writes, online
 state consolidation."""
 
 import datetime
+import json
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -12,13 +13,14 @@ from yoto_api import YotoError
 from yoto_api import (
     Alarm,
     Device,
-    PlaybackEvent,
+    EventPatch,
     PlaybackStatus,
     StatusPatch,
     YotoClient,
     YotoPlayer,
 )
 from yoto_api.models.info import PlayerInfo
+from yoto_api.mqtt.parser import parse_message
 
 from .conftest import fresh_token
 
@@ -500,9 +502,9 @@ class OnlineConsolidationTests(_ClientTestCase):
 
 
 class PlaybackEventMergeTests(_ClientTestCase):
-    """Yoto emits partial MQTT events; lib must merge non-None fields
-    into the existing last_event so a volume change doesn't wipe
-    playback_status."""
+    """Yoto emits partial MQTT events; the lib applies each EventPatch onto
+    last_event so a volume-only update doesn't wipe playback_status, while an
+    explicit clear (cardId:"none") still empties the field."""
 
     async def asyncSetUp(self) -> None:
         self.client = self.make_client()
@@ -511,29 +513,30 @@ class PlaybackEventMergeTests(_ClientTestCase):
         self.client.players["d1"] = self.player
 
     async def test_first_event_is_stored_as_is(self) -> None:
-        event = PlaybackEvent(
+        patch = EventPatch(
             player_id="d1",
-            card_id="abc",
-            playback_status=PlaybackStatus.PLAYING,
+            fields={"card_id": "abc", "playback_status": PlaybackStatus.PLAYING},
         )
-        await self.client._on_mqtt_message(event)
+        await self.client._on_mqtt_message(patch)
         self.assertEqual(self.player.last_event.card_id, "abc")
         self.assertEqual(
             self.player.last_event.playback_status,
             PlaybackStatus.PLAYING,
         )
 
-    async def test_partial_event_only_overwrites_present_fields(self) -> None:
-        first = PlaybackEvent(
+    async def test_partial_event_keeps_omitted_fields(self) -> None:
+        first = EventPatch(
             player_id="d1",
-            card_id="abc",
-            chapter_key="01",
-            playback_status=PlaybackStatus.PLAYING,
-            volume=8,
+            fields={
+                "card_id": "abc",
+                "chapter_key": "01",
+                "playback_status": PlaybackStatus.PLAYING,
+                "volume": 8,
+            },
         )
         await self.client._on_mqtt_message(first)
         # A volume-only update — must not wipe card_id or playback_status
-        delta = PlaybackEvent(player_id="d1", volume=10)
+        delta = EventPatch(player_id="d1", fields={"volume": 10})
         await self.client._on_mqtt_message(delta)
         self.assertEqual(self.player.last_event.volume, 10)
         self.assertEqual(self.player.last_event.card_id, "abc")
@@ -542,6 +545,37 @@ class PlaybackEventMergeTests(_ClientTestCase):
             self.player.last_event.playback_status,
             PlaybackStatus.PLAYING,
         )
+
+    async def test_stopped_clears_card_and_now_playing(self) -> None:
+        playing = EventPatch(
+            player_id="d1",
+            fields={
+                "card_id": "abc",
+                "chapter_title": "Chapter",
+                "track_title": "Track",
+                "position": 42,
+                "volume": 8,
+                "playback_status": PlaybackStatus.PLAYING,
+            },
+        )
+        await self.client._on_mqtt_message(playing)
+
+        # A real stop sends cardId:"none" but leaves chapter/track/position
+        # stale (or omits them). Clearing card_id must clear those too.
+        stopped = parse_message(
+            "device/d1/data/events",
+            json.dumps({"cardId": "none", "playbackStatus": "stopped"}).encode(),
+        )
+        await self.client._on_mqtt_message(stopped)
+
+        last = self.player.last_event
+        self.assertEqual(last.playback_status, PlaybackStatus.STOPPED)
+        self.assertIsNone(last.card_id)  # explicit "none" cleared it
+        self.assertIsNone(last.chapter_title)  # card-scoped, cleared with card
+        self.assertIsNone(last.track_title)
+        self.assertIsNone(last.position)
+        self.assertEqual(last.volume, 8)  # not card-scoped, kept
+        self.assertEqual(last.volume, 8)  # omitted fields kept
 
 
 class OnlinePresenceOnEveryMqttMessageTests(_ClientTestCase):
@@ -563,7 +597,7 @@ class OnlinePresenceOnEveryMqttMessageTests(_ClientTestCase):
 
     async def test_playback_event_marks_online(self) -> None:
         client, player = self._client_with_offline_player()
-        await client._on_mqtt_message(PlaybackEvent(player_id="d1", volume=5))
+        await client._on_mqtt_message(EventPatch(player_id="d1", fields={"volume": 5}))
         self.assertTrue(player.status.is_online)
 
 

@@ -4,7 +4,7 @@ import unittest
 
 from yoto_api import (
     DayMode,
-    PlaybackEvent,
+    EventPatch,
     PlaybackStatus,
     StatusPatch,
 )
@@ -12,7 +12,7 @@ from yoto_api.mqtt.parser import parse_message
 
 
 class MqttParserTests(unittest.TestCase):
-    def test_events_topic_returns_playback_event(self) -> None:
+    def test_events_topic_returns_event_patch(self) -> None:
         payload = (
             b'{"repeatAll":false,"volume":8,"volumeMax":16,"cardId":"abc",'
             b'"playbackStatus":"playing","streaming":false,'
@@ -20,18 +20,25 @@ class MqttParserTests(unittest.TestCase):
             b'"chapterKey":"03","trackKey":"03","trackLength":315,"position":12}'
         )
         result = parse_message("device/dev1/data/events", payload)
-        self.assertIsInstance(result, PlaybackEvent)
+        self.assertIsInstance(result, EventPatch)
         self.assertEqual(result.player_id, "dev1")
-        self.assertEqual(result.card_id, "abc")
-        self.assertEqual(result.volume, 8)
-        self.assertEqual(result.volume_max, 16)
-        self.assertEqual(result.playback_status, PlaybackStatus.PLAYING)
-        self.assertEqual(result.position, 12)
+        self.assertEqual(result.fields["card_id"], "abc")
+        self.assertEqual(result.fields["volume"], 8)
+        self.assertEqual(result.fields["volume_max"], 16)
+        self.assertEqual(result.fields["playback_status"], PlaybackStatus.PLAYING)
+        self.assertEqual(result.fields["position"], 12)
 
-    def test_events_card_none_becomes_None(self) -> None:
+    def test_events_card_none_is_present_and_cleared(self) -> None:
+        # cardId:"none" is an explicit clear: the key is present, value None.
         payload = b'{"cardId":"none","volume":0,"volumeMax":16}'
         result = parse_message("device/d/data/events", payload)
-        self.assertIsNone(result.card_id)
+        self.assertIn("card_id", result.fields)
+        self.assertIsNone(result.fields["card_id"])
+
+    def test_events_omits_absent_fields(self) -> None:
+        payload = b'{"volume":5,"volumeMax":16}'
+        result = parse_message("device/d/data/events", payload)
+        self.assertEqual(set(result.fields.keys()), {"volume", "volume_max"})
 
     def test_events_includes_titles_and_source(self) -> None:
         payload = (
@@ -40,9 +47,9 @@ class MqttParserTests(unittest.TestCase):
             b'"source":"remote","volume":5,"volumeMax":16}'
         )
         result = parse_message("device/d/data/events", payload)
-        self.assertEqual(result.chapter_title, "Snow and Tell")
-        self.assertEqual(result.track_title, "Snow and Tell")
-        self.assertEqual(result.source, "remote")
+        self.assertEqual(result.fields["chapter_title"], "Snow and Tell")
+        self.assertEqual(result.fields["track_title"], "Snow and Tell")
+        self.assertEqual(result.fields["source"], "remote")
 
     def test_status_topic_returns_status_patch(self) -> None:
         payload = (
@@ -87,9 +94,9 @@ class MqttParserTests(unittest.TestCase):
             b'"volume":5,"volumeMax":16}'
         )
         result = parse_message("device/d/data/events", payload)
-        self.assertIs(result.repeat_all, True)
-        self.assertIs(result.streaming, False)
-        self.assertIs(result.sleep_timer_active, True)
+        self.assertIs(result.fields["repeat_all"], True)
+        self.assertIs(result.fields["streaming"], False)
+        self.assertIs(result.fields["sleep_timer_active"], True)
 
     def test_events_native_booleans(self) -> None:
         payload = (
@@ -97,9 +104,9 @@ class MqttParserTests(unittest.TestCase):
             b'"volume":5,"volumeMax":16}'
         )
         result = parse_message("device/d/data/events", payload)
-        self.assertIs(result.repeat_all, True)
-        self.assertIs(result.streaming, False)
-        self.assertIs(result.sleep_timer_active, False)
+        self.assertIs(result.fields["repeat_all"], True)
+        self.assertIs(result.fields["streaming"], False)
+        self.assertIs(result.fields["sleep_timer_active"], False)
 
 
 if __name__ == "__main__":
