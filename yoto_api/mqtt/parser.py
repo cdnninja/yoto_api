@@ -60,9 +60,6 @@ def _parse_topic(topic: str) -> Optional[Tuple[str, TopicKind]]:
     return parts[1], parts[3]
 
 
-# --- events (device/{id}/data/events) ---
-
-
 def _coerce_card_id(value: Any) -> Optional[str]:
     if value in (None, "none", ""):
         return None
@@ -117,11 +114,9 @@ def _parse_events(device_id: str, body: Dict[str, Any]) -> EventPatch:
     return EventPatch(player_id=device_id, fields=fields)
 
 
-# --- status (device/{id}/data/status) ---
-
 # (raw_key, dest_key, coercer) for the data/status payload.
 # Same naming as `/config.device.status` (Yoto's two endpoints share the
-# raw firmware shape — see yoto_api/status_adapter.py).
+# raw firmware shape, see yoto_api/status_adapter.py).
 _STATUS_VALUE_FIELDS = (
     ("ssid", "network_ssid", lambda v: v),
     ("nightlightMode", "nightlight_mode", lambda v: v),

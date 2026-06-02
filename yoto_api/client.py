@@ -658,13 +658,8 @@ class YotoClient:
     def _apply_playback_event(self, player: YotoPlayer, patch: EventPatch) -> None:
         """Apply an MQTT events patch onto the player's `last_event` snapshot.
 
-        Yoto emits partial events (a volume change carries only `volume`); the
-        patch holds just the fields the payload sent, so an explicit clear
-        (`cardId: "none"` on stop -> card_id None) is applied while omitted
-        fields keep their previous value.
-
         chapter/track/position describe the active card; on stop the device
-        clears card_id but often leaves them stale, so clear them too.
+        clears card_id but leaves them stale, so clear them alongside it.
         """
         for field_name, value in patch.fields.items():
             setattr(player.last_event, field_name, value)
