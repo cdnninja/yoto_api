@@ -682,8 +682,13 @@ class UpdateGroupsTests(_ClientTestCase):
         self.assertEqual(group.family_id, "fam1")
         self.assertEqual(group.image_id, "img1")
         self.assertEqual(group.image_url, "https://example/img.png")
-        self.assertEqual(group.created_at, datetime.datetime(2024, 1, 2, 3, 4, 5))
-        self.assertEqual(group.last_modified_at, datetime.datetime(2024, 2, 3, 4, 5, 6))
+        utc = datetime.timezone.utc
+        self.assertEqual(
+            group.created_at, datetime.datetime(2024, 1, 2, 3, 4, 5, tzinfo=utc)
+        )
+        self.assertEqual(
+            group.last_modified_at, datetime.datetime(2024, 2, 3, 4, 5, 6, tzinfo=utc)
+        )
         self.assertEqual(group.card_ids, ["cardA", "cardB"])
 
     async def test_skips_entries_without_id(self) -> None:
