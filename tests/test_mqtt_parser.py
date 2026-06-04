@@ -28,12 +28,11 @@ class MqttParserTests(unittest.TestCase):
         self.assertEqual(result.fields["playback_status"], PlaybackStatus.PLAYING)
         self.assertEqual(result.fields["position"], 12)
 
-    def test_events_card_none_is_present_and_cleared(self) -> None:
-        # cardId:"none" is an explicit clear: the key is present, value None.
+    def test_events_card_none_kept_raw(self) -> None:
+        # Interpreting "none" is the merge's job, not the parser's.
         payload = b'{"cardId":"none","volume":0,"volumeMax":16}'
         result = parse_message("device/d/data/events", payload)
-        self.assertIn("card_id", result.fields)
-        self.assertIsNone(result.fields["card_id"])
+        self.assertEqual(result.fields["card_id"], "none")
 
     def test_events_omits_absent_fields(self) -> None:
         payload = b'{"volume":5,"volumeMax":16}'

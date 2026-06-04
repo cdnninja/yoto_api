@@ -628,9 +628,7 @@ class YotoClient:
         """True if MQTT is currently connected to the broker."""
         return self._mqtt is not None and self._mqtt.is_connected
 
-    async def _on_mqtt_message(
-        self, message: Union[PlaybackEvent, StatusPatch]
-    ) -> None:
+    async def _on_mqtt_message(self, message: Union[EventPatch, StatusPatch]) -> None:
         player = self.players.get(message.player_id)
         if player is None:
             return
@@ -658,12 +656,13 @@ class YotoClient:
     def _apply_playback_event(self, player: YotoPlayer, patch: EventPatch) -> None:
         """Apply an MQTT events patch onto the player's `last_event` snapshot.
 
-        chapter/track/position describe the active card; on stop the device
-        clears card_id but leaves them stale, so clear them alongside it.
+        The device reports "no card" as card_id "none" and, on stop, leaves
+        chapter/track/position behind instead of clearing them.
         """
         for field_name, value in patch.fields.items():
             setattr(player.last_event, field_name, value)
-        if "card_id" in patch.fields and patch.fields["card_id"] is None:
+        if patch.fields.get("card_id") == "none":
+            player.last_event.card_id = None
             for field_name in _CARD_SCOPED_FIELDS:
                 setattr(player.last_event, field_name, None)
 

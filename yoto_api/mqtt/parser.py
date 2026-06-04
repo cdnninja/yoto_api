@@ -60,12 +60,6 @@ def _parse_topic(topic: str) -> Optional[Tuple[str, TopicKind]]:
     return parts[1], parts[3]
 
 
-def _coerce_card_id(value: Any) -> Optional[str]:
-    if value in (None, "none", ""):
-        return None
-    return str(value)
-
-
 def _optional_str(value: Any) -> Optional[str]:
     if value is None:
         return None
@@ -85,7 +79,7 @@ def _parse_playback_status(value: Any) -> Optional[PlaybackStatus]:
 # (raw_key, PlaybackEvent field name, coercer) for the data/events payload.
 _EVENT_FIELDS = (
     ("eventUtc", "event_utc", as_int),
-    ("cardId", "card_id", _coerce_card_id),
+    ("cardId", "card_id", _optional_str),
     ("chapterKey", "chapter_key", _optional_str),
     ("chapterTitle", "chapter_title", _optional_str),
     ("trackKey", "track_key", _optional_str),
@@ -106,11 +100,16 @@ _EVENT_FIELDS = (
 
 
 def _parse_events(device_id: str, body: Dict[str, Any]) -> EventPatch:
-    fields = {
-        dest_key: coerce(body[raw_key])
-        for raw_key, dest_key, coerce in _EVENT_FIELDS
-        if raw_key in body
-    }
+    fields: Dict[str, Any] = {}
+    for raw_key, dest_key, coerce in _EVENT_FIELDS:
+        if raw_key not in body:
+            continue
+        value = coerce(body[raw_key])
+        # None only comes from a failed coercion: the device never clears with
+        # a null, it uses a value (e.g. card_id "none"). So it's just noise.
+        if value is None:
+            continue
+        fields[dest_key] = value
     return EventPatch(player_id=device_id, fields=fields)
 
 

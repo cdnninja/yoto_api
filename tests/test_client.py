@@ -546,6 +546,22 @@ class PlaybackEventMergeTests(_ClientTestCase):
             PlaybackStatus.PLAYING,
         )
 
+    async def test_unparsable_field_does_not_clobber(self) -> None:
+        first = EventPatch(
+            player_id="d1",
+            fields={"playback_status": PlaybackStatus.PLAYING, "volume": 8},
+        )
+        await self.client._on_mqtt_message(first)
+        # Unknown playbackStatus coerces to None; the key is present but must
+        # not wipe the known status (only card_id treats None as a clear).
+        patch = parse_message(
+            "device/d1/data/events",
+            json.dumps({"playbackStatus": "weird", "volume": 9}).encode(),
+        )
+        await self.client._on_mqtt_message(patch)
+        self.assertEqual(self.player.last_event.playback_status, PlaybackStatus.PLAYING)
+        self.assertEqual(self.player.last_event.volume, 9)
+
     async def test_stopped_clears_card_and_now_playing(self) -> None:
         playing = EventPatch(
             player_id="d1",
@@ -575,7 +591,6 @@ class PlaybackEventMergeTests(_ClientTestCase):
         self.assertIsNone(last.track_title)
         self.assertIsNone(last.position)
         self.assertEqual(last.volume, 8)  # not card-scoped, kept
-        self.assertEqual(last.volume, 8)  # omitted fields kept
 
 
 class OnlinePresenceOnEveryMqttMessageTests(_ClientTestCase):
