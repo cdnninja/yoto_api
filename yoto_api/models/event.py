@@ -67,8 +67,8 @@ class PlaybackEvent:
 class EventPatch:
     """Partial PlaybackEvent update from MQTT `device/{id}/data/events`.
 
-    Holds only the keys the payload carried, so an explicit `cardId: "none"`
-    clears card_id while omitted fields keep their previous value.
+    Holds only the keys the payload carried, with values kept faithful to the
+    wire (e.g. card_id "none"); the merge interprets them onto `last_event`.
     """
 
     player_id: str
