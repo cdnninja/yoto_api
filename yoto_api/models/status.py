@@ -16,9 +16,8 @@ class CardInsertionState(IntEnum):
     NONE = 0
     PHYSICAL = 1
     REMOTE = 2
-    # 3 isn't in Yoto's documented spec but the firmware pushes it on MQTT
-    # when Yoto Radio (or another streaming source) is playing. Best guess
-    # of the semantics; rename if Yoto documents it later.
+    # 3 isn't documented, but the firmware pushes it on MQTT when Yoto Radio
+    # (or another streaming source) is playing.
     STREAMING = 3
 
 

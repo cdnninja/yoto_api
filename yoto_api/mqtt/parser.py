@@ -55,9 +55,6 @@ def parse_message(topic: str, payload: bytes) -> Optional[Message]:
     return None
 
 
-# --- events (device/{id}/data/events) ---
-
-
 def _optional_str(value: Any) -> Optional[str]:
     if value is None:
         return None
@@ -110,8 +107,6 @@ def _parse_events(device_id: str, body: Dict[str, Any]) -> EventPatch:
         fields[dest_key] = value
     return EventPatch(player_id=device_id, fields=fields)
 
-
-# --- status (data/status v1 + status/full v3) ---
 
 # (raw_key, dest_key, coercer). Same naming as `/config.device.status`.
 #
