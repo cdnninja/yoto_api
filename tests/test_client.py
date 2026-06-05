@@ -696,6 +696,13 @@ class UpdateGroupsTests(_ClientTestCase):
         await client.update_groups()
         self.assertEqual(set(client.groups), {"g2"})
 
+    async def test_empty_group_has_no_card_ids(self) -> None:
+        # A group with no cards: items empty or absent -> card_ids == [].
+        client = self._make_client([{"id": "g1", "items": []}, {"id": "g2"}])
+        await client.update_groups()
+        self.assertEqual(client.groups["g1"].card_ids, [])
+        self.assertEqual(client.groups["g2"].card_ids, [])
+
     async def test_updates_existing_group_in_place(self) -> None:
         client = self._make_client([{"id": "g1", "name": "Old"}])
         await client.update_groups()
