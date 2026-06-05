@@ -115,7 +115,7 @@ _BRIGHTNESS_PAIRS = (
     ),
 )
 
-# last_event fields scoped to the active card, cleared when card_id clears.
+# last_event fields scoped to the active card, cleared when card_id is "none"/"".
 _CARD_SCOPED_FIELDS = (
     "chapter_key",
     "chapter_title",
@@ -656,12 +656,12 @@ class YotoClient:
     def _apply_playback_event(self, player: YotoPlayer, patch: EventPatch) -> None:
         """Apply an MQTT events patch onto the player's `last_event` snapshot.
 
-        The device reports "no card" as card_id "none" and, on stop, leaves
-        chapter/track/position behind instead of clearing them.
+        On stop the device clears card_id (to "none" or ""), but leaves the
+        stopped card's chapter/track/position in place, so clear those too.
         """
         for field_name, value in patch.fields.items():
             setattr(player.last_event, field_name, value)
-        if patch.fields.get("card_id") == "none":
+        if patch.fields.get("card_id") in ("none", ""):
             player.last_event.card_id = None
             for field_name in _CARD_SCOPED_FIELDS:
                 setattr(player.last_event, field_name, None)

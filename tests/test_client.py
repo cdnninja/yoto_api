@@ -592,6 +592,18 @@ class PlaybackEventMergeTests(_ClientTestCase):
         self.assertIsNone(last.position)
         self.assertEqual(last.volume, 8)  # not card-scoped, kept
 
+    async def test_empty_card_id_clears_like_none(self) -> None:
+        await self.client._on_mqtt_message(
+            EventPatch(player_id="d1", fields={"card_id": "abc", "chapter_title": "X"})
+        )
+        # "" is the device's other "no card" form, same as "none".
+        await self.client._on_mqtt_message(
+            EventPatch(player_id="d1", fields={"card_id": ""})
+        )
+        last = self.player.last_event
+        self.assertIsNone(last.card_id)
+        self.assertIsNone(last.chapter_title)
+
 
 class OnlinePresenceOnEveryMqttMessageTests(_ClientTestCase):
     """Every MQTT message — event OR status patch — must mark the
