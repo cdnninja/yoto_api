@@ -64,6 +64,18 @@ class PlaybackEvent:
 
 
 @dataclass
+class EventPatch:
+    """Partial PlaybackEvent update from MQTT `device/{id}/data/events`.
+
+    Holds only the keys the payload carried, with values kept faithful to the
+    wire (e.g. card_id "none"); the merge interprets them onto `last_event`.
+    """
+
+    player_id: str
+    fields: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class StatusPatch:
     """Partial PlayerStatus update from MQTT `device/{id}/data/status`.
 

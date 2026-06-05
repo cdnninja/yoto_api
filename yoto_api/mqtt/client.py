@@ -18,13 +18,13 @@ from ..const import DOMAIN, VOLUME_MAPPING_INVERTED
 from ..exceptions import YotoMQTTError
 from ..Token import Token
 from ..utils import take_closest
-from ..models.event import PlaybackEvent, StatusPatch
+from ..models.event import EventPatch, StatusPatch
 from .parser import parse_message
 
 _LOGGER = logging.getLogger(__name__)
 
 
-Message = Union[PlaybackEvent, StatusPatch]
+Message = Union[EventPatch, StatusPatch]
 Callback = Callable[[Message], Union[None, Awaitable[None]]]
 DisconnectCallback = Callable[[Optional[Exception]], Union[None, Awaitable[None]]]
 

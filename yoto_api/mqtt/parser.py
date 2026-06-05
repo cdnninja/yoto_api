@@ -1,8 +1,9 @@
-"""Parse incoming MQTT messages into typed events.
+"""Parse incoming MQTT messages into typed patches.
 
-Returns a `PlaybackEvent` for `device/{id}/data/events` topics, a
-`StatusPatch` for `device/{id}/data/status`, or None for anything else
-(command acks, unknown topics).
+Returns an `EventPatch` for `device/{id}/data/events` topics, a `StatusPatch`
+for `device/{id}/data/status`, or None for anything else (command acks,
+unknown topics). Each patch carries only the fields its payload sent, so
+callers can merge selectively into the current snapshot.
 """
 
 import json
@@ -17,13 +18,13 @@ from .._coerce import (
     parse_enum,
     parse_temp_pair,
 )
-from ..models.event import PlaybackEvent, PlaybackStatus, StatusPatch
+from ..models.event import EventPatch, PlaybackStatus, StatusPatch
 from ..models.status import CardInsertionState, DayMode, PowerSource
 
 _LOGGER = logging.getLogger(__name__)
 
 
-Message = Union[PlaybackEvent, StatusPatch]
+Message = Union[EventPatch, StatusPatch]
 TopicKind = Literal["events", "status"]
 
 
@@ -59,87 +60,62 @@ def _parse_topic(topic: str) -> Optional[Tuple[str, TopicKind]]:
     return parts[1], parts[3]
 
 
-def _parse_events(device_id: str, body: Dict[str, Any]) -> PlaybackEvent:
-    return PlaybackEvent(
-        player_id=device_id,
-        event_utc=as_int(body.get("eventUtc")),
-        card_id=_coerce_card_id(body.get("cardId")),
-        chapter_key=_optional_str(body.get("chapterKey")),
-        chapter_title=_optional_str(body.get("chapterTitle")),
-        track_key=_optional_str(body.get("trackKey")),
-        track_title=_optional_str(body.get("trackTitle")),
-        track_length=as_int(body.get("trackLength")),
-        position=as_int(body.get("position")),
-        source=_optional_str(body.get("source")),
-        playback_status=_parse_playback_status(body.get("playbackStatus")),
-        repeat_all=as_bool(body.get("repeatAll")),
-        streaming=as_bool(body.get("streaming")),
-        volume=as_int(body.get("volume")),
-        volume_max=as_int(body.get("volumeMax")),
-        sleep_timer_seconds=as_int(body.get("sleepTimerSeconds")),
-        sleep_timer_active=as_bool(body.get("sleepTimerActive")),
-        playback_wait=as_bool(body.get("playbackWait")),
-        request_id=_optional_str(body.get("requestId")),
-    )
+def _optional_str(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    return str(value)
 
 
-# Known keys per topic. Co-located with the parsers so
-# `scripts/check_unmapped.py` can import them without duplicating the
-# lists. Update when adding fields to `_parse_events` / `_parse_status`.
-KNOWN_EVENT_KEYS = frozenset(
-    {
-        "eventUtc",
-        "cardId",
-        "chapterKey",
-        "chapterTitle",
-        "trackKey",
-        "trackTitle",
-        "trackLength",
-        "position",
-        "source",
-        "playbackStatus",
-        "repeatAll",
-        "streaming",
-        "volume",
-        "volumeMax",
-        "sleepTimerSeconds",
-        "sleepTimerActive",
-        "playbackWait",
-        "requestId",
-    }
+def _parse_playback_status(value: Any) -> Optional[PlaybackStatus]:
+    if value is None:
+        return None
+    try:
+        return PlaybackStatus(str(value))
+    except ValueError:
+        _LOGGER.debug("Unknown playbackStatus value: %r", value)
+        return None
+
+
+# (raw_key, PlaybackEvent field name, coercer) for the data/events payload.
+_EVENT_FIELDS = (
+    ("eventUtc", "event_utc", as_int),
+    ("cardId", "card_id", _optional_str),
+    ("chapterKey", "chapter_key", _optional_str),
+    ("chapterTitle", "chapter_title", _optional_str),
+    ("trackKey", "track_key", _optional_str),
+    ("trackTitle", "track_title", _optional_str),
+    ("trackLength", "track_length", as_int),
+    ("position", "position", as_int),
+    ("source", "source", _optional_str),
+    ("playbackStatus", "playback_status", _parse_playback_status),
+    ("repeatAll", "repeat_all", as_bool),
+    ("streaming", "streaming", as_bool),
+    ("volume", "volume", as_int),
+    ("volumeMax", "volume_max", as_int),
+    ("sleepTimerSeconds", "sleep_timer_seconds", as_int),
+    ("sleepTimerActive", "sleep_timer_active", as_bool),
+    ("playbackWait", "playback_wait", as_bool),
+    ("requestId", "request_id", _optional_str),
 )
 
-KNOWN_STATUS_KEYS = frozenset(
-    {
-        "activeCard",
-        "ssid",
-        "wifiStrength",
-        "nightlightMode",
-        "batteryLevel",
-        "volume",
-        "userVolume",
-        "als",
-        "freeDisk",
-        "totalDisk",
-        "upTime",
-        "utcTime",
-        "utcOffset",
-        "dnowBrightness",
-        "charging",
-        "headphones",
-        "bluetoothHp",
-        "bgDownload",
-        "powerSrc",
-        "cardInserted",
-        "day",
-        "temp",
-    }
-)
+
+def _parse_events(device_id: str, body: Dict[str, Any]) -> EventPatch:
+    fields: Dict[str, Any] = {}
+    for raw_key, dest_key, coerce in _EVENT_FIELDS:
+        if raw_key not in body:
+            continue
+        value = coerce(body[raw_key])
+        # None only comes from a failed coercion: the device never clears with
+        # a null, it uses a value (e.g. card_id "none"). So it's just noise.
+        if value is None:
+            continue
+        fields[dest_key] = value
+    return EventPatch(player_id=device_id, fields=fields)
 
 
 # (raw_key, dest_key, coercer) for the data/status payload.
 # Same naming as `/config.device.status` (Yoto's two endpoints share the
-# raw firmware shape — see yoto_api/status_adapter.py).
+# raw firmware shape, see yoto_api/status_adapter.py).
 _STATUS_VALUE_FIELDS = (
     ("ssid", "network_ssid", lambda v: v),
     ("nightlightMode", "nightlight_mode", lambda v: v),
@@ -203,23 +179,34 @@ def _parse_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
     return StatusPatch(player_id=device_id, fields=fields)
 
 
-def _coerce_card_id(value: Any) -> Optional[str]:
-    if value in (None, "none", ""):
-        return None
-    return str(value)
+# Known keys per topic. Co-located with the parsers so
+# `scripts/check_unmapped.py` can import them without duplicating the
+# lists. Update when adding fields to `_parse_events` / `_parse_status`.
+KNOWN_EVENT_KEYS = frozenset(raw_key for raw_key, _, _ in _EVENT_FIELDS)
 
-
-def _optional_str(value: Any) -> Optional[str]:
-    if value is None:
-        return None
-    return str(value)
-
-
-def _parse_playback_status(value: Any) -> Optional[PlaybackStatus]:
-    if value is None:
-        return None
-    try:
-        return PlaybackStatus(str(value))
-    except ValueError:
-        _LOGGER.debug("Unknown playbackStatus value: %r", value)
-        return None
+KNOWN_STATUS_KEYS = frozenset(
+    {
+        "activeCard",
+        "ssid",
+        "wifiStrength",
+        "nightlightMode",
+        "batteryLevel",
+        "volume",
+        "userVolume",
+        "als",
+        "freeDisk",
+        "totalDisk",
+        "upTime",
+        "utcTime",
+        "utcOffset",
+        "dnowBrightness",
+        "charging",
+        "headphones",
+        "bluetoothHp",
+        "bgDownload",
+        "powerSrc",
+        "cardInserted",
+        "day",
+        "temp",
+    }
+)
