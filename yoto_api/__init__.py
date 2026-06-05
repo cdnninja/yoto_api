@@ -2,6 +2,7 @@
 # flake8: noqa
 
 from .Card import Card, Chapter, Track
+from .Group import Group
 from .Token import Token
 from .account import get_account_id, has_scope
 from .capabilities import Capabilities, caps_for
@@ -39,6 +40,7 @@ __all__ = [
     "DayMode",
     "Device",
     "EventPatch",
+    "Group",
     "HEX_COLORS",
     "LIGHT_COLORS",
     "POWER_SOURCE",

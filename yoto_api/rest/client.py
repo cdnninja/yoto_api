@@ -166,6 +166,14 @@ class RestClient:
             token, endpoints.card_detail(card_id), f"get card {card_id} detail"
         )
 
+    async def get_card_groups(self, token: Token) -> List[Dict[str, Any]]:
+        """GET /card/family/library/groups — a top-level JSON array of groups
+        (unlike the other endpoints, which return objects)."""
+        raw: Any = await self._get(
+            token, endpoints.CARDS_LIBRARY_GROUPS, "get card groups"
+        )
+        return raw if isinstance(raw, list) else []
+
     # ─── Internals ────────────────────────────────────────────────
 
     def _headers(self, token: Token) -> Dict[str, str]:

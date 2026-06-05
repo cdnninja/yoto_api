@@ -20,8 +20,10 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 import aiohttp
 
 from .Card import Card, Chapter, Track
+from .Group import Group
 from .const import DOMAIN
 from .exceptions import YotoError
+from ._coerce import parse_iso
 from .Token import Token
 from .utils import get_child_value, get_raw_value
 from .auth import Auth
@@ -61,6 +63,18 @@ def _serialize_bool_01(value: Any) -> str:
 
 def _serialize_passthrough(value: Any) -> Any:
     return value
+
+
+def _extract_group_card_ids(item: Dict[str, Any]) -> List[str]:
+    """Card IDs in this group, from `items[].contentId`, in order, deduped."""
+    ids: List[str] = []
+    seen: set[str] = set()
+    for entry in item.get("items") or []:
+        card_id = get_raw_value(entry, "contentId")
+        if card_id and card_id not in seen:
+            seen.add(card_id)
+            ids.append(card_id)
+    return ids
 
 
 # (snake_case PlayerConfig field) -> (Yoto camelCase API key, serializer).
@@ -156,6 +170,7 @@ class YotoClient:
         self.token: Optional[Token] = None
         self.players: Dict[str, YotoPlayer] = {}
         self.library: Dict[str, Card] = {}
+        self.groups: Dict[str, Group] = {}
 
     async def __aenter__(self) -> "YotoClient":
         return self
@@ -335,6 +350,40 @@ class YotoClient:
                 track.channels = get_child_value(track_item, "channels")
                 track.type = get_child_value(track_item, "type")
                 track.trackUrl = get_child_value(track_item, "trackUrl")
+
+    async def update_groups(self) -> None:
+        """GET /card/family/library/groups — populate self.groups.
+
+        Groups are user-defined labels over library cards (a card can sit
+        in several groups). Each Group carries the card IDs only; the card
+        metadata lives in self.library — refresh it with update_library().
+
+        The endpoint returns the full set, so groups deleted upstream are
+        dropped from self.groups here.
+        """
+        token = await self.check_and_refresh_token()
+        items = await self._rest.get_card_groups(token)
+        seen_ids: set[str] = set()
+        for item in items:
+            group_id = get_raw_value(item, "id")
+            if group_id is None:
+                continue
+            seen_ids.add(group_id)
+            group = self.groups.get(group_id)
+            if group is None:
+                group = Group(id=group_id)
+                self.groups[group_id] = group
+            group.name = get_raw_value(item, "name")
+            group.family_id = get_raw_value(item, "familyId")
+            group.image_id = get_raw_value(item, "imageId")
+            group.image_url = get_raw_value(item, "imageUrl")
+            group.created_at = parse_iso(get_raw_value(item, "createdAt"))
+            group.last_modified_at = parse_iso(get_raw_value(item, "lastModifiedAt"))
+            group.card_ids = _extract_group_card_ids(item)
+
+        # Groups removed upstream
+        for stale_id in set(self.groups) - seen_ids:
+            self.groups.pop(stale_id, None)
 
     async def update_player_status(self, device_id: str) -> PlayerStatus:
         """Force a fresh telemetry snapshot. Falls back to /config on 403."""

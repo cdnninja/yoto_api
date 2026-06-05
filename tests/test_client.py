@@ -647,6 +647,104 @@ class StatusFallbackTests(_ClientTestCase):
         )
 
 
+class UpdateGroupsTests(_ClientTestCase):
+    """update_groups maps the /library/groups array into self.groups,
+    pulling card IDs from `items`, and drops groups deleted upstream."""
+
+    def _make_client(self, groups_payload: list) -> YotoClient:
+        client = self.make_client()
+        client.token = fresh_token()
+        client._rest.get_card_groups = AsyncMock(return_value=groups_payload)
+        return client
+
+    async def test_maps_fields_and_card_ids(self) -> None:
+        client = self._make_client(
+            [
+                {
+                    "id": "g1",
+                    "name": "Bedtime",
+                    "familyId": "fam1",
+                    "imageId": "img1",
+                    "imageUrl": "https://example/img.png",
+                    "createdAt": "2024-01-02T03:04:05Z",
+                    "lastModifiedAt": "2024-02-03T04:05:06Z",
+                    "items": [
+                        {"contentId": "cardA", "addedAt": "2024-01-02T03:04:05Z"},
+                        {"contentId": "cardB", "addedAt": "2024-01-03T03:04:05Z"},
+                    ],
+                }
+            ]
+        )
+        await client.update_groups()
+
+        group = client.groups["g1"]
+        self.assertEqual(group.name, "Bedtime")
+        self.assertEqual(group.family_id, "fam1")
+        self.assertEqual(group.image_id, "img1")
+        self.assertEqual(group.image_url, "https://example/img.png")
+        utc = datetime.timezone.utc
+        self.assertEqual(
+            group.created_at, datetime.datetime(2024, 1, 2, 3, 4, 5, tzinfo=utc)
+        )
+        self.assertEqual(
+            group.last_modified_at, datetime.datetime(2024, 2, 3, 4, 5, 6, tzinfo=utc)
+        )
+        self.assertEqual(group.card_ids, ["cardA", "cardB"])
+
+    async def test_skips_entries_without_id(self) -> None:
+        client = self._make_client([{"name": "no id here"}, {"id": "g2"}])
+        await client.update_groups()
+        self.assertEqual(set(client.groups), {"g2"})
+
+    async def test_empty_group_has_no_card_ids(self) -> None:
+        # A group with no cards: items empty or absent -> card_ids == [].
+        client = self._make_client([{"id": "g1", "items": []}, {"id": "g2"}])
+        await client.update_groups()
+        self.assertEqual(client.groups["g1"].card_ids, [])
+        self.assertEqual(client.groups["g2"].card_ids, [])
+
+    async def test_updates_existing_group_in_place(self) -> None:
+        client = self._make_client([{"id": "g1", "name": "Old"}])
+        await client.update_groups()
+        original = client.groups["g1"]
+
+        client._rest.get_card_groups = AsyncMock(
+            return_value=[{"id": "g1", "name": "New"}]
+        )
+        await client.update_groups()
+        self.assertIs(client.groups["g1"], original)
+        self.assertEqual(client.groups["g1"].name, "New")
+
+    async def test_drops_groups_deleted_upstream(self) -> None:
+        client = self._make_client([{"id": "g1"}, {"id": "g2"}])
+        await client.update_groups()
+        self.assertEqual(set(client.groups), {"g1", "g2"})
+
+        client._rest.get_card_groups = AsyncMock(return_value=[{"id": "g1"}])
+        await client.update_groups()
+        self.assertEqual(set(client.groups), {"g1"})
+
+
+class GetCardGroupsResponseShapeTests(_ClientTestCase):
+    """get_card_groups returns the top-level array, or [] if the response
+    isn't a list."""
+
+    def _rest(self):
+        from yoto_api.rest.client import RestClient
+
+        return RestClient(session=MagicMock())
+
+    async def test_top_level_array(self) -> None:
+        rest = self._rest()
+        rest._get = AsyncMock(return_value=[{"id": "g1"}])
+        self.assertEqual(await rest.get_card_groups(fresh_token()), [{"id": "g1"}])
+
+    async def test_non_list_yields_empty(self) -> None:
+        rest = self._rest()
+        rest._get = AsyncMock(return_value={})
+        self.assertEqual(await rest.get_card_groups(fresh_token()), [])
+
+
 class LegacySetAlarmRemovedTests(unittest.TestCase):
     """The wipe-the-list `set_alarm` and `AlarmRequest` shouldn't exist
     in v3 anymore. Regression guard so they don't sneak back."""

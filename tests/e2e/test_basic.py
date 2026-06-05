@@ -119,3 +119,21 @@ async def test_update_card_detail(client: YotoClient) -> None:
         assert chapter.key == chapter_key
         for track_key, track in chapter.tracks.items():
             assert track.key == track_key
+
+
+async def test_update_groups(client: YotoClient) -> None:
+    """`update_groups` populates self.groups; card_ids cross-reference
+    the library."""
+    await client.update_groups()
+    if not client.groups:
+        pytest.skip("no groups in this account's library")
+
+    await client.update_library()
+    for group_id, group in client.groups.items():
+        assert group.id == group_id
+        assert group.name, f"group {group_id} has no name"
+        for card_id in group.card_ids:
+            # A grouped card should also exist in the main library
+            assert card_id in client.library, (
+                f"group {group_id} references unknown card {card_id}"
+            )

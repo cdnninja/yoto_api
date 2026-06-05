@@ -8,7 +8,7 @@ raising, because the right thing to do for a missing/odd field is
 """
 
 import logging
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 from enum import IntEnum
 from typing import Any, Optional, Tuple, Type, TypeVar
 
@@ -90,13 +90,16 @@ def _temp_part(part: str) -> Optional[int]:
 
 
 def parse_iso(value: Any) -> Optional[datetime]:
-    """Parse ISO8601 timestamps with the trailing-Z that Yoto sends."""
+    """Parse ISO8601 timestamps. Yoto sends UTC with a trailing `Z`."""
     if not isinstance(value, str):
         return None
+    # fromisoformat only accepts `Z` from 3.11; we support 3.10.
     try:
-        return datetime.fromisoformat(value.rstrip("Z"))
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+    # Yoto's timestamps are UTC; pin a bare one so it isn't read as local.
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def parse_hhmm(value: Any) -> Optional[time]:
