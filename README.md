@@ -56,18 +56,24 @@ client.token = Token(access_token=..., refresh_token=..., ...)
 
 ## Data model
 
-`YotoPlayer` aggregates four typed sub-objects, one per data source:
+`YotoPlayer` aggregates typed sub-objects (one per data source) plus a
+root-level `is_online`:
 
 - `player.device` (`Device`): immutable identity from `/devices/mine`.
 - `player.info` (`PlayerInfo`): settings, mac, firmware from `/config`.
-- `player.status` (`PlayerStatus`): runtime telemetry (battery, wifi,
-  charging, online).
+- `player.status` (`PlayerStatus`): basic live telemetry from MQTT
+  `data/status` (battery, volume, charging, day mode).
+- `player.full_status` (`PlayerFullStatus`): the richer telemetry from
+  MQTT `status/full` or the REST `/config` shadow (network, disk,
+  uptime, raw battery). A superset of `PlayerStatus`.
 - `player.last_event` (`PlaybackEvent`): live playback state pushed
   via MQTT (track, position, volume).
+- `player.is_online` (`bool`): connection state, from MQTT presence and
+  REST.
 
-All four are always present (default-initialised). The
-`*_refreshed_at` / `last_event_received_at` timestamps tell you whether
-data has actually been received.
+All are always present (default-initialised). The `*_refreshed_at`,
+`last_event_received_at` and `online_refreshed_at` timestamps tell you
+whether data has actually been received.
 
 ## Common methods
 
@@ -78,7 +84,7 @@ Refresh:
 ```python
 await client.update_player_list()           # /devices/mine
 await client.update_player_info(device_id)  # /config — info + info.config
-await client.update_player_status(device_id)
+await client.update_player_full_status(device_id)  # /config shadow — full_status
 await client.update_library()               # /card/family/library — client.library
 await client.update_groups()                # /card/family/library/groups — client.groups
 await client.refresh()                      # list + all info
@@ -205,10 +211,12 @@ python scripts/probe_mqtt.py       # 30s MQTT capture → mqtt_probe.log
   responds to MQTT `command/status/request` within ~150ms. The REST
   `POST /command/status` is acked but doesn't trigger an MQTT push —
   use `client.request_status_push` (which routes through MQTT).
-- `data/status` is a subset of REST `device.status`: `powerSrc`,
-  `wifiStrength`, `ssid`, `temp`, `upTime`, `utcTime`, `utcOffset`,
-  `totalDisk` are REST-only. Poll `client.update_player_status()` on
-  a slower timer for those.
+- `data/status` (v1) is a subset: `powerSrc`, `wifiStrength`, `ssid`,
+  `temp`, `upTime`, `utcTime`, `utcOffset`, `totalDisk` arrive only via
+  MQTT `status/full` or the REST `/config` shadow. Use
+  `client.request_full_status_push` (MQTT) or poll
+  `client.update_player_full_status()` on a slower timer; both feed
+  `player.full_status`.
 
 ## Other notes
 
