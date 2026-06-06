@@ -1,8 +1,8 @@
-"""Adapt the `device.status` block from /config into a PlayerFullStatus.
+"""Adapt the `device.status` block from /config into a PlayerExtendedStatus.
 
 This block is the AWS IoT shadow, read over REST as the offline / cold-start
 fallback — live telemetry comes over MQTT. It carries the same fields as the
-MQTT `status/full` payload, so it maps to PlayerFullStatus.
+MQTT `status/full` payload, so it maps to PlayerExtendedStatus.
 
 Field-by-field mapping notes:
 - Most names are shorter (`fwVersion`, `batteryLevel`, `wifiStrength`).
@@ -25,7 +25,7 @@ from ._coerce import (
 from .models.status import (
     CardInsertionState,
     DayMode,
-    PlayerFullStatus,
+    PlayerExtendedStatus,
     PowerSource,
 )
 
@@ -100,13 +100,13 @@ KNOWN_RAW_STATUS_KEYS = frozenset(
 )
 
 
-def adapt_raw_status(raw: Dict[str, Any]) -> PlayerFullStatus:
-    """Map a `device.status` dict from /config into a typed PlayerFullStatus."""
+def adapt_raw_status(raw: Dict[str, Any]) -> PlayerExtendedStatus:
+    """Map a `device.status` dict from /config into a typed PlayerExtendedStatus."""
     battery_temp, device_temp = parse_temp_pair(raw.get("temp"))
     # batteryTemp is the direct reading; prefer it over the `temp` pair.
     if raw.get("batteryTemp") is not None:
         battery_temp = as_int(raw.get("batteryTemp"))
-    return PlayerFullStatus(
+    return PlayerExtendedStatus(
         updated_at=parse_iso(raw.get("updatedAt")),
         active_card=coerce_active_card(raw.get("activeCard")),
         network_ssid=raw.get("ssid"),

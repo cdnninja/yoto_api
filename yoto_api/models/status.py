@@ -34,7 +34,7 @@ class PlayerStatus:
     Holds ONLY the fields that topic actually delivers — the firmware's
     minimal set. The richer fields the player sends on `status/full` (wifi,
     ssid, power source, temperature, raw battery, …) live on
-    `PlayerFullStatus`, so each object stays coherent with its source.
+    `PlayerExtendedStatus`, so each object stays coherent with its source.
 
     Connection state (`is_online`) and identity live on `YotoPlayer`, not here.
     """
@@ -65,9 +65,9 @@ class PlayerStatus:
 
 
 @dataclass
-class PlayerFullStatus(PlayerStatus):
-    """The player's full status, from the MQTT `status/full` topic or the REST
-    `/config.device.status` shadow. Superset of `PlayerStatus`: adds the
+class PlayerExtendedStatus(PlayerStatus):
+    """The player's extended status, from the MQTT `status/full` topic or the
+    REST `/config.device.status` shadow. Superset of `PlayerStatus`: adds the
     fields the `data/status` topic doesn't carry.
     """
 

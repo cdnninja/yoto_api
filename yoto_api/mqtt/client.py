@@ -31,7 +31,7 @@ DisconnectCallback = Callable[[Optional[Exception]], Union[None, Awaitable[None]
 # `response` (command ACKs) also exists but the lib doesn't consume it.
 #   data/events  — playback deltas
 #   data/status  — basic status (reply to command/status/request)
-#   status/full  — full status (reply to command/status + requestId)
+#   status/full  — extended status (reply to command/status + requestId)
 #   presence     — online/offline transitions (broker Last-Will on offline)
 _SUBSCRIBED_TOPICS = ("data/events", "data/status", "status/full", "presence")
 
@@ -114,7 +114,7 @@ class YotoMqttClient:
         if not self.is_connected:
             return  # picked up on next connect
         await self._subscribe_player(player_id)
-        await self.request_status_push(player_id)
+        await self.request_player_status(player_id)
 
     async def remove_player(self, player_id: str) -> None:
         """Unsubscribe from a player that's no longer in the family."""
@@ -135,18 +135,18 @@ class YotoMqttClient:
 
     # ─── Status refresh ──────────────────────────────────────────
 
-    async def request_status_push(self, player_id: str) -> None:
+    async def request_player_status(self, player_id: str) -> None:
         """Ask the player to push fresh `data/events` + `data/status`.
 
         The firmware never publishes `data/status` spontaneously; this
         is the only way to refresh the basic status over MQTT. For the
-        richer `status/full` payload use `request_full_status_push`.
+        richer `status/full` payload use `request_player_extended_status`.
         """
         await self._publish(f"device/{player_id}/command/events/request")
         await self._publish(f"device/{player_id}/command/status/request")
 
-    async def request_full_status_push(self, player_id: str) -> None:
-        """Ask the player to push a full `status/full`.
+    async def request_player_extended_status(self, player_id: str) -> None:
+        """Ask the player to push its extended status (`status/full`).
 
         Publishes `command/status` with a requestId; the firmware replies
         on `device/{id}/status/full` with the rich payload (raw battery mV,
@@ -170,26 +170,26 @@ class YotoMqttClient:
             f"device/{player_id}/command/volume/set",
             json.dumps({"volume": closest_volume}),
         )
-        await self.request_status_push(player_id)
+        await self.request_player_status(player_id)
 
     async def set_sleep_timer(self, player_id: str, seconds: int) -> None:
         await self._publish(
             f"device/{player_id}/command/sleep-timer/set",
             json.dumps({"seconds": int(seconds)}),
         )
-        await self.request_status_push(player_id)
+        await self.request_player_status(player_id)
 
     async def card_stop(self, player_id: str) -> None:
         await self._publish(f"device/{player_id}/command/card/stop")
-        await self.request_status_push(player_id)
+        await self.request_player_status(player_id)
 
     async def card_pause(self, player_id: str) -> None:
         await self._publish(f"device/{player_id}/command/card/pause")
-        await self.request_status_push(player_id)
+        await self.request_player_status(player_id)
 
     async def card_resume(self, player_id: str) -> None:
         await self._publish(f"device/{player_id}/command/card/resume")
-        await self.request_status_push(player_id)
+        await self.request_player_status(player_id)
 
     async def card_play(
         self,
@@ -212,7 +212,7 @@ class YotoMqttClient:
         await self._publish(
             f"device/{player_id}/command/card/start", json.dumps(payload)
         )
-        await self.request_status_push(player_id)
+        await self.request_player_status(player_id)
 
     async def restart(self, player_id: str) -> None:
         await self._publish(f"device/{player_id}/command/reboot")
@@ -289,7 +289,7 @@ class YotoMqttClient:
             await self._subscribe_player(player_id)
         for player_id in list(self._subscribed):
             try:
-                await self.request_status_push(player_id)
+                await self.request_player_status(player_id)
             except Exception as err:
                 _LOGGER.debug(
                     "%s - status push at connect failed for %s: %s",

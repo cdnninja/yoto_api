@@ -23,7 +23,7 @@ from yoto_api import (
     DayMode,
     Device,
     PlayerConfig,
-    PlayerFullStatus,
+    PlayerExtendedStatus,
     PlayerInfo,
     PowerSource,
     YotoClient,
@@ -183,12 +183,12 @@ async def test_alarm_shape(client: YotoClient, first_device_id: str) -> None:
         assert isinstance(alarm.enabled, bool)
 
 
-# ─── PlayerFullStatus (from /config.device.status shadow) ───
+# ─── PlayerExtendedStatus (from /config.device.status shadow) ───
 
 
 async def test_player_status_shape(client: YotoClient, first_device_id: str) -> None:
-    status = await client.update_player_full_status(first_device_id)
-    assert isinstance(status, PlayerFullStatus)
+    status = await client.update_player_extended_status(first_device_id)
+    assert isinstance(status, PlayerExtendedStatus)
 
     if status.battery_level_percentage is not None:
         assert 0 <= status.battery_level_percentage <= 100

@@ -146,8 +146,8 @@ async def _check_mqtt(client: YotoClient, device_id: str) -> None:
     try:
         await client.connect_events([device_id])
         await asyncio.sleep(_MQTT_LISTEN_S)
-        await client.request_status_push(device_id)
-        await client.request_full_status_push(device_id)
+        await client.request_player_status(device_id)
+        await client.request_player_extended_status(device_id)
         await asyncio.sleep(_MQTT_AFTER_PUSH_S)
     finally:
         try:

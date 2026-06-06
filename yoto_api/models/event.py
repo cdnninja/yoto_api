@@ -80,14 +80,14 @@ class StatusPatch:
     """Partial status update from MQTT `data/status` or `status/full`.
 
     Only fields present in the payload are populated; consumers merge the
-    non-None values into the current status object. `full` selects the
-    target: True → `status/full` → `PlayerFullStatus`;
+    non-None values into the current status object. `extended` selects the
+    target: True → `status/full` → `PlayerExtendedStatus`;
     False → `data/status` → `PlayerStatus`.
     """
 
     player_id: str
     fields: Dict[str, Any] = field(default_factory=dict)
-    full: bool = False
+    extended: bool = False
 
 
 @dataclass

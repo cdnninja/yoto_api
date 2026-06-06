@@ -39,7 +39,7 @@ class YotoPlayerTests(unittest.TestCase):
         self.assertEqual(unknown.model, "Yoto Player")
 
     def test_sub_objects_default_to_empty(self) -> None:
-        """info / status / full_status / last_event are always present after
+        """info / status / extended_status / last_event are always present after
         construction so consumers don't need defensive `is None` guards."""
         player = YotoPlayer(device=Device(device_id="abc", name="X"))
         # last_event keeps player_id (it doubles as the routed MQTT message)
@@ -47,7 +47,7 @@ class YotoPlayerTests(unittest.TestCase):
         # Empty: every payload field is None
         self.assertIsNone(player.info.mac)
         self.assertIsNone(player.status.battery_level_percentage)
-        self.assertIsNone(player.full_status.battery_voltage_mv)
+        self.assertIsNone(player.extended_status.battery_voltage_mv)
         self.assertIsNone(player.last_event.position)
 
     def test_refreshed_at_signals_remain_None_at_construction(self) -> None:

@@ -460,7 +460,7 @@ class StatusFromConfigTests(_ClientTestCase):
     extras) and works for offline devices via the shadow."""
 
     async def test_reads_config_device_status(self) -> None:
-        from yoto_api.models.status import PlayerFullStatus
+        from yoto_api.models.status import PlayerExtendedStatus
         from yoto_api.rest.client import RestClient
 
         rest = RestClient(session=MagicMock())
@@ -484,7 +484,7 @@ class StatusFromConfigTests(_ClientTestCase):
         rest._get = fake_get
         result, online = await rest.get_player_status(fresh_token(), "dev1")
 
-        self.assertIsInstance(result, PlayerFullStatus)
+        self.assertIsInstance(result, PlayerExtendedStatus)
         self.assertEqual(result.battery_level_percentage, 42)
         self.assertEqual(result.battery_level_raw, 38)
         self.assertEqual(result.battery_voltage_mv, 3650)
@@ -570,7 +570,7 @@ class OnlineConsolidationTests(_ClientTestCase):
 
         self.assertTrue(player.is_online)
 
-    async def test_status_full_patch_routes_to_full_status_and_marks_online(
+    async def test_status_full_patch_routes_to_extended_status_and_marks_online(
         self,
     ) -> None:
         client = self.make_client()
@@ -582,13 +582,13 @@ class OnlineConsolidationTests(_ClientTestCase):
             StatusPatch(
                 player_id="d1",
                 fields={"battery_voltage_mv": 3775, "battery_level_raw": 59},
-                full=True,
+                extended=True,
             )
         )
         self.assertTrue(player.is_online)
-        # Battery extras land on full_status, not the v1 status object.
-        self.assertEqual(player.full_status.battery_voltage_mv, 3775)
-        self.assertEqual(player.full_status.battery_level_raw, 59)
+        # Battery extras land on extended_status, not the v1 status object.
+        self.assertEqual(player.extended_status.battery_voltage_mv, 3775)
+        self.assertEqual(player.extended_status.battery_level_raw, 59)
 
 
 class PlaybackEventMergeTests(_ClientTestCase):
@@ -719,48 +719,48 @@ class OnlinePresenceOnEveryMqttMessageTests(_ClientTestCase):
 
 
 class UpdatePlayerStatusTests(_ClientTestCase):
-    """update_player_full_status reads the REST /config shadow into full_status
+    """update_player_extended_status reads the REST /config shadow into extended_status
     and sets is_online; it never touches the v1 status object."""
 
-    async def test_feeds_full_status_and_online(self) -> None:
-        from yoto_api.models.status import PlayerFullStatus
+    async def test_feeds_extended_status_and_online(self) -> None:
+        from yoto_api.models.status import PlayerExtendedStatus
 
         client = self.make_client()
         client.token = fresh_token()
         client.players["d1"] = YotoPlayer(device=Device(device_id="d1", name="x"))
-        shadow = PlayerFullStatus(battery_level_percentage=42)
+        shadow = PlayerExtendedStatus(battery_level_percentage=42)
         client._rest.get_player_status = AsyncMock(return_value=(shadow, False))
-        result = await client.update_player_full_status("d1")
+        result = await client.update_player_extended_status("d1")
         self.assertIs(result, shadow)
         player = client.players["d1"]
-        self.assertIs(player.full_status, shadow)
-        self.assertEqual(player.full_status.battery_level_percentage, 42)
+        self.assertIs(player.extended_status, shadow)
+        self.assertEqual(player.extended_status.battery_level_percentage, 42)
         self.assertFalse(player.is_online)
         # The v1 status object is untouched by the REST shadow read.
         self.assertIsNone(player.status.battery_level_percentage)
 
     async def test_stale_shadow_does_not_clobber_fresher_live(self) -> None:
-        from yoto_api.models.status import PlayerFullStatus
+        from yoto_api.models.status import PlayerExtendedStatus
 
         client = self.make_client()
         client.token = fresh_token()
         player = YotoPlayer(device=Device(device_id="d1", name="x"))
         now = datetime.datetime.now(pytz.utc)
         # Fresh live data already on the player.
-        player.full_status.battery_level_percentage = 80
-        player.full_status.updated_at = now
+        player.extended_status.battery_level_percentage = 80
+        player.extended_status.updated_at = now
         client.players["d1"] = player
         # REST returns an older shadow snapshot.
-        stale = PlayerFullStatus(
+        stale = PlayerExtendedStatus(
             battery_level_percentage=50,
             updated_at=now - datetime.timedelta(hours=1),
         )
         client._rest.get_player_status = AsyncMock(return_value=(stale, True))
 
-        await client.update_player_full_status("d1")
+        await client.update_player_extended_status("d1")
 
         # Kept the fresher live value, not the stale shadow.
-        self.assertEqual(player.full_status.battery_level_percentage, 80)
+        self.assertEqual(player.extended_status.battery_level_percentage, 80)
 
 
 class UpdateGroupsTests(_ClientTestCase):

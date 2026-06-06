@@ -1,7 +1,7 @@
 """Parse incoming MQTT messages into typed patches.
 
 Returns an `EventPatch` for `device/{id}/data/events`, a `StatusPatch` for
-`device/{id}/data/status` (v1) and `device/{id}/status/full` (v3, full=True),
+`device/{id}/data/status` (v1) and `device/{id}/status/full` (v3, extended=True),
 a `PresenceEvent` for `device/{id}/presence`, or None for anything else
 (command acks, unknown topics). Each patch carries only the fields its payload
 sent, so callers can merge selectively into the current snapshot.
@@ -48,7 +48,7 @@ def parse_message(topic: str, payload: bytes) -> Optional[Message]:
     if suffix == "data/status":
         return _parse_status(device_id, body)
     if suffix == "status/full":
-        return _parse_full_status(device_id, body)
+        return _parse_extended_status(device_id, body)
     if suffix == "presence":
         return _parse_presence(device_id, body)
     _LOGGER.debug("MQTT topic %r ignored", topic)
@@ -111,8 +111,8 @@ def _parse_events(device_id: str, body: Dict[str, Any]) -> EventPatch:
 # (raw_key, dest_key, coercer). Same naming as `/config.device.status`.
 #
 # The fields the `data/status` topic actually delivers — the firmware's
-# minimal set. `status/full` is a superset, so the full parser reuses these
-# then adds the full-only extras below.
+# minimal set. `status/full` is a superset, so the extended parser reuses
+# these then adds the extended-only extras below.
 _V1_VALUE_FIELDS = (
     ("nightlightMode", "nightlight_mode", lambda v: v),
     ("batteryLevel", "battery_level_percentage", as_int),
@@ -130,8 +130,8 @@ _V1_BOOL_FIELDS = (
 )
 
 # Extras only the `status/full` payload (and the REST shadow) carry, never
-# `data/status`. Live only on PlayerFullStatus.
-_FULL_VALUE_FIELDS = (
+# `data/status`. Live only on PlayerExtendedStatus.
+_EXTENDED_VALUE_FIELDS = (
     ("ssid", "network_ssid", lambda v: v),
     ("wifiStrength", "wifi_strength", as_int),
     ("totalDisk", "total_disk_space_bytes", as_int),
@@ -144,7 +144,7 @@ _FULL_VALUE_FIELDS = (
     ("bytesPS", "average_download_speed_bytes_second", as_int),
 )
 
-_FULL_BOOL_FIELDS = (("bgDownload", "is_background_download_active"),)
+_EXTENDED_BOOL_FIELDS = (("bgDownload", "is_background_download_active"),)
 
 
 def _v1_status_fields(status: Dict[str, Any]) -> Dict[str, Any]:
@@ -176,12 +176,12 @@ def _parse_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
     """Parse `data/status` → PlayerStatus patch."""
     status = body.get("status") or body
     return StatusPatch(
-        player_id=device_id, fields=_v1_status_fields(status), full=False
+        player_id=device_id, fields=_v1_status_fields(status), extended=False
     )
 
 
-def _parse_full_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
-    """Parse `status/full` → PlayerFullStatus patch.
+def _parse_extended_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
+    """Parse `status/full` → PlayerExtendedStatus patch.
 
     The basic `data/status` fields plus the extras only `status/full` carries:
     power source, network, total disk, uptime/clock, raw battery (level,
@@ -191,11 +191,11 @@ def _parse_full_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
     status = body.get("status") or body
     fields = _v1_status_fields(status)
 
-    for raw_key, dest_key, coerce in _FULL_VALUE_FIELDS:
+    for raw_key, dest_key, coerce in _EXTENDED_VALUE_FIELDS:
         if raw_key in status:
             fields[dest_key] = coerce(status[raw_key])
 
-    for raw_key, dest_key in _FULL_BOOL_FIELDS:
+    for raw_key, dest_key in _EXTENDED_BOOL_FIELDS:
         if raw_key in status:
             fields[dest_key] = as_bool_int(status[raw_key])
 
@@ -216,7 +216,7 @@ def _parse_full_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
         if battery_temp is not None:
             fields["battery_temperature"] = battery_temp
 
-    return StatusPatch(player_id=device_id, fields=fields, full=True)
+    return StatusPatch(player_id=device_id, fields=fields, extended=True)
 
 
 def _parse_presence(device_id: str, body: Dict[str, Any]) -> PresenceEvent:
@@ -235,7 +235,7 @@ KNOWN_EVENT_KEYS = frozenset(raw_key for raw_key, _, _ in _EVENT_FIELDS)
 # Shared by data/status (v1) and status/full (v3): the flat set covers both.
 KNOWN_STATUS_KEYS = frozenset(
     {
-        # Mapped (to PlayerStatus / PlayerFullStatus)
+        # Mapped (to PlayerStatus / PlayerExtendedStatus)
         "activeCard",
         "ssid",
         "wifiStrength",

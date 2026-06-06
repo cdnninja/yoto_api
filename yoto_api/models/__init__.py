@@ -12,7 +12,7 @@ from .player import YotoPlayer
 from .status import (
     CardInsertionState,
     DayMode,
-    PlayerFullStatus,
+    PlayerExtendedStatus,
     PlayerStatus,
     PowerSource,
 )
@@ -26,7 +26,7 @@ __all__ = [
     "PlaybackEvent",
     "PlaybackStatus",
     "PlayerConfig",
-    "PlayerFullStatus",
+    "PlayerExtendedStatus",
     "PlayerInfo",
     "PlayerStatus",
     "PowerSource",

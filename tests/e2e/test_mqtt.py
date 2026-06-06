@@ -56,9 +56,9 @@ async def captured_mqtt(
         await asyncio.sleep(_WAIT_AFTER_CONNECT_S)
         # Nudge each status, with its own wait: back-to-back the replies were
         # flaky in testing (one or the other would miss its window).
-        await client.request_status_push(online_device_id)
+        await client.request_player_status(online_device_id)
         await asyncio.sleep(_WAIT_AFTER_PUSH_S)
-        await client.request_full_status_push(online_device_id)
+        await client.request_player_extended_status(online_device_id)
         await asyncio.sleep(_WAIT_AFTER_PUSH_S)
         yield captured
     finally:
@@ -82,12 +82,12 @@ async def test_mqtt_connects_and_receives_messages(
 async def test_mqtt_status_message_arrived(
     captured_mqtt: list[tuple[str, dict[str, Any]]],
 ) -> None:
-    """request_status_push should yield at least one data/status message."""
+    """request_player_status should yield at least one data/status message."""
     status_msgs = [
         body for topic, body in captured_mqtt if topic.endswith("/data/status")
     ]
     assert status_msgs, (
-        "no data/status payload arrived — request_status_push or "
+        "no data/status payload arrived — request_player_status or "
         "command/status/request didn't trigger a response"
     )
 
@@ -118,13 +118,13 @@ async def test_mqtt_status_full_carries_raw_battery(
     online_device_id: str,
     captured_mqtt: list[tuple[str, dict[str, Any]]],
 ) -> None:
-    """request_full_status_push should yield a status/full (statusVersion 3)
+    """request_player_extended_status should yield a status/full (statusVersion 3)
     carrying the raw battery voltage, and it should land on the player."""
     full_msgs = [
         body for topic, body in captured_mqtt if topic.endswith("/status/full")
     ]
     assert full_msgs, (
-        "no status/full payload arrived — request_full_status_push or the "
+        "no status/full payload arrived — request_player_extended_status or the "
         "command/status publish didn't trigger a reply"
     )
     status = full_msgs[-1].get("status", {})
@@ -132,7 +132,7 @@ async def test_mqtt_status_full_carries_raw_battery(
     assert status.get("battery") is not None, "raw battery mV missing"
     # The rich reading should have populated the player.
     player = client.players[online_device_id]
-    assert player.full_status.battery_voltage_mv is not None
+    assert player.extended_status.battery_voltage_mv is not None
 
 
 async def test_mqtt_presence_retained_on_connect(

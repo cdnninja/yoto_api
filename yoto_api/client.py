@@ -30,7 +30,7 @@ from .auth import Auth
 from .models.event import EventPatch, PlaybackEvent, PresenceEvent, StatusPatch
 from .models.info import PlayerInfo
 from .models.player import YotoPlayer
-from .models.status import PlayerFullStatus
+from .models.status import PlayerExtendedStatus
 from .mqtt import YotoMqttClient
 from .mqtt.client import _maybe_await
 from .models.config import Alarm
@@ -294,7 +294,7 @@ class YotoClient:
 
         Equivalent to `update_player_list()` followed by
         `update_all_player_info()`. Use this from a HA coordinator
-        update tick. `request_status_push` is intentionally not chained:
+        update tick. `request_player_status` is intentionally not chained:
         refresh should stay idempotent and read-only.
         """
         await self.update_player_list()
@@ -393,27 +393,29 @@ class YotoClient:
         for stale_id in set(self.groups) - seen_ids:
             self.groups.pop(stale_id, None)
 
-    async def update_player_full_status(self, device_id: str) -> PlayerFullStatus:
+    async def update_player_extended_status(
+        self, device_id: str
+    ) -> PlayerExtendedStatus:
         """Pull the device-shadow telemetry from REST `/config.device.status`.
 
-        Feeds `player.full_status` (the shadow carries the same fields as the
+        Feeds `player.extended_status` (the shadow carries the same fields as the
         MQTT `status/full` payload). Best-effort, undocumented upstream — live
         telemetry should come over MQTT; this is the offline / cold-start
-        fallback. Returns the `PlayerFullStatus` and updates `player.is_online`.
+        fallback. Returns the `PlayerExtendedStatus` and updates `player.is_online`.
         """
         token = await self.check_and_refresh_token()
-        full_status, online = await self._rest.get_player_status(token, device_id)
+        extended_status, online = await self._rest.get_player_status(token, device_id)
         player = self.players.get(device_id)
         if player is None:
-            return full_status
+            return extended_status
         # The shadow can lag live MQTT data — only take it if it's at least as
         # recent, so a poll doesn't clobber a fresher push.
-        current = player.full_status.updated_at
-        incoming = full_status.updated_at
+        current = player.extended_status.updated_at
+        incoming = extended_status.updated_at
         if current is None or (incoming is not None and incoming >= current):
-            player.full_status = full_status
+            player.extended_status = extended_status
         self._set_online(player, online)
-        return player.full_status
+        return player.extended_status
 
     # ─── Settings writes ──────────────────────────────────────────
 
@@ -557,23 +559,23 @@ class YotoClient:
     async def restart(self, device_id: str) -> None:
         await self._require_mqtt().restart(device_id)
 
-    async def request_status_push(self, device_id: str) -> None:
+    async def request_player_status(self, device_id: str) -> None:
         """Ask the player to push a fresh `data/status` on MQTT.
 
         Goes through MQTT (`command/status/request`); the firmware responds
         with a `data/status` within ~150ms. Requires MQTT to be connected.
         For the richer `status/full` payload (raw battery mV, profile, …)
-        use `request_full_status_push`.
+        use `request_player_extended_status`.
         """
         if self._mqtt is None or not self._mqtt.is_connected:
             raise YotoError(
                 "MQTT not connected; can't request a status push. "
                 "Call connect_events() first."
             )
-        await self._mqtt.request_status_push(device_id)
+        await self._mqtt.request_player_status(device_id)
 
-    async def request_full_status_push(self, device_id: str) -> None:
-        """Ask the player to push a full `status/full` on MQTT.
+    async def request_player_extended_status(self, device_id: str) -> None:
+        """Ask the player to push its extended status (MQTT `status/full`).
 
         Publishes `command/status` with a requestId; the firmware replies on
         `device/{id}/status/full` with the rich payload. This is the same
@@ -582,10 +584,10 @@ class YotoClient:
         """
         if self._mqtt is None or not self._mqtt.is_connected:
             raise YotoError(
-                "MQTT not connected; can't request a full status. "
+                "MQTT not connected; can't request an extended status. "
                 "Call connect_events() first."
             )
-        await self._mqtt.request_full_status_push(device_id)
+        await self._mqtt.request_player_extended_status(device_id)
 
     async def seek(self, device_id: str, position: int) -> None:
         """Resume the current card at `position` seconds in."""
@@ -759,7 +761,7 @@ class YotoClient:
                 setattr(player.last_event, field_name, None)
 
     def _apply_status_patch(self, player: YotoPlayer, patch: StatusPatch) -> None:
-        target = player.full_status if patch.full else player.status
+        target = player.extended_status if patch.extended else player.status
         for field_name, value in patch.fields.items():
             if value is None:
                 continue

@@ -74,9 +74,11 @@ async def _run(client: YotoClient) -> int:
         except Exception as err:
             console.print(f"[yellow]warn: update_player_info failed: {err}[/]")
         try:
-            await client.update_player_full_status(device_id)
+            await client.update_player_extended_status(device_id)
         except Exception as err:
-            console.print(f"[yellow]warn: update_player_full_status failed: {err}[/]")
+            console.print(
+                f"[yellow]warn: update_player_extended_status failed: {err}[/]"
+            )
 
     log: Deque[Tuple[str, str]] = deque(maxlen=15)
 
@@ -95,7 +97,7 @@ async def _run(client: YotoClient) -> int:
     await client.connect_events([device_id], on_update=on_update)
 
     # The firmware never pushes status spontaneously, so nudge it each tick:
-    # request_status_push refreshes playback + basic status, request_full_status_push
+    # request_player_status refreshes playback + basic status, request_player_extended_status
     # the rich telemetry.
     push_interval_s = 2.0
     last_push = 0.0
@@ -111,8 +113,8 @@ async def _run(client: YotoClient) -> int:
                 now = time.monotonic()
                 if client._mqtt is not None and now - last_push >= push_interval_s:
                     try:
-                        await client._mqtt.request_status_push(device_id)
-                        await client._mqtt.request_full_status_push(device_id)
+                        await client._mqtt.request_player_status(device_id)
+                        await client._mqtt.request_player_extended_status(device_id)
                     except Exception:
                         pass
                     last_push = now
@@ -139,12 +141,12 @@ def _render(player: YotoPlayer, log: Deque[Tuple[str, str]]) -> Layout:
         Layout(name="statuses"),
         Layout(name="right"),
     )
-    # status = MQTT data/status (v1) ; full_status = status/full (v3) / shadow.
+    # status = MQTT data/status (v1) ; extended_status = status/full (v3) / shadow.
     layout["statuses"].split_column(
         Layout(_section_panel("Status (data/status)", player.status), name="status"),
         Layout(
-            _section_panel("Full status (status/full)", player.full_status),
-            name="full",
+            _section_panel("Extended status (status/full)", player.extended_status),
+            name="extended",
         ),
     )
     # Last event is small (~12 useful fields); config takes the rest.

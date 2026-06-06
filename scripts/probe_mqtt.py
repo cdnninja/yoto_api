@@ -141,7 +141,7 @@ async def _run(yoto: YotoClient) -> int:
                 # The lib's *unused* REST trigger: POST /command/status. This
                 # is what should refresh the AWS IoT shadow and reply on
                 # device/<id>/status/full.
-                await yoto._rest.request_status_push(yoto.token, device_id)
+                await yoto._rest.request_player_status(yoto.token, device_id)
 
             async def _mqtt_direct() -> None:
                 # Hypothesis: the cloud's command/status publish can be sent

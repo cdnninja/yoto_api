@@ -7,7 +7,7 @@ import pytest
 
 from yoto_api import YotoClient
 from yoto_api.models.info import PlayerInfo
-from yoto_api.models.status import PlayerFullStatus
+from yoto_api.models.status import PlayerExtendedStatus
 
 
 pytestmark = pytest.mark.e2e
@@ -44,8 +44,8 @@ async def test_get_player_info(client: YotoClient, first_device_id: str) -> None
 async def test_get_player_status(client: YotoClient, first_device_id: str) -> None:
     """Reads the device.status sub-block from /config (the device shadow);
     no scoped /status endpoint is involved."""
-    status = await client.update_player_full_status(first_device_id)
-    assert isinstance(status, PlayerFullStatus)
+    status = await client.update_player_extended_status(first_device_id)
+    assert isinstance(status, PlayerExtendedStatus)
     # At least one telemetry field should be populated for an online player
     has_data = any(
         [

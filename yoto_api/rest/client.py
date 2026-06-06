@@ -21,7 +21,7 @@ from .._coerce import (
 from ..models.config import Alarm, PlayerConfig
 from ..models.device import Device
 from ..models.info import PlayerInfo
-from ..models.status import PlayerFullStatus
+from ..models.status import PlayerExtendedStatus
 from ..status_adapter import adapt_raw_status
 from . import endpoints
 
@@ -81,10 +81,10 @@ class RestClient:
 
     async def get_player_status(
         self, token: Token, device_id: str
-    ) -> tuple[PlayerFullStatus, Optional[bool]]:
+    ) -> tuple[PlayerExtendedStatus, Optional[bool]]:
         """Read the last-known telemetry snapshot from the device shadow.
 
-        Returns `(PlayerFullStatus, online)`. Reads the `device.status`
+        Returns `(PlayerExtendedStatus, online)`. Reads the `device.status`
         sub-block out of /config — the AWS IoT shadow, which can lag until
         refreshed (live) or hold the last-reported state (offline). Live
         telemetry is sourced over MQTT (see YotoMqttClient); this is the
@@ -102,9 +102,9 @@ class RestClient:
             f"get player {device_id} status",
         )
         device_block = config.get("device") or {}
-        full_status = adapt_raw_status(device_block.get("status") or {})
+        extended_status = adapt_raw_status(device_block.get("status") or {})
         online = device_block.get("online")
-        return full_status, online if isinstance(online, bool) else None
+        return extended_status, online if isinstance(online, bool) else None
 
     # ─── Settings writes ──────────────────────────────────────────
 
@@ -124,7 +124,7 @@ class RestClient:
     # The other player commands (play/pause/volume/etc.) are published
     # directly over MQTT for low latency. See YotoMqttClient.
 
-    async def request_status_push(self, token: Token, device_id: str) -> None:
+    async def request_player_status(self, token: Token, device_id: str) -> None:
         """Tell the player to push its current status onto MQTT now."""
         await self._post(
             token,

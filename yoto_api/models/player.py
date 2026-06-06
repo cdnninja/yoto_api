@@ -5,7 +5,7 @@ from typing import Optional
 from .device import Device
 from .event import PlaybackEvent
 from .info import PlayerInfo
-from .status import PlayerFullStatus, PlayerStatus
+from .status import PlayerExtendedStatus, PlayerStatus
 
 
 @dataclass
@@ -15,12 +15,12 @@ class YotoPlayer:
     Each telemetry object has a single writer, so values never get mixed
     across sources:
       - `status` (PlayerStatus)          ← MQTT `data/status`
-      - `full_status` (PlayerFullStatus) ← MQTT `status/full`,
+      - `extended_status` (PlayerExtendedStatus) ← MQTT `status/full`,
         or the REST `/config.device.status` shadow when pulled explicitly
       - `is_online`                      ← MQTT `presence` + REST list/config
       - `last_event` (PlaybackEvent)     ← MQTT `data/events`
 
-    `info`, `status`, `full_status`, and `last_event` are always present —
+    `info`, `status`, `extended_status`, and `last_event` are always present —
     initialized empty by `__post_init__` so consumers don't need defensive
     `is None` guards. "Have we received data?" is signalled by the
     `*_refreshed_at` timestamps (and `status.updated_at` for telemetry).
@@ -29,7 +29,7 @@ class YotoPlayer:
     device: Device
     info: PlayerInfo = field(init=False)
     status: PlayerStatus = field(init=False)
-    full_status: PlayerFullStatus = field(init=False)
+    extended_status: PlayerExtendedStatus = field(init=False)
     last_event: PlaybackEvent = field(init=False)
 
     # Connection state — distinct from telemetry. Written by presence (MQTT)
@@ -47,7 +47,7 @@ class YotoPlayer:
         # lives on `device`.
         self.info = PlayerInfo()
         self.status = PlayerStatus()
-        self.full_status = PlayerFullStatus()
+        self.extended_status = PlayerExtendedStatus()
         self.last_event = PlaybackEvent(player_id=self.device.device_id)
 
     @property
