@@ -21,15 +21,17 @@ jobs:
           fetch-depth: 0 # semantic-release needs full history to find prior tags
       - name: Get semantic release info
         id: semantic_release_info
-        uses: jossef/action-semantic-release-info@v3.0.0
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          dry_run: true # only compute the next version; the steps below publish
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Bump version + tag + release
-        if: ${{ steps.semantic_release_info.outputs.version != '' }}
+        if: ${{ steps.semantic_release_info.outputs.new_release_published == 'true' }}
         env:
-          VERSION: ${{ steps.semantic_release_info.outputs.version }}
-          TAG: ${{ steps.semantic_release_info.outputs.git_tag }}
-          NOTES: ${{ steps.semantic_release_info.outputs.notes }}
+          VERSION: ${{ steps.semantic_release_info.outputs.new_release_version }}
+          TAG: ${{ steps.semantic_release_info.outputs.new_release_git_tag }}
+          NOTES: ${{ steps.semantic_release_info.outputs.new_release_notes }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           sed -i "s/version=\".*\",/version=\"${VERSION}\",/g" setup.py
@@ -40,17 +42,17 @@ jobs:
           git tag "${TAG}"
           git push origin HEAD:master --tags
           gh release create "${TAG}" --title "${TAG}" --notes "${NOTES}"
-      - if: ${{ steps.semantic_release_info.outputs.version != '' }}
+      - if: ${{ steps.semantic_release_info.outputs.new_release_published == 'true' }}
         uses: actions/setup-python@v6
         with:
           python-version: "3.x"
       - name: Build package
-        if: ${{ steps.semantic_release_info.outputs.version != '' }}
+        if: ${{ steps.semantic_release_info.outputs.new_release_published == 'true' }}
         run: |
           python -m pip install --upgrade pip build
           python -m build
       - name: Publish to PyPI
-        if: ${{ steps.semantic_release_info.outputs.version != '' }}
+        if: ${{ steps.semantic_release_info.outputs.new_release_published == 'true' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           attestations: true
