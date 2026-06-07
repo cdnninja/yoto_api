@@ -41,18 +41,18 @@ The basic fields stay on `player.status`. The rest move to
 `PlayerStatus`, so the shared fields aren't duplicated and
 `isinstance(ext, PlayerStatus)` still holds).
 
-| 3.x                                            | 4.0                                                       |
-| ---------------------------------------------- | --------------------------------------------------------- |
-| `player.status.network_ssid`                   | `player.extended_status.network_ssid`                     |
-| `player.status.wifi_strength`                  | `player.extended_status.wifi_strength`                    |
-| `player.status.power_source`                   | `player.extended_status.power_source`                     |
-| `player.status.battery_temperature`           | `player.extended_status.battery_temperature`              |
-| `player.status.total_disk_space_bytes`         | `player.extended_status.total_disk_space_bytes`           |
-| `player.status.uptime`                         | `player.extended_status.uptime`                           |
-| `player.status.utc_time`                       | `player.extended_status.utc_time`                         |
-| `player.status.utc_offset_seconds`             | `player.extended_status.utc_offset_seconds`               |
-| `player.status.temperature_celcius`            | `player.extended_status.temperature_celcius`              |
-| `player.status.is_background_download_active`  | `player.extended_status.is_background_download_active`     |
+| 3.x                                                 | 4.0                                                          |
+| --------------------------------------------------- | ------------------------------------------------------------ |
+| `player.status.network_ssid`                        | `player.extended_status.network_ssid`                        |
+| `player.status.wifi_strength`                       | `player.extended_status.wifi_strength`                       |
+| `player.status.power_source`                        | `player.extended_status.power_source`                        |
+| `player.status.battery_temperature`                 | `player.extended_status.battery_temperature`                 |
+| `player.status.total_disk_space_bytes`              | `player.extended_status.total_disk_space_bytes`              |
+| `player.status.uptime`                              | `player.extended_status.uptime`                              |
+| `player.status.utc_time`                            | `player.extended_status.utc_time`                            |
+| `player.status.utc_offset_seconds`                  | `player.extended_status.utc_offset_seconds`                  |
+| `player.status.temperature_celcius`                 | `player.extended_status.temperature_celcius`                 |
+| `player.status.is_background_download_active`       | `player.extended_status.is_background_download_active`       |
 | `player.status.average_download_speed_bytes_second` | `player.extended_status.average_download_speed_bytes_second` |
 
 `battery_level_percentage`, `is_charging`, `free_disk_space_bytes`,
@@ -82,10 +82,10 @@ Two prefixes, two transports:
 - `request_player_*` (MQTT): asks the device to push fresh data, which arrives
   on your `on_update` callback (connect with `connect_events` first).
 
-| What you want            | MQTT (live)                          | REST (snapshot)                       |
-| ------------------------ | ------------------------------------ | ------------------------------------- |
-| `player.status`          | `request_player_status(id)`          | not available                         |
-| `player.extended_status` | `request_player_extended_status(id)` | `update_player_extended_status(id)`   |
+| What you want            | MQTT (live)                          | REST (snapshot)                     |
+| ------------------------ | ------------------------------------ | ----------------------------------- |
+| `player.status`          | `request_player_status(id)`          | not available                       |
+| `player.extended_status` | `request_player_extended_status(id)` | `update_player_extended_status(id)` |
 
 Prefer MQTT for live values. The REST shadow can lag and carries no
 device-side timestamp, so it's a fallback for cold start or while the device
