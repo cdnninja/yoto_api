@@ -26,6 +26,12 @@ def as_int(value: Any) -> Optional[int]:
         return None
 
 
+def kib_to_bytes(value: Any) -> Optional[int]:
+    """Yoto reports `freeDisk`/`totalDisk` in KiB blocks; scale to bytes."""
+    kib = as_int(value)
+    return kib * 1024 if kib is not None else None
+
+
 def as_bool(value: Any) -> Optional[bool]:
     """Parse a bool from JSON `true`/`false`, `0`/`1` ints, and
     `"true"`/`"1"`/`"yes"` strings. `None` otherwise."""

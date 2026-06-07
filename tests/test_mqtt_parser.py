@@ -135,6 +135,14 @@ class MqttParserTests(unittest.TestCase):
         # batteryTemp (direct) wins over the `temp` battery side (24).
         self.assertEqual(result.fields["battery_temperature"], 22)
 
+    def test_disk_fields_scaled_from_kib_to_bytes(self) -> None:
+        # freeDisk (data/status) and totalDisk (status/full) are reported in
+        # KiB blocks; the parser scales them to bytes.
+        v1 = parse_message("device/d/data/status", b'{"status":{"freeDisk":24333760}}')
+        self.assertEqual(v1.fields["free_disk_space_bytes"], 24333760 * 1024)
+        v3 = parse_message("device/d/status/full", b'{"status":{"totalDisk":30535680}}')
+        self.assertEqual(v3.fields["total_disk_space_bytes"], 30535680 * 1024)
+
     def test_presence_online(self) -> None:
         result = parse_message("device/dev1/presence", b'{"state":"online","ts":123}')
         self.assertIsInstance(result, PresenceEvent)
