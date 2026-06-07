@@ -27,8 +27,8 @@ def as_int(value: Any) -> Optional[int]:
 
 
 def as_bool(value: Any) -> Optional[bool]:
-    """Best-effort bool: handles JSON `true`/`false`, `0`/`1` ints, and
-    `"true"`/`"1"`/`"yes"` strings. Returns `None` for anything else."""
+    """Parse a bool from JSON `true`/`false`, `0`/`1` ints, and
+    `"true"`/`"1"`/`"yes"` strings. `None` otherwise."""
     if value is None:
         return None
     if isinstance(value, bool):

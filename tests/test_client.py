@@ -739,28 +739,46 @@ class UpdatePlayerStatusTests(_ClientTestCase):
         # The v1 status object is untouched by the REST shadow read.
         self.assertIsNone(player.status.battery_level_percentage)
 
-    async def test_stale_shadow_does_not_clobber_fresher_live(self) -> None:
+    async def test_live_mqtt_wins_while_online(self) -> None:
         from yoto_api.models.status import PlayerExtendedStatus
 
         client = self.make_client()
         client.token = fresh_token()
         player = YotoPlayer(device=Device(device_id="d1", name="x"))
-        now = datetime.datetime.now(pytz.utc)
-        # Fresh live data already on the player.
+        # MQTT already pushed a live value; updated_at marks "MQTT has spoken".
         player.extended_status.battery_level_percentage = 80
-        player.extended_status.updated_at = now
+        player.extended_status.updated_at = datetime.datetime.now(pytz.utc)
         client.players["d1"] = player
-        # REST returns an older shadow snapshot.
-        stale = PlayerExtendedStatus(
-            battery_level_percentage=50,
-            updated_at=now - datetime.timedelta(hours=1),
-        )
-        client._rest.get_player_status = AsyncMock(return_value=(stale, True))
+        # A REST shadow poll while the device is online must not clobber it —
+        # the shadow lags live MQTT and carries no timestamp to arbitrate with.
+        shadow = PlayerExtendedStatus(battery_level_percentage=50)
+        client._rest.get_player_status = AsyncMock(return_value=(shadow, True))
 
         await client.update_player_extended_status("d1")
 
-        # Kept the fresher live value, not the stale shadow.
         self.assertEqual(player.extended_status.battery_level_percentage, 80)
+
+    async def test_offline_shadow_takes_over_from_stale_live(self) -> None:
+        from yoto_api.models.status import PlayerExtendedStatus
+
+        client = self.make_client()
+        client.token = fresh_token()
+        player = YotoPlayer(device=Device(device_id="d1", name="x"))
+        # MQTT spoke while the device was online, then the device dropped.
+        player.extended_status.battery_level_percentage = 80
+        player.extended_status.updated_at = datetime.datetime.now(pytz.utc)
+        client.players["d1"] = player
+        # Now offline: the shadow is the only source left and must take over,
+        # even though MQTT had populated extended_status earlier. (The shadow
+        # carries no updated_at, so a timestamp gate would wrongly drop it.)
+        shadow = PlayerExtendedStatus(battery_level_percentage=55)
+        client._rest.get_player_status = AsyncMock(return_value=(shadow, False))
+
+        await client.update_player_extended_status("d1")
+
+        self.assertIs(player.extended_status, shadow)
+        self.assertEqual(player.extended_status.battery_level_percentage, 55)
+        self.assertFalse(player.is_online)
 
 
 class UpdateGroupsTests(_ClientTestCase):

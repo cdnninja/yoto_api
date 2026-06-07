@@ -398,23 +398,32 @@ class YotoClient:
     ) -> PlayerExtendedStatus:
         """Pull the device-shadow telemetry from REST `/config.device.status`.
 
-        Feeds `player.extended_status` (the shadow carries the same fields as the
-        MQTT `status/full` payload). Best-effort, undocumented upstream — live
-        telemetry should come over MQTT; this is the offline / cold-start
-        fallback. Returns the `PlayerExtendedStatus` and updates `player.is_online`.
+        Prefer `request_player_extended_status()` (MQTT): it asks the device
+        for a live `status/full` push. This method instead reads the AWS IoT
+        shadow over REST — same fields, but last-reported state that can lag the
+        live values, and with no device-side timestamp. Use it only as a
+        fallback: cold start (before MQTT has pushed) or while the device is
+        offline.
+
+        Feeds `player.extended_status` and updates `player.is_online`. While the
+        device is live (MQTT has already pushed), the live value wins and this
+        read won't clobber it. Returns the stored `PlayerExtendedStatus`.
         """
         token = await self.check_and_refresh_token()
         extended_status, online = await self._rest.get_player_status(token, device_id)
         player = self.players.get(device_id)
         if player is None:
             return extended_status
-        # The shadow can lag live MQTT data — only take it if it's at least as
-        # recent, so a poll doesn't clobber a fresher push.
-        current = player.extended_status.updated_at
-        incoming = extended_status.updated_at
-        if current is None or (incoming is not None and incoming >= current):
-            player.extended_status = extended_status
         self._set_online(player, online)
+        # The shadow lags live MQTT and carries no device-side timestamp, so we
+        # can't compare freshness. Arbitrate on the source instead: MQTT owns
+        # extended_status while the device is live; the shadow only fills it in
+        # offline or before the first MQTT push (cold start). `updated_at` is
+        # set only by `status/full` (via utc_time), so it doubles as the "MQTT
+        # has spoken" signal.
+        mqtt_has_data = player.extended_status.updated_at is not None
+        if not (player.is_online and mqtt_has_data):
+            player.extended_status = extended_status
         return player.extended_status
 
     # ─── Settings writes ──────────────────────────────────────────

@@ -66,7 +66,7 @@ root-level `is_online`:
 - `player.extended_status` (`PlayerExtendedStatus`): the richer telemetry from
   MQTT `status/full` or the REST `/config` shadow (network, disk, uptime,
   raw battery). A superset of `PlayerStatus`. Yoto doesn't document this one,
-  so treat it as best-effort.
+  so it can be incomplete or change without notice.
 - `player.last_event` (`PlaybackEvent`): live playback state pushed
   via MQTT (track, position, volume).
 - `player.is_online` (`bool`): connection state, from MQTT presence and
@@ -88,7 +88,7 @@ works even when the device is offline.
 ```python
 await client.update_player_list()           # /devices/mine
 await client.update_player_info(device_id)  # /config — info + info.config
-await client.update_player_extended_status(device_id)  # /config shadow — extended_status
+await client.update_player_extended_status(device_id)  # /config shadow — extended_status (offline/cold-start fallback)
 await client.update_library()               # /card/family/library — client.library
 await client.update_groups()                # /card/family/library/groups — client.groups
 await client.refresh()                      # list + all info
@@ -178,6 +178,14 @@ except YotoError:                  # catch-all
     ...
 ```
 
+## Migration from 3.x
+
+See [MIGRATION_4.md](MIGRATION_4.md). Short version: `player.status` splits
+into `player.status` (basic, MQTT) + `player.extended_status` (rich, MQTT or
+REST shadow), `is_online` moves to `player.is_online`, `update_player_status`
+→ `update_player_extended_status` / `request_player_extended_status`, and the
+REST `/status` endpoint is gone.
+
 ## Migration from 2.x
 
 See [MIGRATION_3.md](MIGRATION_3.md). Short version: `YotoManager` →
@@ -225,10 +233,11 @@ python scripts/probe_mqtt.py       # 30s MQTT capture → mqtt_probe.log
   use `client.request_player_status` (which routes through MQTT).
 - `data/status` (v1) is a subset: `powerSrc`, `wifiStrength`, `ssid`,
   `temp`, `upTime`, `utcTime`, `utcOffset`, `totalDisk` arrive only via
-  MQTT `status/full` or the REST `/config` shadow. Use
-  `client.request_player_extended_status` (MQTT) or poll
-  `client.update_player_extended_status()` on a slower timer; both feed
-  `player.extended_status`.
+  MQTT `status/full` or the REST `/config` shadow, both feeding
+  `player.extended_status`. Prefer `client.request_player_extended_status`
+  (MQTT) for live values. `client.update_player_extended_status()` reads the
+  REST shadow as a fallback (cold start or offline) and won't overwrite
+  fresher live data.
 
 ## Other notes
 
