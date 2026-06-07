@@ -56,32 +56,50 @@ client.token = Token(access_token=..., refresh_token=..., ...)
 
 ## Data model
 
-`YotoPlayer` aggregates four typed sub-objects, one per data source:
+`YotoPlayer` aggregates typed sub-objects (one per data source) plus a
+root-level `is_online`:
 
 - `player.device` (`Device`): immutable identity from `/devices/mine`.
 - `player.info` (`PlayerInfo`): settings, mac, firmware from `/config`.
-- `player.status` (`PlayerStatus`): runtime telemetry (battery, wifi,
-  charging, online).
+- `player.status` (`PlayerStatus`): basic live telemetry from MQTT
+  `data/status` (battery, volume, charging, day mode).
+- `player.extended_status` (`PlayerExtendedStatus`): the richer telemetry from
+  MQTT `status/full` or the REST `/config` shadow (network, disk, uptime,
+  raw battery). A superset of `PlayerStatus`. Yoto doesn't document this one,
+  so it can be incomplete or change without notice.
 - `player.last_event` (`PlaybackEvent`): live playback state pushed
   via MQTT (track, position, volume).
+- `player.is_online` (`bool`): connection state, from MQTT presence and
+  REST.
 
-All four are always present (default-initialised). The
-`*_refreshed_at` / `last_event_received_at` timestamps tell you whether
-data has actually been received.
+All are always present (default-initialised). The `*_refreshed_at`,
+`last_event_received_at` and `online_refreshed_at` timestamps tell you
+whether data has actually been received. On top of that, `status` and
+`extended_status` carry `updated_at`: when that telemetry was current
+device-side. Gate on it if you care about freshness.
 
 ## Common methods
 
 All public methods are async.
 
-Refresh:
+Refresh over REST (`update_*`): a one-shot snapshot, returned and stored,
+works even when the device is offline.
 
 ```python
 await client.update_player_list()           # /devices/mine
 await client.update_player_info(device_id)  # /config — info + info.config
-await client.update_player_status(device_id)
+await client.update_player_extended_status(device_id)  # /config shadow — extended_status (offline/cold-start fallback)
 await client.update_library()               # /card/family/library — client.library
 await client.update_groups()                # /card/family/library/groups — client.groups
 await client.refresh()                      # list + all info
+```
+
+Refresh over MQTT (`request_*`): ask the device to push fresh data. It
+arrives on your `on_update` callback, so connect first with `connect_events`.
+
+```python
+await client.request_player_status(device_id)           # -> player.status
+await client.request_player_extended_status(device_id)  # -> player.extended_status
 ```
 
 Groups are user-defined labels over library cards (a card can sit in
@@ -160,6 +178,14 @@ except YotoError:                  # catch-all
     ...
 ```
 
+## Migration from 3.x
+
+See [MIGRATION_4.md](MIGRATION_4.md). Short version: `player.status` splits
+into `player.status` (basic, MQTT) + `player.extended_status` (rich, MQTT or
+REST shadow), `is_online` moves to `player.is_online`, `update_player_status`
+→ `update_player_extended_status` / `request_player_extended_status`, and the
+REST `/status` endpoint is gone.
+
 ## Migration from 2.x
 
 See [MIGRATION_3.md](MIGRATION_3.md). Short version: `YotoManager` →
@@ -204,11 +230,14 @@ python scripts/probe_mqtt.py       # 30s MQTT capture → mqtt_probe.log
 - `data/status` is **never** pushed spontaneously. The firmware
   responds to MQTT `command/status/request` within ~150ms. The REST
   `POST /command/status` is acked but doesn't trigger an MQTT push —
-  use `client.request_status_push` (which routes through MQTT).
-- `data/status` is a subset of REST `device.status`: `powerSrc`,
-  `wifiStrength`, `ssid`, `temp`, `upTime`, `utcTime`, `utcOffset`,
-  `totalDisk` are REST-only. Poll `client.update_player_status()` on
-  a slower timer for those.
+  use `client.request_player_status` (which routes through MQTT).
+- `data/status` (v1) is a subset: `powerSrc`, `wifiStrength`, `ssid`,
+  `temp`, `upTime`, `utcTime`, `utcOffset`, `totalDisk` arrive only via
+  MQTT `status/full` or the REST `/config` shadow, both feeding
+  `player.extended_status`. Prefer `client.request_player_extended_status`
+  (MQTT) for live values. `client.update_player_extended_status()` reads the
+  REST shadow as a fallback (cold start or offline) and won't overwrite
+  fresher live data.
 
 ## Other notes
 

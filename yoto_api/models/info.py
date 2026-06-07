@@ -6,9 +6,11 @@ from .config import PlayerConfig
 
 @dataclass
 class PlayerInfo:
-    """Wraps GET /device-v2/{id}/config — settings + identity + hardware."""
+    """Wraps GET /device-v2/{id}/config — settings + hardware.
 
-    device_id: str
+    Identity (which device) lives on `YotoPlayer` / `Device`, not here.
+    """
+
     name: Optional[str] = None
     firmware_version: Optional[str] = None  # from device.releaseChannelVersion
     pop_code: Optional[str] = None

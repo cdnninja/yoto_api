@@ -7,7 +7,7 @@ import pytest
 
 from yoto_api import YotoClient
 from yoto_api.models.info import PlayerInfo
-from yoto_api.models.status import PlayerStatus
+from yoto_api.models.status import PlayerExtendedStatus
 
 
 pytestmark = pytest.mark.e2e
@@ -27,13 +27,12 @@ async def test_list_devices_populates_players(client: YotoClient) -> None:
         assert player.device.device_id == player_id
         assert player.device.name
         # Online state should land on status (not on identity)
-        assert player.status.is_online in (True, False)
+        assert player.is_online in (True, False)
 
 
 async def test_get_player_info(client: YotoClient, first_device_id: str) -> None:
     info = await client.update_player_info(first_device_id)
     assert isinstance(info, PlayerInfo)
-    assert info.device_id == first_device_id
     # Hardware metadata should be populated by the /config response
     assert info.mac, "MAC missing from /config response"
     assert info.firmware_version, "firmware_version missing from /config"
@@ -43,11 +42,10 @@ async def test_get_player_info(client: YotoClient, first_device_id: str) -> None
 
 
 async def test_get_player_status(client: YotoClient, first_device_id: str) -> None:
-    """Works whether or not the token has the device-status:view scope —
-    the lib falls back to /config.device.status on 403."""
-    status = await client.update_player_status(first_device_id)
-    assert isinstance(status, PlayerStatus)
-    assert status.device_id == first_device_id
+    """Reads the device.status sub-block from /config (the device shadow);
+    no scoped /status endpoint is involved."""
+    status = await client.update_player_extended_status(first_device_id)
+    assert isinstance(status, PlayerExtendedStatus)
     # At least one telemetry field should be populated for an online player
     has_data = any(
         [
@@ -57,7 +55,7 @@ async def test_get_player_status(client: YotoClient, first_device_id: str) -> No
             status.system_volume_percentage is not None,
         ]
     )
-    assert has_data, "no telemetry returned from /status or /config fallback"
+    assert has_data, "no telemetry returned from /config.device.status"
 
 
 async def test_full_refresh(client: YotoClient) -> None:

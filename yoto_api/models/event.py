@@ -77,11 +77,28 @@ class EventPatch:
 
 @dataclass
 class StatusPatch:
-    """Partial PlayerStatus update from MQTT `device/{id}/data/status`.
+    """Partial status update from MQTT `data/status` or `status/full`.
 
-    Only fields that were present in the payload are populated; consumers
-    should merge non-None values into the current PlayerStatus.
+    Only fields present in the payload are populated; consumers merge the
+    non-None values into the current status object. `extended` selects the
+    target: True → `status/full` → `PlayerExtendedStatus`;
+    False → `data/status` → `PlayerStatus`.
     """
 
     player_id: str
     fields: Dict[str, Any] = field(default_factory=dict)
+    extended: bool = False
+
+
+@dataclass
+class PresenceEvent:
+    """Online/offline transition from MQTT `device/{id}/presence`.
+
+    The "offline" message is published by the broker's Last-Will, not the
+    device, so receiving one does NOT prove the player is reachable — unlike
+    every other topic. Consumers should set is_online from it directly.
+    """
+
+    player_id: str
+    is_online: bool
+    ts: Optional[int] = None  # device-supplied epoch ms

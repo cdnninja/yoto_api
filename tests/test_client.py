@@ -15,6 +15,7 @@ from yoto_api import (
     Device,
     EventPatch,
     PlaybackStatus,
+    PresenceEvent,
     StatusPatch,
     Token,
     YotoClient,
@@ -89,7 +90,7 @@ class UpdateAllPlayerInfoToleranceTests(_ClientTestCase):
         async def fake_get_player_info(token, device_id):
             if device_id == "bad":
                 raise YotoError("boom")
-            return PlayerInfo(device_id=device_id), True
+            return PlayerInfo(), True
 
         client._rest.get_player_info = fake_get_player_info
 
@@ -452,67 +453,75 @@ class CheckAndRefreshTokenTests(_ClientTestCase):
         client._auth.refresh.assert_not_awaited()
 
 
-class StatusFallback403Tests(_ClientTestCase):
-    """`get_player_status` falls back to /config when /status returns 403,
-    detected via the `status_code` attribute on `YotoAPIError` (no string
-    matching on the message)."""
+class StatusFromConfigTests(_ClientTestCase):
+    """`get_player_status` reads the device.status sub-block from /config —
+    no scoped /status endpoint, no fallback dance. /config.device.status
+    carries the same firmware status block (incl. statusVersion-3 battery
+    extras) and works for offline devices via the shadow."""
 
-    async def test_403_triggers_fallback(self) -> None:
-        from yoto_api import YotoAPIError
-        from yoto_api.models.status import PlayerStatus
+    async def test_reads_config_device_status(self) -> None:
+        from yoto_api.models.status import PlayerExtendedStatus
         from yoto_api.rest.client import RestClient
 
-        # RestClient now requires a session; pass a mock since we patch _get.
         rest = RestClient(session=MagicMock())
-        token = fresh_token()
-
         calls: list[str] = []
 
         async def fake_get(token, path, what, **_):
             calls.append(path)
-            if path.endswith("/status"):
-                raise YotoAPIError("scope missing", status_code=403)
-            # /config call returns the device.status sub-block
             return {
                 "device": {
                     "online": True,
-                    "status": {"batteryLevel": 42, "wifiStrength": -55},
+                    "status": {
+                        "batteryLevel": 42,
+                        "batteryLevelRaw": 38,
+                        "battery": 3650,
+                        "batteryProfile": "LJDX30X-4500",
+                        "wifiStrength": -55,
+                    },
                 },
             }
 
         rest._get = fake_get
-        result = await rest.get_player_status(token, "dev1")
+        result, online = await rest.get_player_status(fresh_token(), "dev1")
 
-        self.assertIsInstance(result, PlayerStatus)
+        self.assertIsInstance(result, PlayerExtendedStatus)
         self.assertEqual(result.battery_level_percentage, 42)
+        self.assertEqual(result.battery_level_raw, 38)
+        self.assertEqual(result.battery_voltage_mv, 3650)
+        self.assertEqual(result.battery_profile, "LJDX30X-4500")
         self.assertEqual(result.wifi_strength, -55)
-        self.assertTrue(result.is_online)  # carried from device.online
-        # /status was tried first, then /config
-        self.assertEqual(len(calls), 2)
-        self.assertTrue(calls[0].endswith("/status"))
-        self.assertIn("/config", calls[1])
+        self.assertTrue(online)  # carried from device.online, split out
+        # Exactly one call, to /config — never /status.
+        self.assertEqual(len(calls), 1)
+        self.assertIn("/config", calls[0])
+        self.assertFalse(calls[0].endswith("/status"))
 
-    async def test_non_403_propagates(self) -> None:
-        from yoto_api import YotoAPIError
+    async def test_offline_keeps_last_known_battery(self) -> None:
         from yoto_api.rest.client import RestClient
 
         rest = RestClient(session=MagicMock())
-        rest._get = AsyncMock(side_effect=YotoAPIError("server boom", status_code=500))
-        with self.assertRaises(YotoAPIError) as ctx:
-            await rest.get_player_status(fresh_token(), "dev1")
-        self.assertEqual(ctx.exception.status_code, 500)
+
+        async def fake_get(token, path, what, **_):
+            # Offline shadow: online False, battery still present (last seen).
+            return {"device": {"online": False, "status": {"batteryLevel": 100}}}
+
+        rest._get = fake_get
+        result, online = await rest.get_player_status(fresh_token(), "dev1")
+        self.assertFalse(online)
+        self.assertEqual(result.battery_level_percentage, 100)
 
 
 class OnlineConsolidationTests(_ClientTestCase):
-    """status.is_online is the single source. Three writers feed it."""
+    """`YotoPlayer.is_online` (root) is the single connection-state field.
+    Writers: REST list/config, MQTT presence, and live-message presence proof."""
 
-    async def test_rest_devices_mine_sets_online_via_status(self) -> None:
+    async def test_rest_devices_mine_sets_online(self) -> None:
         client = self.make_client()
         client.token = fresh_token()
         device = Device(device_id="d1", name="x")
         client._rest.list_devices = AsyncMock(return_value=[(device, True)])
         await client.update_player_list()
-        self.assertTrue(client.players["d1"].status.is_online)
+        self.assertTrue(client.players["d1"].is_online)
 
     async def test_rest_devices_mine_can_set_offline(self) -> None:
         client = self.make_client()
@@ -520,7 +529,7 @@ class OnlineConsolidationTests(_ClientTestCase):
         device = Device(device_id="d1", name="x")
         client._rest.list_devices = AsyncMock(return_value=[(device, False)])
         await client.update_player_list()
-        self.assertFalse(client.players["d1"].status.is_online)
+        self.assertFalse(client.players["d1"].is_online)
 
     async def test_mqtt_message_flips_to_online(self) -> None:
         client = self.make_client()
@@ -529,28 +538,57 @@ class OnlineConsolidationTests(_ClientTestCase):
         client.players["d1"] = player
         # Simulate REST having seen offline
         client._set_online(player, False)
-        self.assertFalse(player.status.is_online)
+        self.assertFalse(player.is_online)
         # An MQTT StatusPatch arrives — presence proof
         await client._on_mqtt_message(StatusPatch(player_id="d1", fields={}))
-        self.assertTrue(player.status.is_online)
+        self.assertTrue(player.is_online)
 
-    async def test_mqtt_never_sets_offline(self) -> None:
-        # Even if the (unusual) MQTT payload included offline, presence
-        # of the message is the truth — it's been flipped to True before
-        # _apply_status_patch runs.
+    async def test_presence_offline_sets_offline_without_blanking_battery(
+        self,
+    ) -> None:
+        # The presence topic is the authoritative offline signal (broker
+        # Last-Will). It must NOT count as presence proof, and must NOT
+        # wipe the last-known battery.
         client = self.make_client()
-        device = Device(device_id="d1", name="x")
-        player = YotoPlayer(device=device)
+        player = YotoPlayer(device=Device(device_id="d1", name="x"))
+        player.is_online = True
+        player.status.battery_level_percentage = 73
         client.players["d1"] = player
+
+        await client._on_mqtt_message(PresenceEvent(player_id="d1", is_online=False))
+
+        self.assertFalse(player.is_online)
+        self.assertEqual(player.status.battery_level_percentage, 73)
+
+    async def test_presence_online_sets_online(self) -> None:
+        client = self.make_client()
+        player = YotoPlayer(device=Device(device_id="d1", name="x"))
+        client._set_online(player, False)
+        client.players["d1"] = player
+
+        await client._on_mqtt_message(PresenceEvent(player_id="d1", is_online=True))
+
+        self.assertTrue(player.is_online)
+
+    async def test_status_full_patch_routes_to_extended_status_and_marks_online(
+        self,
+    ) -> None:
+        client = self.make_client()
+        player = YotoPlayer(device=Device(device_id="d1", name="x"))
+        client._set_online(player, False)
+        client.players["d1"] = player
+
         await client._on_mqtt_message(
-            StatusPatch(player_id="d1", fields={"is_online": False}),
+            StatusPatch(
+                player_id="d1",
+                fields={"battery_voltage_mv": 3775, "battery_level_raw": 59},
+                extended=True,
+            )
         )
-        # Patch is applied AFTER _set_online(True) runs — so the patch's
-        # value wins. This is the documented behaviour: MQTT can still
-        # flip is_online either way if it explicitly carries it. The
-        # important guarantee is that *receiving any message* counts as
-        # presence proof to start with.
-        self.assertFalse(player.status.is_online)
+        self.assertTrue(player.is_online)
+        # Battery extras land on extended_status, not the v1 status object.
+        self.assertEqual(player.extended_status.battery_voltage_mv, 3775)
+        self.assertEqual(player.extended_status.battery_level_raw, 59)
 
 
 class PlaybackEventMergeTests(_ClientTestCase):
@@ -672,31 +710,75 @@ class OnlinePresenceOnEveryMqttMessageTests(_ClientTestCase):
     async def test_status_patch_marks_online(self) -> None:
         client, player = self._client_with_offline_player()
         await client._on_mqtt_message(StatusPatch(player_id="d1", fields={}))
-        self.assertTrue(player.status.is_online)
+        self.assertTrue(player.is_online)
 
     async def test_playback_event_marks_online(self) -> None:
         client, player = self._client_with_offline_player()
         await client._on_mqtt_message(EventPatch(player_id="d1", fields={"volume": 5}))
-        self.assertTrue(player.status.is_online)
+        self.assertTrue(player.is_online)
 
 
-class StatusFallbackTests(_ClientTestCase):
-    """update_player_status falls back to /config when /status returns 403."""
+class UpdatePlayerStatusTests(_ClientTestCase):
+    """update_player_extended_status reads the REST /config shadow into extended_status
+    and sets is_online; it never touches the v1 status object."""
 
-    async def test_falls_back_when_scope_missing(self) -> None:
-        from yoto_api.models.status import PlayerStatus
+    async def test_feeds_extended_status_and_online(self) -> None:
+        from yoto_api.models.status import PlayerExtendedStatus
 
         client = self.make_client()
         client.token = fresh_token()
         client.players["d1"] = YotoPlayer(device=Device(device_id="d1", name="x"))
-        fallback_status = PlayerStatus(device_id="d1", battery_level_percentage=42)
-        client._rest.get_player_status = AsyncMock(return_value=fallback_status)
-        result = await client.update_player_status("d1")
-        self.assertIs(result, fallback_status)
-        self.assertEqual(
-            client.players["d1"].status.battery_level_percentage,
-            42,
-        )
+        shadow = PlayerExtendedStatus(battery_level_percentage=42)
+        client._rest.get_player_status = AsyncMock(return_value=(shadow, False))
+        result = await client.update_player_extended_status("d1")
+        self.assertIs(result, shadow)
+        player = client.players["d1"]
+        self.assertIs(player.extended_status, shadow)
+        self.assertEqual(player.extended_status.battery_level_percentage, 42)
+        self.assertFalse(player.is_online)
+        # The v1 status object is untouched by the REST shadow read.
+        self.assertIsNone(player.status.battery_level_percentage)
+
+    async def test_live_mqtt_wins_while_online(self) -> None:
+        from yoto_api.models.status import PlayerExtendedStatus
+
+        client = self.make_client()
+        client.token = fresh_token()
+        player = YotoPlayer(device=Device(device_id="d1", name="x"))
+        # MQTT already pushed a live value; updated_at marks "MQTT has spoken".
+        player.extended_status.battery_level_percentage = 80
+        player.extended_status.updated_at = datetime.datetime.now(pytz.utc)
+        client.players["d1"] = player
+        # A REST shadow poll while the device is online must not clobber it —
+        # the shadow lags live MQTT and carries no timestamp to arbitrate with.
+        shadow = PlayerExtendedStatus(battery_level_percentage=50)
+        client._rest.get_player_status = AsyncMock(return_value=(shadow, True))
+
+        await client.update_player_extended_status("d1")
+
+        self.assertEqual(player.extended_status.battery_level_percentage, 80)
+
+    async def test_offline_shadow_takes_over_from_stale_live(self) -> None:
+        from yoto_api.models.status import PlayerExtendedStatus
+
+        client = self.make_client()
+        client.token = fresh_token()
+        player = YotoPlayer(device=Device(device_id="d1", name="x"))
+        # MQTT spoke while the device was online, then the device dropped.
+        player.extended_status.battery_level_percentage = 80
+        player.extended_status.updated_at = datetime.datetime.now(pytz.utc)
+        client.players["d1"] = player
+        # Now offline: the shadow is the only source left and must take over,
+        # even though MQTT had populated extended_status earlier. (The shadow
+        # carries no updated_at, so a timestamp gate would wrongly drop it.)
+        shadow = PlayerExtendedStatus(battery_level_percentage=55)
+        client._rest.get_player_status = AsyncMock(return_value=(shadow, False))
+
+        await client.update_player_extended_status("d1")
+
+        self.assertIs(player.extended_status, shadow)
+        self.assertEqual(player.extended_status.battery_level_percentage, 55)
+        self.assertFalse(player.is_online)
 
 
 class UpdateGroupsTests(_ClientTestCase):

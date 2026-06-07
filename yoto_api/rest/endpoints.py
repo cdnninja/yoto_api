@@ -11,10 +11,6 @@ def device_config(device_id: str) -> str:
     return f"/device-v2/{device_id}/config"
 
 
-def device_status(device_id: str) -> str:
-    return f"/device-v2/{device_id}/status"
-
-
 def command_status(device_id: str) -> str:
     """POST trigger to make the player push its current status onto MQTT.
     The other player commands (play/pause/volume/etc.) go via MQTT direct."""

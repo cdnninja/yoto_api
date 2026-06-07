@@ -23,7 +23,8 @@ class StatusPatchMergeTests(unittest.TestCase):
         client._apply_status_patch(player, patch)
         self.assertEqual(player.status.battery_level_percentage, 80)
         self.assertTrue(player.status.is_charging)
-        self.assertIsNone(player.status.wifi_strength)
+        # A field not present in the patch stays None.
+        self.assertIsNone(player.status.system_volume_percentage)
 
 
 class YotoPlayerTests(unittest.TestCase):
@@ -37,16 +38,16 @@ class YotoPlayerTests(unittest.TestCase):
         self.assertEqual(v3.model, "Yoto Player")
         self.assertEqual(unknown.model, "Yoto Player")
 
-    def test_sub_objects_default_to_empty_with_matching_id(self) -> None:
-        """info / status / last_event are always present after construction
-        so consumers don't need defensive `is None` guards."""
+    def test_sub_objects_default_to_empty(self) -> None:
+        """info / status / extended_status / last_event are always present after
+        construction so consumers don't need defensive `is None` guards."""
         player = YotoPlayer(device=Device(device_id="abc", name="X"))
-        self.assertEqual(player.info.device_id, "abc")
-        self.assertEqual(player.status.device_id, "abc")
+        # last_event keeps player_id (it doubles as the routed MQTT message)
         self.assertEqual(player.last_event.player_id, "abc")
         # Empty: every payload field is None
         self.assertIsNone(player.info.mac)
         self.assertIsNone(player.status.battery_level_percentage)
+        self.assertIsNone(player.extended_status.battery_voltage_mv)
         self.assertIsNone(player.last_event.position)
 
     def test_refreshed_at_signals_remain_None_at_construction(self) -> None:
@@ -55,7 +56,7 @@ class YotoPlayerTests(unittest.TestCase):
         player = YotoPlayer(device=Device(device_id="abc", name="X"))
         self.assertIsNone(player.devices_refreshed_at)
         self.assertIsNone(player.info_refreshed_at)
-        self.assertIsNone(player.status_refreshed_at)
+        self.assertIsNone(player.status.updated_at)
         self.assertIsNone(player.last_event_received_at)
 
 

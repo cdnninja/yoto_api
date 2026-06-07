@@ -27,10 +27,10 @@ from ._coerce import parse_iso
 from .Token import Token
 from .utils import get_child_value, get_raw_value
 from .auth import Auth
-from .models.event import EventPatch, PlaybackEvent, StatusPatch
+from .models.event import EventPatch, PlaybackEvent, PresenceEvent, StatusPatch
 from .models.info import PlayerInfo
 from .models.player import YotoPlayer
-from .models.status import PlayerStatus
+from .models.status import PlayerExtendedStatus
 from .mqtt import YotoMqttClient
 from .mqtt.client import _maybe_await
 from .models.config import Alarm
@@ -254,7 +254,7 @@ class YotoClient:
 
     async def update_player_info(self, device_id: str) -> PlayerInfo:
         """GET /config for one device. Updates `players[device_id].info`
-        and `players[device_id].status.is_online`."""
+        and `players[device_id].is_online`."""
         token = await self.check_and_refresh_token()
         info, online = await self._rest.get_player_info(token, device_id)
         player = self.players.get(device_id)
@@ -294,7 +294,7 @@ class YotoClient:
 
         Equivalent to `update_player_list()` followed by
         `update_all_player_info()`. Use this from a HA coordinator
-        update tick. `request_status_push` is intentionally not chained:
+        update tick. `request_player_status` is intentionally not chained:
         refresh should stay idempotent and read-only.
         """
         await self.update_player_list()
@@ -393,15 +393,38 @@ class YotoClient:
         for stale_id in set(self.groups) - seen_ids:
             self.groups.pop(stale_id, None)
 
-    async def update_player_status(self, device_id: str) -> PlayerStatus:
-        """Force a fresh telemetry snapshot. Falls back to /config on 403."""
+    async def update_player_extended_status(
+        self, device_id: str
+    ) -> PlayerExtendedStatus:
+        """Pull the device-shadow telemetry from REST `/config.device.status`.
+
+        Prefer `request_player_extended_status()` (MQTT): it asks the device
+        for a live `status/full` push. This method instead reads the AWS IoT
+        shadow over REST — same fields, but last-reported state that can lag the
+        live values, and with no device-side timestamp. Use it only as a
+        fallback: cold start (before MQTT has pushed) or while the device is
+        offline.
+
+        Feeds `player.extended_status` and updates `player.is_online`. While the
+        device is live (MQTT has already pushed), the live value wins and this
+        read won't clobber it. Returns the stored `PlayerExtendedStatus`.
+        """
         token = await self.check_and_refresh_token()
-        status = await self._rest.get_player_status(token, device_id)
+        extended_status, online = await self._rest.get_player_status(token, device_id)
         player = self.players.get(device_id)
-        if player is not None:
-            player.status = status
-            player.status_refreshed_at = datetime.datetime.now(datetime.timezone.utc)
-        return status
+        if player is None:
+            return extended_status
+        self._set_online(player, online)
+        # The shadow lags live MQTT and carries no device-side timestamp, so we
+        # can't compare freshness. Arbitrate on the source instead: MQTT owns
+        # extended_status while the device is live; the shadow only fills it in
+        # offline or before the first MQTT push (cold start). `updated_at` is
+        # set only by `status/full` (via utc_time), so it doubles as the "MQTT
+        # has spoken" signal.
+        mqtt_has_data = player.extended_status.updated_at is not None
+        if not (player.is_online and mqtt_has_data):
+            player.extended_status = extended_status
+        return player.extended_status
 
     # ─── Settings writes ──────────────────────────────────────────
 
@@ -545,21 +568,35 @@ class YotoClient:
     async def restart(self, device_id: str) -> None:
         await self._require_mqtt().restart(device_id)
 
-    async def request_status_push(self, device_id: str) -> None:
+    async def request_player_status(self, device_id: str) -> None:
         """Ask the player to push a fresh `data/status` on MQTT.
 
-        Goes through MQTT (`command/status/request`); the firmware
-        responds with a `data/status` within ~150ms. Requires MQTT to be
-        connected. The documented REST `POST /command/status` endpoint
-        is only acked, not actually wired to a push — verified with
-        `scripts/probe_mqtt.py`.
+        Goes through MQTT (`command/status/request`); the firmware responds
+        with a `data/status` within ~150ms. Requires MQTT to be connected.
+        For the richer `status/full` payload (raw battery mV, profile, …)
+        use `request_player_extended_status`.
         """
         if self._mqtt is None or not self._mqtt.is_connected:
             raise YotoError(
                 "MQTT not connected; can't request a status push. "
                 "Call connect_events() first."
             )
-        await self._mqtt.request_status_push(device_id)
+        await self._mqtt.request_player_status(device_id)
+
+    async def request_player_extended_status(self, device_id: str) -> None:
+        """Ask the player to push its extended status (MQTT `status/full`).
+
+        Publishes `command/status` with a requestId; the firmware replies on
+        `device/{id}/status/full` with the rich payload. This is the same
+        command Yoto Cloud issues behind `POST /device-v2/{id}/command/status`,
+        but direct over MQTT — no REST round-trip. Requires MQTT connected.
+        """
+        if self._mqtt is None or not self._mqtt.is_connected:
+            raise YotoError(
+                "MQTT not connected; can't request an extended status. "
+                "Call connect_events() first."
+            )
+        await self._mqtt.request_player_extended_status(device_id)
 
     async def seek(self, device_id: str, position: int) -> None:
         """Resume the current card at `position` seconds in."""
@@ -685,25 +722,34 @@ class YotoClient:
         """True if MQTT is currently connected to the broker."""
         return self._mqtt is not None and self._mqtt.is_connected
 
-    async def _on_mqtt_message(self, message: Union[EventPatch, StatusPatch]) -> None:
+    async def _on_mqtt_message(
+        self, message: Union[EventPatch, StatusPatch, PresenceEvent]
+    ) -> None:
         player = self.players.get(message.player_id)
         if player is None:
             return
-        # Any MQTT message is proof of presence; mark the player online.
-        # MQTT never pushes "offline" because a disconnected player can't
-        # publish — only REST `/devices/mine` and `/config` can flip it
-        # back to False.
-        self._set_online(player, True)
-        if isinstance(message, StatusPatch):
-            self._apply_status_patch(player, message)
-        elif isinstance(message, EventPatch):
-            self._apply_playback_event(player, message)
-            player.last_event_received_at = datetime.datetime.now(datetime.timezone.utc)
-            # Hand the hardware cap to the MQTT client so set_volume clamps
-            # against it.
-            volume_max = message.fields.get("volume_max")
-            if self._mqtt is not None and volume_max is not None:
-                self._mqtt.set_volume_max(message.player_id, volume_max)
+        if isinstance(message, PresenceEvent):
+            # The `presence` topic is the authoritative online/offline signal:
+            # "offline" is the broker's Last-Will (the device can't publish it
+            # itself), so unlike every other topic it does NOT prove presence.
+            # Going offline keeps the last battery reading (don't blank it).
+            self._set_online(player, message.is_online)
+        else:
+            # data/events, data/status and status/full only arrive from a live
+            # device, so any of them is proof the player is online.
+            self._set_online(player, True)
+            if isinstance(message, StatusPatch):
+                self._apply_status_patch(player, message)
+            elif isinstance(message, EventPatch):
+                self._apply_playback_event(player, message)
+                player.last_event_received_at = datetime.datetime.now(
+                    datetime.timezone.utc
+                )
+                # Hand the hardware cap to the MQTT client so set_volume clamps
+                # against it.
+                volume_max = message.fields.get("volume_max")
+                if self._mqtt is not None and volume_max is not None:
+                    self._mqtt.set_volume_max(message.player_id, volume_max)
         if self._update_callback is not None:
             try:
                 await _maybe_await(self._update_callback(player))
@@ -724,12 +770,23 @@ class YotoClient:
                 setattr(player.last_event, field_name, None)
 
     def _apply_status_patch(self, player: YotoPlayer, patch: StatusPatch) -> None:
+        target = player.extended_status if patch.extended else player.status
         for field_name, value in patch.fields.items():
             if value is None:
                 continue
-            setattr(player.status, field_name, value)
-        player.status_refreshed_at = datetime.datetime.now(datetime.timezone.utc)
+            setattr(target, field_name, value)
+        # status/full carries the device clock (utcTime); use it so updated_at
+        # is comparable to the shadow's. data/status has none — fall back to now.
+        utc_time = patch.fields.get("utc_time")
+        target.updated_at = (
+            datetime.datetime.fromtimestamp(utc_time, datetime.timezone.utc)
+            if utc_time is not None
+            else datetime.datetime.now(datetime.timezone.utc)
+        )
 
     def _set_online(self, player: YotoPlayer, online: bool) -> None:
-        player.status.is_online = online
-        player.status_refreshed_at = datetime.datetime.now(datetime.timezone.utc)
+        """Set the player's connection state (root-level, not on a status
+        object). Writers: presence (MQTT), REST list/config, live-message
+        presence proof."""
+        player.is_online = online
+        player.online_refreshed_at = datetime.datetime.now(datetime.timezone.utc)
