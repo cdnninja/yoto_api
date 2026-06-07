@@ -45,6 +45,9 @@ class StatusAdapterTests(unittest.TestCase):
         self.assertIsNone(status.battery_temperature)  # "0" → None
         self.assertIsNone(status.temperature_celcius)  # "0" → None
         self.assertEqual(status.uptime, 703)
+        # freeDisk/totalDisk are reported in KiB; scaled to bytes.
+        self.assertEqual(status.free_disk_space_bytes, 24333760 * 1024)
+        self.assertEqual(status.total_disk_space_bytes, 30535680 * 1024)
 
     def test_temperature_parsing(self) -> None:
         cases = [

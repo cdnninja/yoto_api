@@ -16,6 +16,7 @@ from .._coerce import (
     as_bool_int,
     as_int,
     coerce_active_card,
+    kib_to_bytes,
     parse_enum,
     parse_temp_pair,
 )
@@ -119,7 +120,7 @@ _V1_VALUE_FIELDS = (
     ("volume", "system_volume_percentage", as_int),
     ("userVolume", "user_volume_percentage", as_int),
     ("als", "ambient_light_sensor_reading", as_int),
-    ("freeDisk", "free_disk_space_bytes", as_int),
+    ("freeDisk", "free_disk_space_bytes", kib_to_bytes),
     ("dnowBrightness", "current_display_brightness", as_int),
 )
 
@@ -134,7 +135,7 @@ _V1_BOOL_FIELDS = (
 _EXTENDED_VALUE_FIELDS = (
     ("ssid", "network_ssid", lambda v: v),
     ("wifiStrength", "wifi_strength", as_int),
-    ("totalDisk", "total_disk_space_bytes", as_int),
+    ("totalDisk", "total_disk_space_bytes", kib_to_bytes),
     ("upTime", "uptime", as_int),
     ("utcTime", "utc_time", as_int),
     ("utcOffset", "utc_offset_seconds", as_int),
