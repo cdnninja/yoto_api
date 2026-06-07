@@ -284,12 +284,15 @@ class YotoMqttClient:
         )
 
     async def _on_connected(self) -> None:
-        """Subscribe + initial status push for every known player."""
+        """Subscribe, mark the connection live, then push basic + extended status."""
         for player_id in list(self._subscribed):
             await self._subscribe_player(player_id)
+        # Before the push loop: request_player_* gate on is_connected via _publish.
+        self._connected.set()
         for player_id in list(self._subscribed):
             try:
                 await self.request_player_status(player_id)
+                await self.request_player_extended_status(player_id)
             except Exception as err:
                 _LOGGER.debug(
                     "%s - status push at connect failed for %s: %s",
@@ -297,7 +300,6 @@ class YotoMqttClient:
                     player_id,
                     err,
                 )
-        self._connected.set()
 
     async def _handle_message(self, message: aiomqtt.Message) -> None:
         parsed = parse_message(str(message.topic), message.payload)
