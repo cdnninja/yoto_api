@@ -417,8 +417,7 @@ class CheckAndRefreshTokenTests(_ClientTestCase):
             access_token="access",
             refresh_token="refresh",
             token_type="Bearer",
-            valid_until=datetime.datetime.now(pytz.utc)
-            + datetime.timedelta(minutes=5),
+            valid_until=datetime.datetime.now(pytz.utc) + datetime.timedelta(minutes=5),
         )
 
     async def test_no_client_id_trusts_token(self) -> None:
