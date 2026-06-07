@@ -197,9 +197,17 @@ class YotoClient:
         return self.token
 
     async def check_and_refresh_token(self) -> Token:
-        """Refresh the access token if it's expired or about to expire."""
+        """Refresh the access token if it's expired or about to expire.
+
+        Without a `client_id` the caller owns the OAuth lifecycle (e.g.
+        HA's OAuth2Session) and syncs a token in; trust it, don't refresh.
+        """
         if self.token is None:
             raise YotoError("No token available; authenticate first")
+        if self._auth.client_id is None:
+            if self.token.access_token is None:
+                raise YotoError("No access token provided")
+            return self.token
         if (
             self.token.access_token is None
             or self.token.valid_until is None

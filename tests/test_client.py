@@ -16,6 +16,7 @@ from yoto_api import (
     EventPatch,
     PlaybackStatus,
     StatusPatch,
+    Token,
     YotoClient,
     YotoPlayer,
 )
@@ -398,6 +399,58 @@ class RefreshTests(_ClientTestCase):
         client.update_all_player_info = fake_info
         await client.refresh()
         self.assertEqual(order, ["list", "info"])
+
+
+class CheckAndRefreshTokenTests(_ClientTestCase):
+    """Two ownership models, gated on whether a client_id was passed:
+    self-managed auth refreshes here; consumer-managed auth (e.g. HA's
+    OAuth2Session) syncs the token in and must not be self-refreshed."""
+
+    def make_client_with_id(self) -> YotoClient:
+        client = YotoClient(client_id="cid")
+        self._clients = getattr(self, "_clients", []) + [client]
+        return client
+
+    def near_expiry_token(self) -> Token:
+        # Inside the 1h self-refresh window but not actually expired.
+        return Token(
+            access_token="access",
+            refresh_token="refresh",
+            token_type="Bearer",
+            valid_until=datetime.datetime.now(pytz.utc)
+            + datetime.timedelta(minutes=5),
+        )
+
+    async def test_no_client_id_trusts_token(self) -> None:
+        # Consumer-managed auth: a near-expiry token is returned as-is and
+        # refresh is never attempted — there's no client_id to refresh with.
+        client = self.make_client()  # YotoClient() -> client_id None
+        client._auth.refresh = AsyncMock()
+        token = self.near_expiry_token()
+        client.token = token
+        result = await client.check_and_refresh_token()
+        self.assertIs(result, token)
+        client._auth.refresh.assert_not_awaited()
+
+    async def test_no_client_id_missing_access_token_raises(self) -> None:
+        client = self.make_client()
+        client.set_refresh_token("refresh")  # access_token stays None
+        with self.assertRaises(YotoError):
+            await client.check_and_refresh_token()
+
+    async def test_client_id_refreshes_near_expiry(self) -> None:
+        client = self.make_client_with_id()
+        client._auth.refresh = AsyncMock(return_value=fresh_token())
+        client.token = self.near_expiry_token()
+        await client.check_and_refresh_token()
+        client._auth.refresh.assert_awaited_once()
+
+    async def test_client_id_skips_when_fresh(self) -> None:
+        client = self.make_client_with_id()
+        client._auth.refresh = AsyncMock()
+        client.token = fresh_token()
+        await client.check_and_refresh_token()
+        client._auth.refresh.assert_not_awaited()
 
 
 class StatusFallback403Tests(_ClientTestCase):
