@@ -216,11 +216,6 @@ class YotoClient:
         ):
             _LOGGER.debug("%s - access token expired or near, refreshing", DOMAIN)
             self.token = await self._auth.refresh(self.token)
-            # No forced MQTT reconnect here: it would re-enter this path (the
-            # MQTT token getter calls check_and_refresh_token from inside the
-            # _run task, and reconnect_events cancels that very task). MQTT
-            # re-resolves the token on its own next (re)connect via the getter,
-            # picking up the refresh when AWS drops the socket at expiry.
         return self.token
 
     # ─── Inventory ────────────────────────────────────────────────
