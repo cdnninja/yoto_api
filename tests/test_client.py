@@ -116,6 +116,33 @@ class MqttSurfaceTests(_ClientTestCase):
         client._mqtt.is_connected = False
         self.assertFalse(client.is_mqtt_connected)
 
+    async def test_connect_events_passes_getter_reading_live_token(self) -> None:
+        # The MQTT client gets a token_getter that re-reads self.token on every
+        # call, so a token synced in after connect (the HA path) is picked up on
+        # the next reconnect instead of a stale snapshot.
+        client = self.make_client()
+        client.token = fresh_token()
+        captured: dict = {}
+
+        async def fake_connect(
+            token, ids, callback, on_disconnect=None, token_getter=None
+        ):
+            captured["getter"] = token_getter
+
+        with patch("yoto_api.client.YotoMqttClient") as MqttClass:
+            instance = MagicMock()
+            instance.connect = AsyncMock(side_effect=fake_connect)
+            instance.disconnect = AsyncMock()
+            MqttClass.return_value = instance
+
+            await client.connect_events(["a"])
+
+        getter = captured["getter"]
+        self.assertEqual(await getter(), "access")
+        # Rotate the synced token; the getter reflects it without reconnecting.
+        client.token = Token(access_token="rotated")
+        self.assertEqual(await getter(), "rotated")
+
     async def test_reconnect_preserves_player_list_and_callbacks(self) -> None:
         client = self.make_client()
         client.token = fresh_token()
@@ -123,7 +150,9 @@ class MqttSurfaceTests(_ClientTestCase):
         disconnect_cb = MagicMock()
         connect_calls: list[tuple] = []
 
-        async def fake_connect(token, ids, callback, on_disconnect=None):
+        async def fake_connect(
+            token, ids, callback, on_disconnect=None, token_getter=None
+        ):
             connect_calls.append((list(ids), callback, on_disconnect))
 
         with patch("yoto_api.client.YotoMqttClient") as MqttClass:

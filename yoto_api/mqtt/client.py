@@ -27,6 +27,8 @@ _LOGGER = logging.getLogger(__name__)
 Message = Union[EventPatch, StatusPatch, PresenceEvent]
 Callback = Callable[[Message], Union[None, Awaitable[None]]]
 DisconnectCallback = Callable[[Optional[Exception]], Union[None, Awaitable[None]]]
+# Returns a fresh access token for the MQTT password, sync or async.
+TokenGetter = Callable[[], Union[str, Awaitable[str]]]
 
 # `response` (command ACKs) also exists but the lib doesn't consume it.
 #   data/events  — playback deltas
@@ -49,6 +51,9 @@ class YotoMqttClient:
     # spamming the broker. The official app uses 15s.
     KEEPALIVE = 60
     AUTH_NAME = "PublicJWTAuthorizer"
+    # At-least-once: a QoS-0 request publish or status reply can be silently
+    # dropped on the wire. Yoto recommends QoS 1 for long-lived integrations.
+    QOS = 1
 
     # Reconnect backoff bounds.
     _BACKOFF_MIN = 1.0
@@ -62,6 +67,7 @@ class YotoMqttClient:
         self._callback: Optional[Callback] = None
         self._on_disconnect_cb: Optional[DisconnectCallback] = None
         self._token: Optional[Token] = None
+        self._token_getter: Optional[TokenGetter] = None
         # volume_max per player; needed to clamp set_volume requests.
         self._volume_max: dict[str, int] = {}
 
@@ -73,23 +79,33 @@ class YotoMqttClient:
 
     async def connect(
         self,
-        token: Token,
+        token: Optional[Token],
         player_ids: List[str],
         callback: Callback,
         on_disconnect: Optional[DisconnectCallback] = None,
+        token_getter: Optional[TokenGetter] = None,
     ) -> None:
         """Connect, subscribe for each player, and start the message loop.
 
         Returns once the first connect + subscribe completes. Raises
         `YotoMQTTError` if the first attempt fails. Subsequent drops
         trigger an auto-reconnect with exponential backoff.
+
+        The access token is the broker password and AWS IoT enforces its TTL,
+        so every (re)connect must use a current one. Pass `token_getter` (sync
+        or async) to fetch a fresh token on each connect; otherwise the static
+        `token` snapshot is reused, which only suits callers that reconnect on
+        rotation themselves.
         """
         if self._task is not None and not self._task.done():
             raise YotoMQTTError("MQTT already connected; call disconnect() first")
+        if token is None and token_getter is None:
+            raise YotoMQTTError("connect() needs a token or a token_getter")
         self._callback = callback
         self._on_disconnect_cb = on_disconnect
         self._subscribed = set(player_ids)
         self._token = token
+        self._token_getter = token_getter
         self._connected.clear()
 
         first_done = asyncio.get_running_loop().create_future()
@@ -241,7 +257,10 @@ class YotoMqttClient:
         backoff = self._BACKOFF_MIN
         while True:
             try:
-                async with self._make_client() as client:
+                # Fresh token every (re)connect: AWS IoT enforces the token TTL,
+                # so reusing a snapshot fails forever once it expires.
+                access_token = await self._current_access_token()
+                async with self._make_client(access_token) as client:
                     self._client = client
                     backoff = self._BACKOFF_MIN
                     await self._on_connected()
@@ -271,12 +290,25 @@ class YotoMqttClient:
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, self._BACKOFF_MAX)
 
-    def _make_client(self) -> aiomqtt.Client:
+    async def _current_access_token(self) -> str:
+        """Access token for the next connect: the getter (fresh per call) if
+        set, else the static snapshot from `connect()`."""
+        access_token: Optional[str]
+        if self._token_getter is not None:
+            result = self._token_getter()
+            access_token = await result if inspect.isawaitable(result) else result
+        else:
+            access_token = self._token.access_token if self._token else None
+        if not access_token:
+            raise YotoMQTTError("no access token available for MQTT auth")
+        return access_token
+
+    def _make_client(self, access_token: str) -> aiomqtt.Client:
         return aiomqtt.Client(
             hostname=self.URL,
             port=self.PORT,
             username=f"_?x-amz-customauthorizer-name={self.AUTH_NAME}",
-            password=self._token.access_token,
+            password=access_token,
             transport="websockets",
             tls_params=aiomqtt.TLSParameters(),
             keepalive=self.KEEPALIVE,
@@ -322,7 +354,7 @@ class YotoMqttClient:
         if not self.is_connected:
             raise YotoMQTTError("MQTT not connected")
         try:
-            await self._client.publish(topic, payload=payload)
+            await self._client.publish(topic, payload=payload, qos=self.QOS)
         except Exception as err:
             raise YotoMQTTError(f"MQTT publish to {topic} failed: {err}") from err
 
@@ -330,7 +362,7 @@ class YotoMqttClient:
         if self._client is None:
             return
         for suffix in _SUBSCRIBED_TOPICS:
-            await self._client.subscribe(f"device/{player_id}/{suffix}")
+            await self._client.subscribe(f"device/{player_id}/{suffix}", qos=self.QOS)
         _LOGGER.debug("%s - subscribed to player %s", DOMAIN, player_id)
 
     async def _cancel_task(self) -> None:

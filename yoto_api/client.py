@@ -672,6 +672,11 @@ class YotoClient:
         auto-reconnects on transient drops; `on_disconnect(err)` fires
         each time. Callbacks may be sync or async. Amend the set later
         with `subscribe_player_events` / `unsubscribe_player_events`.
+
+        AWS IoT enforces the access token's TTL, so each reconnect re-resolves
+        the token through `check_and_refresh_token` — the same path REST uses
+        per call. The caller just has to keep `self.token` current (refresh it
+        when self-managed, or sync it in when the OAuth lifecycle is external).
         """
         if self.token is None:
             raise YotoError("No token; authenticate before connecting MQTT")
@@ -684,7 +689,16 @@ class YotoClient:
             device_ids,
             self._on_mqtt_message,
             on_disconnect=on_disconnect,
+            token_getter=self._mqtt_access_token,
         )
+
+    async def _mqtt_access_token(self) -> str:
+        """Per-(re)connect token source for MQTT: the same `check_and_refresh_token`
+        REST goes through, so both resolve the token identically."""
+        token = await self.check_and_refresh_token()
+        if token.access_token is None:
+            raise YotoError("No access token available for MQTT auth")
+        return token.access_token
 
     async def disconnect_events(self) -> None:
         if self._mqtt is None:
