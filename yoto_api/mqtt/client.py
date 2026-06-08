@@ -223,6 +223,41 @@ class YotoMqttClient:
             json.dumps({"r": int(r), "g": int(g), "b": int(b)}),
         )
 
+    async def show_icon(
+        self,
+        player_id: str,
+        uri: str,
+        timeout: int = 10,
+        animated: bool = False,
+    ) -> None:
+        """Show an icon on the player's screen for `timeout` seconds.
+
+        `uri` is the URL of the icon image. `timeout` is required by the
+        firmware (the command FAILs without one). The screen must be awake —
+        `display/preview` doesn't light a sleeping screen, so wake it first
+        (see `wake_screen`).
+        """
+        await self._publish(
+            f"device/{player_id}/command/display/preview",
+            json.dumps(
+                {"uri": uri, "timeout": int(timeout), "animated": 1 if animated else 0}
+            ),
+        )
+
+    async def wake_screen(self, player_id: str, volume: int) -> None:
+        """Wake the player's screen without changing audio.
+
+        Re-sends the current volume. `volume/set` is a command the firmware acts
+        on even when stopped, and that lights the display; `display/preview`
+        alone does not. `volume` is the raw 0-16 cran (from `last_event`), mapped
+        to the % that lands back on that exact cran, so it's a no-op for audio.
+        """
+        cran = max(0, min(int(volume), len(VOLUME_MAPPING_INVERTED) - 1))
+        await self._publish(
+            f"device/{player_id}/command/volume/set",
+            json.dumps({"volume": VOLUME_MAPPING_INVERTED[cran]}),
+        )
+
     # ─── Per-player metadata fed in by the consumer ──────────────
 
     def set_volume_max(self, player_id: str, volume_max: Optional[int]) -> None:

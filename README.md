@@ -133,7 +133,15 @@ await client.set_ambients(player_id, 255, 0, 0)   # RGB
 await client.next_track(player_id)
 await client.previous_track(player_id)
 await client.seek(player_id, position=30)
+await client.wake_screen(player_id)                # light the screen, no audio change
+await client.show_icon(player_id, "https://.../icon.png", timeout=10)  # show for 10s
 ```
+
+`wake_screen` re-sends the current volume (a no-op for audio) because that
+lights the display; `display/preview` alone doesn't. `show_icon` takes the
+icon's image URL and a `timeout` in seconds (required by the firmware). Pass
+`wake=True` to light the screen first. `wake_screen` needs MQTT connected and a
+volume already received over events.
 
 Settings (REST PUT):
 
