@@ -474,6 +474,21 @@ class CheckAndRefreshTokenTests(_ClientTestCase):
         await client.check_and_refresh_token()
         client._auth.refresh.assert_awaited_once()
 
+    async def test_refresh_does_not_force_mqtt_reconnect(self) -> None:
+        # Re-entrancy guard: the MQTT token getter calls check_and_refresh_token
+        # from inside the _run task, so reconnecting here would cancel that very
+        # task and deadlock. MQTT re-resolves the token on its own next connect.
+        client = self.make_client_with_id()
+        client._auth.refresh = AsyncMock(return_value=fresh_token())
+        client.token = self.near_expiry_token()
+        client._mqtt = MagicMock()
+        client._mqtt.disconnect = AsyncMock()
+
+        await client.check_and_refresh_token()
+
+        client._auth.refresh.assert_awaited_once()
+        client._mqtt.disconnect.assert_not_awaited()  # reconnect_events not invoked
+
     async def test_client_id_skips_when_fresh(self) -> None:
         client = self.make_client_with_id()
         client._auth.refresh = AsyncMock()
