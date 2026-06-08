@@ -42,6 +42,11 @@ _LOGGER = logging.getLogger(__name__)
 UpdateCallback = Callable[[YotoPlayer], Union[None, Awaitable[None]]]
 DisconnectCallback = Callable[[Optional[Exception]], Union[None, Awaitable[None]]]
 
+# wake_screen reuses the raw volume already on the last event; only on a cold
+# connection does it ask once and poll briefly for it to arrive.
+_WAKE_VOLUME_POLL_S = 0.1
+_WAKE_VOLUME_TIMEOUT_S = 2.0
+
 
 def _serialize_hhmm(value: Any) -> str:
     if isinstance(value, datetime.time):
@@ -567,6 +572,52 @@ class YotoClient:
 
     async def restart(self, device_id: str) -> None:
         await self._require_mqtt().restart(device_id)
+
+    async def show_icon(
+        self,
+        device_id: str,
+        uri: str,
+        timeout: int = 10,
+        animated: bool = False,
+        wake: bool = False,
+    ) -> None:
+        """Show an icon on the player's screen for `timeout` seconds.
+
+        `uri` is the URL of the icon image. The screen must be on for the icon
+        to show; pass `wake=True` to wake it first.
+        """
+        if wake:
+            await self.wake_screen(device_id)
+        await self._require_mqtt().show_icon(device_id, uri, timeout, animated)
+
+    async def wake_screen(self, device_id: str) -> None:
+        """Light up the player's screen.
+
+        Needs an active event connection (`connect_events`). Raises `YotoError`
+        if the player can't be reached.
+        """
+        # Re-send the player's current volume to light the screen (a no-op for
+        # the audio). last_event carries the raw 0-16 cran, usually already there
+        # from the event stream; on a cold connection ask once (request_player_
+        # status also pushes data/events) and poll briefly for it to arrive.
+        player = self.players.get(device_id)
+        volume = player.last_event.volume if player else None
+        if volume is None:
+            await self.request_player_status(device_id)
+            for _ in range(round(_WAKE_VOLUME_TIMEOUT_S / _WAKE_VOLUME_POLL_S)):
+                await asyncio.sleep(_WAKE_VOLUME_POLL_S)
+                player = self.players.get(device_id)
+                volume = player.last_event.volume if player else None
+                if volume is not None:
+                    break
+        if volume is None:
+            raise YotoError(
+                "Can't wake: no volume received from the player "
+                "(is connect_events() running?)."
+            )
+        # wake_screen maps the raw cran to the % that re-lands on it, so it
+        # stays a no-op for the audio.
+        await self._require_mqtt().wake_screen(device_id, volume)
 
     async def request_player_status(self, device_id: str) -> None:
         """Ask the player to push a fresh `data/status` on MQTT.

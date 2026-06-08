@@ -892,5 +892,63 @@ class LegacySetAlarmRemovedTests(unittest.TestCase):
         self.assertFalse(hasattr(v3, "AlarmRequest"))
 
 
+class WakeAndShowIconTests(_ClientTestCase):
+    """`wake_screen` reads the raw volume from the last event and forwards it to
+    the mqtt client (which maps it to the send step); `show_icon` wakes first
+    only if asked."""
+
+    _URL = "https://www.yotoicons.com/static/uploads/123.png"
+
+    def _client_at_cran(self, cran) -> tuple[YotoClient, MagicMock]:
+        client = self.make_client()
+        client._mqtt = MagicMock()
+        client._mqtt.is_connected = True
+        client._mqtt.wake_screen = AsyncMock()
+        client._mqtt.show_icon = AsyncMock()
+        client._mqtt.request_player_status = AsyncMock()
+        player = YotoPlayer(device=Device(device_id="d1", name="x"))
+        if cran is not None:
+            # last_event carries the raw 0-16 cran.
+            player.last_event.volume = cran
+        client.players["d1"] = player
+        return client, client._mqtt
+
+    async def test_wake_screen_forwards_reported_volume(self) -> None:
+        # the raw cran is already on last_event, so no status request is needed.
+        client, mqtt = self._client_at_cran(3)
+        await client.wake_screen("d1")
+        mqtt.request_player_status.assert_not_awaited()
+        mqtt.wake_screen.assert_awaited_once_with("d1", 3)
+
+    async def test_wake_screen_waits_for_the_status_volume(self) -> None:
+        client, mqtt = self._client_at_cran(None)
+
+        async def arrive(_device_id):
+            client.players["d1"].last_event.volume = 2
+
+        mqtt.request_player_status.side_effect = arrive
+        await client.wake_screen("d1")
+        mqtt.wake_screen.assert_awaited_once_with("d1", 2)
+
+    async def test_wake_screen_raises_when_no_volume_arrives(self) -> None:
+        client, mqtt = self._client_at_cran(None)
+        with patch("yoto_api.client._WAKE_VOLUME_TIMEOUT_S", 0.1):
+            with self.assertRaises(YotoError):
+                await client.wake_screen("d1")
+        mqtt.wake_screen.assert_not_awaited()
+
+    async def test_show_icon_does_not_wake_by_default(self) -> None:
+        client, mqtt = self._client_at_cran(3)
+        await client.show_icon("d1", self._URL, timeout=5)
+        mqtt.wake_screen.assert_not_awaited()
+        mqtt.show_icon.assert_awaited_once_with("d1", self._URL, 5, False)
+
+    async def test_show_icon_wakes_first_when_requested(self) -> None:
+        client, mqtt = self._client_at_cran(3)
+        await client.show_icon("d1", self._URL, wake=True)
+        mqtt.wake_screen.assert_awaited_once_with("d1", 3)
+        mqtt.show_icon.assert_awaited_once_with("d1", self._URL, 10, False)
+
+
 if __name__ == "__main__":
     unittest.main()

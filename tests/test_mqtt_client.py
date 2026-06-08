@@ -2,9 +2,11 @@
 actually go out (regression: it was swallowed as "MQTT not connected" because
 `_connected` was set after the push loop)."""
 
+import json
 import unittest
 from unittest.mock import AsyncMock, MagicMock
 
+from yoto_api.const import VOLUME_MAPPING_INVERTED
 from yoto_api.mqtt import YotoMqttClient
 
 
@@ -61,6 +63,34 @@ class OnConnectedStatusPushTests(unittest.IsolatedAsyncioTestCase):
         for device_id in ("dev1", "dev2"):
             self.assertIn(f"device/{device_id}/data/status", subscribed)
             self.assertIn(f"device/{device_id}/status/full", subscribed)
+
+
+class CommandPublishTests(unittest.IsolatedAsyncioTestCase):
+    """show_icon and wake_screen publish the documented command topics."""
+
+    async def test_show_icon_publishes_display_preview(self) -> None:
+        client, broker = _connected_client("dev1")
+        client._connected.set()
+        url = "https://www.yotoicons.com/static/uploads/123.png"
+        await client.show_icon("dev1", url, timeout=20, animated=True)
+        call = broker.publish.await_args
+        self.assertEqual(call.args[0], "device/dev1/command/display/preview")
+        self.assertEqual(
+            json.loads(call.kwargs["payload"]),
+            {"uri": url, "timeout": 20, "animated": 1},
+        )
+
+    async def test_wake_screen_maps_cran_to_send_step(self) -> None:
+        client, broker = _connected_client("dev1")
+        client._connected.set()
+        # raw cran 3 → the % that lands back on cran 3 (the no-op send value).
+        await client.wake_screen("dev1", 3)
+        call = broker.publish.await_args
+        self.assertEqual(call.args[0], "device/dev1/command/volume/set")
+        self.assertEqual(
+            json.loads(call.kwargs["payload"]),
+            {"volume": VOLUME_MAPPING_INVERTED[3]},
+        )
 
 
 if __name__ == "__main__":
