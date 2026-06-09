@@ -10,7 +10,7 @@ import inspect
 import json
 import logging
 import uuid
-from typing import Awaitable, Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Awaitable, Callable, Dict, List, Optional, Set, Union
 
 import aiomqtt
 
@@ -73,8 +73,8 @@ class YotoMqttClient:
         self._on_disconnect_cb: Optional[DisconnectCallback] = None
         self._token: Optional[Token] = None
         self._token_getter: Optional[TokenGetter] = None
-        # Per (player_id, extended) reply event, so a request can await its answer.
-        self._status_acks: Dict[Tuple[str, bool], asyncio.Event] = {}
+        # Per reply-topic event, so a request can await its answer.
+        self._status_acks: Dict[str, asyncio.Event] = {}
         # volume_max per player; needed to clamp set_volume requests.
         self._volume_max: dict[str, int] = {}
 
@@ -143,8 +143,8 @@ class YotoMqttClient:
         """Unsubscribe from a player that's no longer in the family."""
         self._subscribed.discard(player_id)
         self._volume_max.pop(player_id, None)
-        self._status_acks.pop((player_id, False), None)
-        self._status_acks.pop((player_id, True), None)
+        self._status_acks.pop(f"device/{player_id}/data/status", None)
+        self._status_acks.pop(f"device/{player_id}/status/full", None)
         if not self.is_connected:
             return
         for suffix in _SUBSCRIBED_TOPICS:
@@ -165,13 +165,15 @@ class YotoMqttClient:
         so a caller can chain `request_player_extended_status` without the two
         going back-to-back."""
         await self._request_and_wait(
-            player_id, extended=False, publish=self._publish_status_request
+            f"device/{player_id}/data/status",
+            self._publish_status_request(player_id),
         )
 
     async def request_player_extended_status(self, player_id: str) -> None:
         """Refresh extended status (`status/full`), waiting for the reply."""
         await self._request_and_wait(
-            player_id, extended=True, publish=self._publish_extended_request
+            f"device/{player_id}/status/full",
+            self._publish_extended_request(player_id),
         )
 
     async def _publish_status_request(self, player_id: str) -> None:
@@ -185,15 +187,11 @@ class YotoMqttClient:
         )
 
     async def _request_and_wait(
-        self,
-        player_id: str,
-        *,
-        extended: bool,
-        publish: Callable[[str], Awaitable[None]],
+        self, reply_topic: str, publish: Awaitable[None]
     ) -> None:
-        event = self._status_acks.setdefault((player_id, extended), asyncio.Event())
+        event = self._status_acks.setdefault(reply_topic, asyncio.Event())
         event.clear()
-        await publish(player_id)
+        await publish
         try:
             await asyncio.wait_for(event.wait(), self._STATUS_REPLY_TIMEOUT)
         except asyncio.TimeoutError:
@@ -340,34 +338,33 @@ class YotoMqttClient:
         )
 
     async def _on_connected(self) -> None:
-        """Subscribe, mark the connection live, then nudge a basic status push.
-
-        Fire-and-forget: the message loop isn't consuming yet, so we can't await
-        replies here. Extended status comes from an explicit request once live.
-        """
-        for player_id in list(self._subscribed):
+        """Subscribe, mark the connection live, then refresh every player's
+        status (basic + extended) in parallel."""
+        players = list(self._subscribed)
+        for player_id in players:
             await self._subscribe_player(player_id)
         self._connected.set()
-        for player_id in list(self._subscribed):
-            try:
-                await self._publish_status_request(player_id)
-            except Exception as err:
-                _LOGGER.debug(
-                    "%s - status push at connect failed for %s: %s",
-                    DOMAIN,
-                    player_id,
-                    err,
-                )
+        await asyncio.gather(*(self._refresh_status(p) for p in players))
+
+    async def _refresh_status(self, player_id: str) -> None:
+        try:
+            await self.request_player_status(player_id)
+            await self.request_player_extended_status(player_id)
+        except Exception as err:
+            _LOGGER.debug(
+                "%s - status refresh at connect failed for %s: %s",
+                DOMAIN,
+                player_id,
+                err,
+            )
 
     async def _handle_message(self, message: aiomqtt.Message) -> None:
-        parsed = parse_message(str(message.topic), message.payload)
-        if parsed is None:
-            return
-        if isinstance(parsed, StatusPatch):
-            event = self._status_acks.get((parsed.player_id, parsed.extended))
-            if event is not None:
-                event.set()
-        if self._callback is None:
+        topic = str(message.topic)
+        event = self._status_acks.get(topic)
+        if event is not None:
+            event.set()
+        parsed = parse_message(topic, message.payload)
+        if parsed is None or self._callback is None:
             return
         try:
             await _maybe_await(self._callback(parsed))

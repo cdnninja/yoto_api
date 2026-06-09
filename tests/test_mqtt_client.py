@@ -33,18 +33,21 @@ class _FakeMsg:
 
 
 class OnConnectedStatusPushTests(unittest.IsolatedAsyncioTestCase):
-    async def test_pushes_basic_status_on_connect(self) -> None:
+    async def test_pushes_basic_then_extended_on_connect(self) -> None:
         client, broker = _connected_client("dev1")
+        client._STATUS_REPLY_TIMEOUT = 0.0  # skip the inter-request gap
 
         await client._on_connected()
 
         self.assertTrue(client.is_connected)
         topics = [call.args[0] for call in broker.publish.await_args_list]
-        # Basic only (fire-and-forget); extended would block on the reply wait
-        # before the message loop is running, so it's left to the heartbeat.
-        self.assertIn("device/dev1/command/events/request", topics)
-        self.assertIn("device/dev1/command/status/request", topics)
-        self.assertNotIn("device/dev1/command/status", topics)
+        self.assertIn("device/dev1/command/status/request", topics)  # basic
+        self.assertIn("device/dev1/command/status", topics)  # extended
+        # Basic goes out before extended (spaced by the gap, not back-to-back).
+        self.assertLess(
+            topics.index("device/dev1/command/status/request"),
+            topics.index("device/dev1/command/status"),
+        )
 
     async def test_pushes_happen_while_connected_not_swallowed(self) -> None:
         # Regression guard: `_connected` must be set before the push loop, so
@@ -52,6 +55,7 @@ class OnConnectedStatusPushTests(unittest.IsolatedAsyncioTestCase):
         # would raise YotoMQTTError before reaching the broker and the list
         # below would be empty.
         client, broker = _connected_client("dev1")
+        client._STATUS_REPLY_TIMEOUT = 0.0
         seen_connected: list[bool] = []
 
         async def record(topic, payload=None, qos=0):
@@ -66,6 +70,7 @@ class OnConnectedStatusPushTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_subscribes_every_player_before_pushing(self) -> None:
         client, broker = _connected_client("dev1", "dev2")
+        client._STATUS_REPLY_TIMEOUT = 0.0
 
         await client._on_connected()
 
@@ -91,6 +96,7 @@ class QoSTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_subscribes_at_qos_1(self) -> None:
         client, broker = _connected_client("dev1")
+        client._STATUS_REPLY_TIMEOUT = 0.0
 
         await client._on_connected()
 
@@ -181,6 +187,7 @@ class ReconnectUsesFreshTokenTests(unittest.IsolatedAsyncioTestCase):
         client = YotoMqttClient()
         client._BACKOFF_MIN = 0.0
         client._BACKOFF_MAX = 0.0
+        client._STATUS_REPLY_TIMEOUT = 0.0
 
         tokens = iter(["tok1", "tok2", "tok3"])
 
