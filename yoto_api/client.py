@@ -565,12 +565,12 @@ class YotoClient:
         await self._require_mqtt().restart(device_id)
 
     async def request_player_status(self, device_id: str) -> None:
-        """Ask the player to push a fresh `data/status` on MQTT.
+        """Ask the player to push a fresh `data/status`, returning once it
+        arrives (or after a short timeout).
 
-        Goes through MQTT (`command/status/request`); the firmware responds
-        with a `data/status` within ~150ms. Requires MQTT to be connected.
-        For the richer `status/full` payload (raw battery mV, profile, …)
-        use `request_player_extended_status`.
+        Awaiting the reply means you can chain `request_player_extended_status`
+        right after without the two racing the firmware back-to-back. Requires
+        MQTT connected.
         """
         if self._mqtt is None or not self._mqtt.is_connected:
             raise YotoError(

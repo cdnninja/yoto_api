@@ -26,19 +26,25 @@ def _connected_client(*player_ids: str) -> tuple[YotoMqttClient, MagicMock]:
     return client, broker
 
 
+class _FakeMsg:
+    def __init__(self, topic: str, payload: bytes) -> None:
+        self.topic = topic
+        self.payload = payload
+
+
 class OnConnectedStatusPushTests(unittest.IsolatedAsyncioTestCase):
-    async def test_requests_basic_and_extended_status_on_connect(self) -> None:
+    async def test_pushes_basic_status_on_connect(self) -> None:
         client, broker = _connected_client("dev1")
 
         await client._on_connected()
 
         self.assertTrue(client.is_connected)
         topics = [call.args[0] for call in broker.publish.await_args_list]
-        # request_player_status -> events/request + status/request (basic)
+        # Basic only (fire-and-forget); extended would block on the reply wait
+        # before the message loop is running, so it's left to the heartbeat.
         self.assertIn("device/dev1/command/events/request", topics)
         self.assertIn("device/dev1/command/status/request", topics)
-        # request_player_extended_status -> command/status (extended)
-        self.assertIn("device/dev1/command/status", topics)
+        self.assertNotIn("device/dev1/command/status", topics)
 
     async def test_pushes_happen_while_connected_not_swallowed(self) -> None:
         # Regression guard: `_connected` must be set before the push loop, so
@@ -75,6 +81,7 @@ class QoSTests(unittest.IsolatedAsyncioTestCase):
     async def test_publishes_at_qos_1(self) -> None:
         client, broker = _connected_client("dev1")
         client._connected.set()
+        client._STATUS_REPLY_TIMEOUT = 0.0  # don't wait for a reply the mock won't send
 
         await client.request_player_status("dev1")
 
@@ -90,6 +97,53 @@ class QoSTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(broker.subscribe.await_args_list)
         for call in broker.subscribe.await_args_list:
             self.assertEqual(call.kwargs.get("qos"), 1)
+
+
+class StatusReplyWaitTests(unittest.IsolatedAsyncioTestCase):
+    """A status request waits for its own reply, so chained basic+extended
+    requests serialise instead of racing the firmware back-to-back."""
+
+    async def test_blocks_until_reply_then_returns(self) -> None:
+        client, _ = _connected_client("dev1")
+        client._connected.set()
+        returned: list[bool] = []
+
+        async def run() -> None:
+            await client.request_player_status("dev1")
+            returned.append(True)
+
+        task = asyncio.create_task(run())
+        await asyncio.sleep(0.02)
+        self.assertFalse(returned, "returned before the reply arrived")
+
+        await client._handle_message(_FakeMsg("device/dev1/data/status", b"{}"))
+        await asyncio.wait_for(task, 1.0)
+        self.assertTrue(returned)
+
+    async def test_times_out_without_reply(self) -> None:
+        client, _ = _connected_client("dev1")
+        client._connected.set()
+        client._STATUS_REPLY_TIMEOUT = 0.02
+        await asyncio.wait_for(client.request_player_status("dev1"), 1.0)
+
+    async def test_basic_reply_does_not_satisfy_extended_wait(self) -> None:
+        client, _ = _connected_client("dev1")
+        client._connected.set()
+        returned: list[bool] = []
+
+        async def run() -> None:
+            await client.request_player_extended_status("dev1")
+            returned.append(True)
+
+        task = asyncio.create_task(run())
+        await asyncio.sleep(0.02)
+        await client._handle_message(_FakeMsg("device/dev1/data/status", b"{}"))
+        await asyncio.sleep(0.02)
+        self.assertFalse(returned, "extended request woke on a basic reply")
+
+        await client._handle_message(_FakeMsg("device/dev1/status/full", b"{}"))
+        await asyncio.wait_for(task, 1.0)
+        self.assertTrue(returned)
 
 
 class AccessTokenResolutionTests(unittest.IsolatedAsyncioTestCase):
