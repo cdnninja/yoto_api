@@ -166,6 +166,9 @@ class YotoClient:
         self._update_callback: Optional[UpdateCallback] = None
         self._disconnect_callback: Optional[DisconnectCallback] = None
         self._connected_player_ids: List[str] = []
+        # Background status-refresh tasks spawned from MQTT events (card change,
+        # came-online); tracked so they survive GC and are cancelled on close.
+        self._event_refresh_tasks: set[asyncio.Task] = set()
 
         self.token: Optional[Token] = None
         self.players: Dict[str, YotoPlayer] = {}
@@ -180,6 +183,10 @@ class YotoClient:
 
     async def close(self) -> None:
         """Tear down the MQTT task and (if owned) the aiohttp session."""
+        tasks = list(self._event_refresh_tasks)
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
         await self.disconnect_events()
         if self._owns_session and not self._session.closed:
             await self._session.close()
@@ -743,7 +750,12 @@ class YotoClient:
             # "offline" is the broker's Last-Will (the device can't publish it
             # itself), so unlike every other topic it does NOT prove presence.
             # Going offline keeps the last battery reading (don't blank it).
+            came_online = message.is_online and not player.is_online
             self._set_online(player, message.is_online)
+            # A player back online may have changed while away (card inserted,
+            # replugged); its status isn't pushed, so pull a fresh one.
+            if came_online:
+                self._schedule_status_refresh(message.player_id)
         else:
             # data/events, data/status and status/full only arrive from a live
             # device, so any of them is proof the player is online.
@@ -751,6 +763,8 @@ class YotoClient:
             if isinstance(message, StatusPatch):
                 self._apply_status_patch(player, message)
             elif isinstance(message, EventPatch):
+                prev_card = player.last_event.card_id
+                prev_streaming = player.last_event.streaming
                 self._apply_playback_event(player, message)
                 player.last_event_received_at = datetime.datetime.now(
                     datetime.timezone.utc
@@ -760,11 +774,36 @@ class YotoClient:
                 volume_max = message.fields.get("volume_max")
                 if self._mqtt is not None and volume_max is not None:
                     self._mqtt.set_volume_max(message.player_id, volume_max)
+                # card_insertion_state / active_card aren't pushed with the
+                # event, so pull a fresh status when the card or streaming flips.
+                if (
+                    player.last_event.card_id != prev_card
+                    or player.last_event.streaming != prev_streaming
+                ):
+                    self._schedule_status_refresh(message.player_id)
         if self._update_callback is not None:
             try:
                 await _maybe_await(self._update_callback(player))
             except Exception:
                 _LOGGER.exception("%s - update callback raised", DOMAIN)
+
+    def _schedule_status_refresh(self, device_id: str) -> None:
+        """An event implied a status change (card/streaming flip, came back
+        online); pull a fresh basic + extended status. Spawned as a task so the
+        message loop keeps running — otherwise the serialised requests would
+        block on replies the loop can't deliver."""
+        if self._mqtt is None or not self._mqtt.is_connected:
+            return
+        task = asyncio.create_task(self._refresh_status_after_event(device_id))
+        self._event_refresh_tasks.add(task)
+        task.add_done_callback(self._event_refresh_tasks.discard)
+
+    async def _refresh_status_after_event(self, device_id: str) -> None:
+        try:
+            await self.request_player_status(device_id)
+            await self.request_player_extended_status(device_id)
+        except YotoError:
+            pass
 
     def _apply_playback_event(self, player: YotoPlayer, patch: EventPatch) -> None:
         """Apply an MQTT events patch onto the player's `last_event` snapshot.

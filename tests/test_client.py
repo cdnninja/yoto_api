@@ -2,6 +2,7 @@
 MQTT lifecycle, dynamic subscribe, settings + alarms writes, online
 state consolidation."""
 
+import asyncio
 import datetime
 import json
 import unittest
@@ -745,6 +746,80 @@ class OnlinePresenceOnEveryMqttMessageTests(_ClientTestCase):
         client, player = self._client_with_offline_player()
         await client._on_mqtt_message(EventPatch(player_id="d1", fields={"volume": 5}))
         self.assertTrue(player.is_online)
+
+
+class StatusRefreshOnEventTests(_ClientTestCase):
+    """Status fields (card_insertion_state, power_source…) aren't pushed with
+    events, so a card/streaming change or a player coming back online pulls a
+    fresh basic + extended status (spawned as a task, off the message loop)."""
+
+    def _client(self, *, online: bool = True) -> tuple[YotoClient, YotoPlayer]:
+        client = self.make_client()
+        player = YotoPlayer(device=Device(device_id="d1", name="x"))
+        player.is_online = online
+        client.players["d1"] = player
+        client._mqtt = MagicMock()
+        client._mqtt.is_connected = True
+        client._mqtt.request_player_status = AsyncMock()
+        client._mqtt.request_player_extended_status = AsyncMock()
+        return client, player
+
+    async def _drain(self, client: YotoClient) -> None:
+        await asyncio.gather(*client._event_refresh_tasks)
+
+    def _assert_refreshed(self, client: YotoClient) -> None:
+        client._mqtt.request_player_status.assert_awaited_once_with("d1")
+        client._mqtt.request_player_extended_status.assert_awaited_once_with("d1")
+
+    async def test_card_insert_refreshes(self) -> None:
+        client, _ = self._client()
+        await client._on_mqtt_message(
+            EventPatch(player_id="d1", fields={"card_id": "abc"})
+        )
+        await self._drain(client)
+        self._assert_refreshed(client)
+
+    async def test_card_remove_refreshes(self) -> None:
+        client, player = self._client()
+        player.last_event.card_id = "abc"
+        await client._on_mqtt_message(
+            EventPatch(player_id="d1", fields={"card_id": "none"})
+        )
+        await self._drain(client)
+        self._assert_refreshed(client)
+
+    async def test_streaming_change_refreshes(self) -> None:
+        client, _ = self._client()
+        await client._on_mqtt_message(
+            EventPatch(player_id="d1", fields={"streaming": True})
+        )
+        await self._drain(client)
+        self._assert_refreshed(client)
+
+    async def test_non_card_event_does_not_refresh(self) -> None:
+        client, player = self._client()
+        player.last_event.card_id = "abc"
+        await client._on_mqtt_message(EventPatch(player_id="d1", fields={"volume": 5}))
+        await self._drain(client)
+        client._mqtt.request_player_status.assert_not_awaited()
+
+    async def test_came_online_refreshes(self) -> None:
+        client, _ = self._client(online=False)
+        await client._on_mqtt_message(PresenceEvent(player_id="d1", is_online=True))
+        await self._drain(client)
+        self._assert_refreshed(client)
+
+    async def test_still_online_presence_does_not_refresh(self) -> None:
+        client, _ = self._client(online=True)
+        await client._on_mqtt_message(PresenceEvent(player_id="d1", is_online=True))
+        await self._drain(client)
+        client._mqtt.request_player_status.assert_not_awaited()
+
+    async def test_going_offline_does_not_refresh(self) -> None:
+        client, _ = self._client(online=True)
+        await client._on_mqtt_message(PresenceEvent(player_id="d1", is_online=False))
+        await self._drain(client)
+        client._mqtt.request_player_status.assert_not_awaited()
 
 
 class UpdatePlayerStatusTests(_ClientTestCase):
