@@ -216,10 +216,6 @@ class YotoClient:
         ):
             _LOGGER.debug("%s - access token expired or near, refreshing", DOMAIN)
             self.token = await self._auth.refresh(self.token)
-            if self._mqtt is not None:
-                # MQTT auth uses the access token; rotate the connection
-                # while preserving the player list and callbacks.
-                await self.reconnect_events()
         return self.token
 
     # ─── Inventory ────────────────────────────────────────────────
@@ -569,12 +565,12 @@ class YotoClient:
         await self._require_mqtt().restart(device_id)
 
     async def request_player_status(self, device_id: str) -> None:
-        """Ask the player to push a fresh `data/status` on MQTT.
+        """Ask the player to push a fresh `data/status`, returning once it
+        arrives (or after a short timeout).
 
-        Goes through MQTT (`command/status/request`); the firmware responds
-        with a `data/status` within ~150ms. Requires MQTT to be connected.
-        For the richer `status/full` payload (raw battery mV, profile, …)
-        use `request_player_extended_status`.
+        Awaiting the reply means you can chain `request_player_extended_status`
+        right after without the two racing the firmware back-to-back. Requires
+        MQTT connected.
         """
         if self._mqtt is None or not self._mqtt.is_connected:
             raise YotoError(
@@ -672,6 +668,11 @@ class YotoClient:
         auto-reconnects on transient drops; `on_disconnect(err)` fires
         each time. Callbacks may be sync or async. Amend the set later
         with `subscribe_player_events` / `unsubscribe_player_events`.
+
+        AWS IoT enforces the access token's TTL, so each reconnect re-resolves
+        the token through `check_and_refresh_token` — the same path REST uses
+        per call. The caller just has to keep `self.token` current (refresh it
+        when self-managed, or sync it in when the OAuth lifecycle is external).
         """
         if self.token is None:
             raise YotoError("No token; authenticate before connecting MQTT")
@@ -684,7 +685,16 @@ class YotoClient:
             device_ids,
             self._on_mqtt_message,
             on_disconnect=on_disconnect,
+            token_getter=self._mqtt_access_token,
         )
+
+    async def _mqtt_access_token(self) -> str:
+        """Per-(re)connect token source for MQTT: the same `check_and_refresh_token`
+        REST goes through, so both resolve the token identically."""
+        token = await self.check_and_refresh_token()
+        if token.access_token is None:
+            raise YotoError("No access token available for MQTT auth")
+        return token.access_token
 
     async def disconnect_events(self) -> None:
         if self._mqtt is None:
