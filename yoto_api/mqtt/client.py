@@ -215,26 +215,21 @@ class YotoMqttClient:
             f"device/{player_id}/command/volume/set",
             json.dumps({"volume": closest_volume}),
         )
-        await self._publish_status_request(player_id)
 
     async def set_sleep_timer(self, player_id: str, seconds: int) -> None:
         await self._publish(
             f"device/{player_id}/command/sleep-timer/set",
             json.dumps({"seconds": int(seconds)}),
         )
-        await self._publish_status_request(player_id)
 
     async def card_stop(self, player_id: str) -> None:
         await self._publish(f"device/{player_id}/command/card/stop")
-        await self._publish_status_request(player_id)
 
     async def card_pause(self, player_id: str) -> None:
         await self._publish(f"device/{player_id}/command/card/pause")
-        await self._publish_status_request(player_id)
 
     async def card_resume(self, player_id: str) -> None:
         await self._publish(f"device/{player_id}/command/card/resume")
-        await self._publish_status_request(player_id)
 
     async def card_play(
         self,
@@ -257,7 +252,6 @@ class YotoMqttClient:
         await self._publish(
             f"device/{player_id}/command/card/start", json.dumps(payload)
         )
-        await self._publish_status_request(player_id)
 
     async def restart(self, player_id: str) -> None:
         await self._publish(f"device/{player_id}/command/reboot")

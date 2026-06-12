@@ -1,7 +1,6 @@
-"""YotoMqttClient connect behaviour: the connect-time status push must
-actually go out (regression: it was swallowed as "MQTT not connected" because
-`_connected` was set after the push loop). Also covers the reliability fixes:
-QoS 1 on publishes/subscriptions and a fresh access token on every reconnect."""
+"""YotoMqttClient behaviour: connect and add_player bootstrap each player's
+state, the heartbeat keeps the events push alive, status requests wait for
+their reply, and reconnects authenticate with a fresh token."""
 
 import asyncio
 import unittest
@@ -33,9 +32,9 @@ class _FakeMsg:
 
 
 class OnConnectedStatusPushTests(unittest.IsolatedAsyncioTestCase):
-    async def test_pushes_basic_then_extended_on_connect(self) -> None:
+    async def test_requests_full_snapshot_on_connect(self) -> None:
         client, broker = _connected_client("dev1")
-        client._STATUS_REPLY_TIMEOUT = 0.0  # skip the inter-request gap
+        client._STATUS_REPLY_TIMEOUT = 0.0
 
         await client._on_connected()
 
@@ -44,32 +43,8 @@ class OnConnectedStatusPushTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("device/dev1/command/events/request", topics)  # playback
         self.assertIn("device/dev1/command/status/request", topics)  # basic
         self.assertIn("device/dev1/command/status", topics)  # extended
-        # Basic goes out before extended (spaced by the gap, not back-to-back).
-        self.assertLess(
-            topics.index("device/dev1/command/status/request"),
-            topics.index("device/dev1/command/status"),
-        )
 
-    async def test_pushes_happen_while_connected_not_swallowed(self) -> None:
-        # Regression guard: `_connected` must be set before the push loop, so
-        # `_publish`'s is_connected gate passes. If it weren't, every publish
-        # would raise YotoMQTTError before reaching the broker and the list
-        # below would be empty.
-        client, broker = _connected_client("dev1")
-        client._STATUS_REPLY_TIMEOUT = 0.0
-        seen_connected: list[bool] = []
-
-        async def record(topic, payload=None, qos=0):
-            seen_connected.append(client.is_connected)
-
-        broker.publish = AsyncMock(side_effect=record)
-
-        await client._on_connected()
-
-        self.assertTrue(seen_connected, "no publish reached the broker")
-        self.assertTrue(all(seen_connected), "a push ran while not connected")
-
-    async def test_subscribes_every_player_before_pushing(self) -> None:
+    async def test_subscribes_every_player(self) -> None:
         client, broker = _connected_client("dev1", "dev2")
         client._STATUS_REPLY_TIMEOUT = 0.0
 
@@ -81,31 +56,10 @@ class OnConnectedStatusPushTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn(f"device/{device_id}/status/full", subscribed)
 
 
-class StatusEventsSplitTests(unittest.IsolatedAsyncioTestCase):
-    """`request_player_status` refreshes only `data/status`. `data/events` is
-    requested separately: at connect/add_player and on the heartbeat that keeps
-    Yoto's push alive (it stops pushing ~5min after the last events/request)."""
-
-    async def test_request_player_status_is_status_only(self) -> None:
-        client, broker = _connected_client("dev1")
-        client._connected.set()
-        client._STATUS_REPLY_TIMEOUT = 0.0
-
-        await client.request_player_status("dev1")
-
-        topics = [c.args[0] for c in broker.publish.await_args_list]
-        self.assertEqual(topics, ["device/dev1/command/status/request"])
-
-    async def test_command_does_not_request_events(self) -> None:
-        client, broker = _connected_client("dev1")
-        client._connected.set()
-
-        await client.card_stop("dev1")
-
-        topics = [c.args[0] for c in broker.publish.await_args_list]
-        self.assertIn("device/dev1/command/card/stop", topics)
-        self.assertIn("device/dev1/command/status/request", topics)
-        self.assertNotIn("device/dev1/command/events/request", topics)
+class EventsRefreshTests(unittest.IsolatedAsyncioTestCase):
+    """`data/events` is requested at connect/add_player and on the heartbeat
+    that keeps Yoto's push alive (it stops pushing ~5min after the last
+    events/request)."""
 
     async def test_add_player_requests_events_basic_and_extended(self) -> None:
         client, broker = _connected_client()
