@@ -78,6 +78,18 @@ whether data has actually been received. On top of that, `status` and
 `extended_status` carry `updated_at`: when that telemetry was current
 device-side. Gate on it if you care about freshness.
 
+## Capabilities
+
+Hardware differs by device family. `caps_for(device)` returns the
+`Capabilities` for any `Device`, falling back to v2 for unknown families:
+
+```python
+from yoto_api import caps_for
+caps = caps_for(player.device)
+caps.has_ambient_light   # ambient light ring (every family except Mini)
+caps.has_light_sensor    # ambient light sensor, gates auto display brightness (v3 only)
+```
+
 ## Common methods
 
 All public methods are async.

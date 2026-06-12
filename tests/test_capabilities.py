@@ -8,9 +8,13 @@ from yoto_api import Device, caps_for
 class CapabilitiesTests(unittest.TestCase):
     def test_known_families(self) -> None:
         mini = Device(device_id="x", name="Mini", device_family="mini")
-        v3 = Device(device_id="y", name="Player V3", device_family="v3")
+        v2 = Device(device_id="y", name="Player V2", device_family="v2")
+        v3 = Device(device_id="z", name="Player V3", device_family="v3")
         self.assertFalse(caps_for(mini).has_ambient_light)
         self.assertTrue(caps_for(v3).has_ambient_light)
+        self.assertTrue(caps_for(v3).has_light_sensor)
+        self.assertFalse(caps_for(v2).has_light_sensor)
+        self.assertFalse(caps_for(mini).has_light_sensor)
 
     def test_unknown_falls_back_to_v2(self) -> None:
         future = Device(device_id="z", name="?", device_family="v4")
