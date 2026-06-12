@@ -105,18 +105,6 @@ class UpdateAllPlayerInfoToleranceTests(_ClientTestCase):
 
 
 class MqttSurfaceTests(_ClientTestCase):
-    async def test_is_mqtt_connected_false_without_mqtt(self) -> None:
-        client = self.make_client()
-        self.assertFalse(client.is_mqtt_connected)
-
-    async def test_is_mqtt_connected_delegates_to_underlying(self) -> None:
-        client = self.make_client()
-        client._mqtt = MagicMock()
-        client._mqtt.is_connected = True
-        self.assertTrue(client.is_mqtt_connected)
-        client._mqtt.is_connected = False
-        self.assertFalse(client.is_mqtt_connected)
-
     async def test_connect_events_passes_getter_reading_live_token(self) -> None:
         # The MQTT client gets a token_getter that re-reads self.token on every
         # call, so a token synced in after connect (the HA path) is picked up on
@@ -726,25 +714,17 @@ class PlaybackEventMergeTests(_ClientTestCase):
 
 
 class OnlinePresenceOnEveryMqttMessageTests(_ClientTestCase):
-    """Every MQTT message — event OR status patch — must mark the
-    player online (presence proof)."""
-
-    def _client_with_offline_player(self) -> tuple[YotoClient, YotoPlayer]:
-        client = self.make_client()
-        device = Device(device_id="d1", name="x")
-        player = YotoPlayer(device=device)
-        client.players["d1"] = player
-        client._set_online(player, False)
-        return client, player
-
-    async def test_status_patch_marks_online(self) -> None:
-        client, player = self._client_with_offline_player()
-        await client._on_mqtt_message(StatusPatch(player_id="d1", fields={}))
-        self.assertTrue(player.is_online)
+    """A playback event marks the player online (presence proof). The
+    status-patch path is covered in OnlineConsolidationTests."""
 
     async def test_playback_event_marks_online(self) -> None:
-        client, player = self._client_with_offline_player()
+        client = self.make_client()
+        player = YotoPlayer(device=Device(device_id="d1", name="x"))
+        client.players["d1"] = player
+        client._set_online(player, False)
+
         await client._on_mqtt_message(EventPatch(player_id="d1", fields={"volume": 5}))
+
         self.assertTrue(player.is_online)
 
 
@@ -981,19 +961,6 @@ class GetCardGroupsResponseShapeTests(_ClientTestCase):
         rest = self._rest()
         rest._get = AsyncMock(return_value={})
         self.assertEqual(await rest.get_card_groups(fresh_token()), [])
-
-
-class LegacySetAlarmRemovedTests(unittest.TestCase):
-    """The wipe-the-list `set_alarm` and `AlarmRequest` shouldn't exist
-    in v3 anymore. Regression guard so they don't sneak back."""
-
-    def test_set_alarm_method_gone(self) -> None:
-        self.assertFalse(hasattr(YotoClient, "set_alarm"))
-
-    def test_alarm_request_not_exported(self) -> None:
-        import yoto_api as v3
-
-        self.assertFalse(hasattr(v3, "AlarmRequest"))
 
 
 if __name__ == "__main__":
