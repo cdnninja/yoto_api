@@ -16,6 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class Capabilities:
     has_ambient_light: bool
+    has_light_sensor: bool
 
 
 # Family used as a fallback when the API returns an unknown device_family.
@@ -23,10 +24,10 @@ class Capabilities:
 FAMILY_DEFAULT = "v2"
 
 _CAPABILITIES = {
-    "v1": Capabilities(has_ambient_light=True),
-    "v2": Capabilities(has_ambient_light=True),
-    "v3": Capabilities(has_ambient_light=True),
-    "mini": Capabilities(has_ambient_light=False),
+    "v1": Capabilities(has_ambient_light=True, has_light_sensor=False),
+    "v2": Capabilities(has_ambient_light=True, has_light_sensor=False),
+    "v3": Capabilities(has_ambient_light=True, has_light_sensor=True),
+    "mini": Capabilities(has_ambient_light=False, has_light_sensor=False),
 }
 
 assert FAMILY_DEFAULT in _CAPABILITIES, "FAMILY_DEFAULT must be a known family"
