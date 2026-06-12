@@ -64,6 +64,11 @@ class YotoMqttClient:
     _BACKOFF_MIN = 1.0
     _BACKOFF_MAX = 60.0
 
+    # Yoto stops pushing data/events ~5min after the last events/request, even
+    # on a live socket. Re-arm well inside that window (official guidance 4m55s;
+    # we keep a minute of margin) so playback updates keep arriving.
+    _EVENTS_HEARTBEAT_S = 240
+
     def __init__(self) -> None:
         self._client: Optional[aiomqtt.Client] = None
         self._task: Optional[asyncio.Task] = None
@@ -291,8 +296,12 @@ class YotoMqttClient:
                     await self._on_connected()
                     if not first_done.done():
                         first_done.set_result(None)
-                    async for message in client.messages:
-                        await self._handle_message(message)
+                    heartbeat = asyncio.create_task(self._events_heartbeat())
+                    try:
+                        async for message in client.messages:
+                            await self._handle_message(message)
+                    finally:
+                        heartbeat.cancel()
             except asyncio.CancelledError:
                 self._client = None
                 self._connected.clear()
@@ -361,6 +370,15 @@ class YotoMqttClient:
                 player_id,
                 err,
             )
+
+    async def _events_heartbeat(self) -> None:
+        while True:
+            await asyncio.sleep(self._EVENTS_HEARTBEAT_S)
+            for player_id in list(self._subscribed):
+                try:
+                    await self._publish_events_request(player_id)
+                except YotoMQTTError:
+                    pass
 
     async def _handle_message(self, message: aiomqtt.Message) -> None:
         topic = str(message.topic)

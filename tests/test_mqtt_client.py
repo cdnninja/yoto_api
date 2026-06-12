@@ -82,9 +82,9 @@ class OnConnectedStatusPushTests(unittest.IsolatedAsyncioTestCase):
 
 
 class StatusEventsSplitTests(unittest.IsolatedAsyncioTestCase):
-    """`request_player_status` refreshes only `data/status`; `data/events` is
-    requested separately (the device pushes it on its own, so only connect and
-    add_player force a snapshot)."""
+    """`request_player_status` refreshes only `data/status`. `data/events` is
+    requested separately: at connect/add_player and on the heartbeat that keeps
+    Yoto's push alive (it stops pushing ~5min after the last events/request)."""
 
     async def test_request_player_status_is_status_only(self) -> None:
         client, broker = _connected_client("dev1")
@@ -116,6 +116,23 @@ class StatusEventsSplitTests(unittest.IsolatedAsyncioTestCase):
         topics = [c.args[0] for c in broker.publish.await_args_list]
         self.assertIn("device/dev1/command/events/request", topics)
         self.assertIn("device/dev1/command/status/request", topics)
+
+    async def test_events_heartbeat_rearms_every_player(self) -> None:
+        client, broker = _connected_client("dev1", "dev2")
+        client._connected.set()
+        client._EVENTS_HEARTBEAT_S = 0
+
+        task = asyncio.create_task(client._events_heartbeat())
+        await asyncio.sleep(0.01)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+        topics = {c.args[0] for c in broker.publish.await_args_list}
+        self.assertIn("device/dev1/command/events/request", topics)
+        self.assertIn("device/dev2/command/events/request", topics)
 
 
 class QoSTests(unittest.IsolatedAsyncioTestCase):
