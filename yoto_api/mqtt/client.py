@@ -137,6 +137,7 @@ class YotoMqttClient:
         if not self.is_connected:
             return  # picked up on next connect
         await self._subscribe_player(player_id)
+        await self._publish_events_request(player_id)
         await self._publish_status_request(player_id)
 
     async def remove_player(self, player_id: str) -> None:
@@ -177,8 +178,10 @@ class YotoMqttClient:
         )
 
     async def _publish_status_request(self, player_id: str) -> None:
-        await self._publish(f"device/{player_id}/command/events/request")
         await self._publish(f"device/{player_id}/command/status/request")
+
+    async def _publish_events_request(self, player_id: str) -> None:
+        await self._publish(f"device/{player_id}/command/events/request")
 
     async def _publish_extended_request(self, player_id: str) -> None:
         await self._publish(
@@ -348,6 +351,7 @@ class YotoMqttClient:
 
     async def _refresh_status(self, player_id: str) -> None:
         try:
+            await self._publish_events_request(player_id)
             await self.request_player_status(player_id)
             await self.request_player_extended_status(player_id)
         except Exception as err:

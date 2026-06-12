@@ -41,6 +41,7 @@ class OnConnectedStatusPushTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(client.is_connected)
         topics = [call.args[0] for call in broker.publish.await_args_list]
+        self.assertIn("device/dev1/command/events/request", topics)  # playback
         self.assertIn("device/dev1/command/status/request", topics)  # basic
         self.assertIn("device/dev1/command/status", topics)  # extended
         # Basic goes out before extended (spaced by the gap, not back-to-back).
@@ -78,6 +79,43 @@ class OnConnectedStatusPushTests(unittest.IsolatedAsyncioTestCase):
         for device_id in ("dev1", "dev2"):
             self.assertIn(f"device/{device_id}/data/status", subscribed)
             self.assertIn(f"device/{device_id}/status/full", subscribed)
+
+
+class StatusEventsSplitTests(unittest.IsolatedAsyncioTestCase):
+    """`request_player_status` refreshes only `data/status`; `data/events` is
+    requested separately (the device pushes it on its own, so only connect and
+    add_player force a snapshot)."""
+
+    async def test_request_player_status_is_status_only(self) -> None:
+        client, broker = _connected_client("dev1")
+        client._connected.set()
+        client._STATUS_REPLY_TIMEOUT = 0.0
+
+        await client.request_player_status("dev1")
+
+        topics = [c.args[0] for c in broker.publish.await_args_list]
+        self.assertEqual(topics, ["device/dev1/command/status/request"])
+
+    async def test_command_does_not_request_events(self) -> None:
+        client, broker = _connected_client("dev1")
+        client._connected.set()
+
+        await client.card_stop("dev1")
+
+        topics = [c.args[0] for c in broker.publish.await_args_list]
+        self.assertIn("device/dev1/command/card/stop", topics)
+        self.assertIn("device/dev1/command/status/request", topics)
+        self.assertNotIn("device/dev1/command/events/request", topics)
+
+    async def test_add_player_requests_events_and_status(self) -> None:
+        client, broker = _connected_client()
+        client._connected.set()
+
+        await client.add_player("dev1")
+
+        topics = [c.args[0] for c in broker.publish.await_args_list]
+        self.assertIn("device/dev1/command/events/request", topics)
+        self.assertIn("device/dev1/command/status/request", topics)
 
 
 class QoSTests(unittest.IsolatedAsyncioTestCase):
