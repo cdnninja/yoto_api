@@ -107,15 +107,17 @@ class StatusEventsSplitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("device/dev1/command/status/request", topics)
         self.assertNotIn("device/dev1/command/events/request", topics)
 
-    async def test_add_player_requests_events_and_status(self) -> None:
+    async def test_add_player_requests_events_basic_and_extended(self) -> None:
         client, broker = _connected_client()
         client._connected.set()
+        client._STATUS_REPLY_TIMEOUT = 0.0
 
         await client.add_player("dev1")
 
         topics = [c.args[0] for c in broker.publish.await_args_list]
         self.assertIn("device/dev1/command/events/request", topics)
         self.assertIn("device/dev1/command/status/request", topics)
+        self.assertIn("device/dev1/command/status", topics)  # extended
 
     async def test_events_heartbeat_rearms_every_player(self) -> None:
         client, broker = _connected_client("dev1", "dev2")

@@ -142,8 +142,7 @@ class YotoMqttClient:
         if not self.is_connected:
             return  # picked up on next connect
         await self._subscribe_player(player_id)
-        await self._publish_events_request(player_id)
-        await self._publish_status_request(player_id)
+        await self._refresh_status(player_id)
 
     async def remove_player(self, player_id: str) -> None:
         """Unsubscribe from a player that's no longer in the family."""
