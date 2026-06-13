@@ -64,6 +64,11 @@ class YotoMqttClient:
     _BACKOFF_MIN = 1.0
     _BACKOFF_MAX = 60.0
 
+    # Yoto stops pushing data/events ~5min after the last events/request, even
+    # on a live socket. Re-arm well inside that window (official guidance 4m55s;
+    # we keep a minute of margin) so playback updates keep arriving.
+    _EVENTS_HEARTBEAT_S = 240
+
     def __init__(self) -> None:
         self._client: Optional[aiomqtt.Client] = None
         self._task: Optional[asyncio.Task] = None
@@ -137,8 +142,7 @@ class YotoMqttClient:
         if not self.is_connected:
             return  # picked up on next connect
         await self._subscribe_player(player_id)
-        await self._publish_events_request(player_id)
-        await self._publish_status_request(player_id)
+        await self._refresh_status(player_id)
 
     async def remove_player(self, player_id: str) -> None:
         """Unsubscribe from a player that's no longer in the family."""
@@ -211,26 +215,21 @@ class YotoMqttClient:
             f"device/{player_id}/command/volume/set",
             json.dumps({"volume": closest_volume}),
         )
-        await self._publish_status_request(player_id)
 
     async def set_sleep_timer(self, player_id: str, seconds: int) -> None:
         await self._publish(
             f"device/{player_id}/command/sleep-timer/set",
             json.dumps({"seconds": int(seconds)}),
         )
-        await self._publish_status_request(player_id)
 
     async def card_stop(self, player_id: str) -> None:
         await self._publish(f"device/{player_id}/command/card/stop")
-        await self._publish_status_request(player_id)
 
     async def card_pause(self, player_id: str) -> None:
         await self._publish(f"device/{player_id}/command/card/pause")
-        await self._publish_status_request(player_id)
 
     async def card_resume(self, player_id: str) -> None:
         await self._publish(f"device/{player_id}/command/card/resume")
-        await self._publish_status_request(player_id)
 
     async def card_play(
         self,
@@ -253,7 +252,6 @@ class YotoMqttClient:
         await self._publish(
             f"device/{player_id}/command/card/start", json.dumps(payload)
         )
-        await self._publish_status_request(player_id)
 
     async def restart(self, player_id: str) -> None:
         await self._publish(f"device/{player_id}/command/reboot")
@@ -291,8 +289,12 @@ class YotoMqttClient:
                     await self._on_connected()
                     if not first_done.done():
                         first_done.set_result(None)
-                    async for message in client.messages:
-                        await self._handle_message(message)
+                    heartbeat = asyncio.create_task(self._events_heartbeat())
+                    try:
+                        async for message in client.messages:
+                            await self._handle_message(message)
+                    finally:
+                        heartbeat.cancel()
             except asyncio.CancelledError:
                 self._client = None
                 self._connected.clear()
@@ -361,6 +363,15 @@ class YotoMqttClient:
                 player_id,
                 err,
             )
+
+    async def _events_heartbeat(self) -> None:
+        while True:
+            await asyncio.sleep(self._EVENTS_HEARTBEAT_S)
+            for player_id in list(self._subscribed):
+                try:
+                    await self._publish_events_request(player_id)
+                except YotoMQTTError:
+                    pass
 
     async def _handle_message(self, message: aiomqtt.Message) -> None:
         topic = str(message.topic)
