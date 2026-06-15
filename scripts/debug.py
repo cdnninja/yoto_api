@@ -101,6 +101,9 @@ async def _run(client: YotoClient) -> int:
     # the rich telemetry.
     push_interval_s = 2.0
     last_push = 0.0
+    # Config only changes via REST, never MQTT — poll it slower than status.
+    config_interval_s = 10.0
+    last_config = time.monotonic()
 
     try:
         with Live(
@@ -118,6 +121,12 @@ async def _run(client: YotoClient) -> int:
                     except Exception:
                         pass
                     last_push = now
+                if now - last_config >= config_interval_s:
+                    try:
+                        await client.update_player_info(device_id)
+                    except Exception:
+                        pass
+                    last_config = now
                 live.update(_render(client.players[device_id], log))
                 await asyncio.sleep(0.25)
     except (KeyboardInterrupt, asyncio.CancelledError):
@@ -150,9 +159,24 @@ def _render(player: YotoPlayer, log: Deque[Tuple[str, str]]) -> Layout:
         ),
     )
     # Last event is small (~12 useful fields); config takes the rest.
+    # The *_ambient_preset properties aren't dataclass fields, so surface the
+    # resolved preset (or <custom> for a non-preset hex) next to the raw hex.
+    config = player.info.config
+    ambient = [
+        (name, preset or "<custom>")
+        for name, colour, preset in (
+            ("day_ambient_preset", config.day_ambient_colour, config.day_ambient_preset),
+            (
+                "night_ambient_preset",
+                config.night_ambient_colour,
+                config.night_ambient_preset,
+            ),
+        )
+        if colour is not None
+    ]
     layout["right"].split_column(
         Layout(_section_panel("Last event", player.last_event), name="event", size=16),
-        Layout(_section_panel("Config", player.info.config), name="config"),
+        Layout(_section_panel("Config", config, extra=ambient), name="config"),
     )
     return layout
 
@@ -173,12 +197,17 @@ def _header(player: YotoPlayer) -> Panel:
     return Panel(text, border_style="cyan")
 
 
-def _section_panel(title: str, obj: Any, skip: set[str] | None = None) -> Panel:
+def _section_panel(
+    title: str,
+    obj: Any,
+    skip: set[str] | None = None,
+    extra: list[Tuple[str, Any]] | None = None,
+) -> Panel:
     table = Table.grid(padding=(0, 1), expand=True)
     table.add_column(style="dim", no_wrap=True)
     table.add_column(overflow="fold")
 
-    rows = list(_flatten(obj, skip=skip or set()))
+    rows = list(_flatten(obj, skip=skip or set())) + list(extra or [])
     if not rows:
         table.add_row("[dim italic]<empty>[/]", "")
     else:

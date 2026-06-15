@@ -168,3 +168,4 @@ pyvenv.cfg
 
 # Output of scripts/probe_mqtt.py
 mqtt_probe.log
+work/

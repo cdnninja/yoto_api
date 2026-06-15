@@ -21,7 +21,7 @@ import aiohttp
 
 from .Card import Card, Chapter, Track
 from .Group import Group
-from .const import DOMAIN
+from .const import DOMAIN, ambient_preset_to_hex
 from .exceptions import YotoError
 from ._coerce import parse_iso
 from .Token import Token
@@ -127,6 +127,13 @@ _BRIGHTNESS_PAIRS = (
         "night_display_brightness",
         "nightDisplayBrightness",
     ),
+)
+
+# (preset kwarg, the raw colour field it resolves into) — the two are
+# mutually exclusive in a single call.
+_AMBIENT_PRESET_PAIRS = (
+    ("day_ambient_preset", "day_ambient_colour"),
+    ("night_ambient_preset", "night_ambient_colour"),
 )
 
 # last_event fields scoped to the active card, cleared when card_id is "none"/"".
@@ -431,6 +438,16 @@ class YotoClient:
 
     # ─── Settings writes ──────────────────────────────────────────
 
+    def _is_v3(self, device_id: str) -> bool:
+        """Whether the device is a v3 player (affects ambient preset hexes).
+
+        Falls back to False (legacy hexes) when the device isn't loaded yet,
+        matching the v2 capability fallback used elsewhere.
+        """
+        player = self.players.get(device_id)
+        family = (player.device.device_family or "").lower() if player else ""
+        return family == "v3"
+
     async def set_player_config(self, device_id: str, **fields: Any) -> None:
         """Update PlayerConfig settings.
 
@@ -441,6 +458,11 @@ class YotoClient:
         For each side (day / night), `display_brightness_auto=True` and
         `display_brightness=N` are mutually exclusive in a single call.
 
+        Ambient light can be set by preset key via `day_ambient_preset` /
+        `night_ambient_preset` (one of `AMBIENT_PRESET_KEYS`); the lib
+        resolves it to the right hex for the device generation. Mutually
+        exclusive with the raw `*_ambient_colour` field in the same call.
+
         Alarms go through `set_alarms` / `set_alarm_enabled`.
         """
         if "alarms" in fields:
@@ -450,6 +472,22 @@ class YotoClient:
             )
 
         payload: Dict[str, Any] = {}
+
+        # Resolve before the generic mapping so it sees a known colour field.
+        if any(preset_key in fields for preset_key, _ in _AMBIENT_PRESET_PAIRS):
+            is_v3 = self._is_v3(device_id)
+            for preset_key, colour_key in _AMBIENT_PRESET_PAIRS:
+                preset = fields.pop(preset_key, None)
+                if preset is None:
+                    continue
+                if fields.get(colour_key) is not None:
+                    raise YotoError(
+                        f"{preset_key} and {colour_key} are mutually exclusive"
+                    )
+                try:
+                    fields[colour_key] = ambient_preset_to_hex(preset, is_v3=is_v3)
+                except ValueError as err:
+                    raise YotoError(str(err)) from None
 
         # Brightness pairs share one API key — handle first so the
         # generic mapping below doesn't see them as unknown fields.
