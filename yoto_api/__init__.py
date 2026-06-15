@@ -10,7 +10,6 @@ from .client import YotoClient
 from .const import (
     AMBIENT_PRESET_KEYS,
     LEGACY_PRESETS,
-    LIGHT_COLORS,
     POWER_SOURCE,
     V3_PRESETS,
     VOLUME_MAPPING_INVERTED,
@@ -57,7 +56,6 @@ __all__ = [
     "V3_PRESETS",
     "ambient_hex_to_preset",
     "ambient_preset_to_hex",
-    "LIGHT_COLORS",
     "POWER_SOURCE",
     "PlaybackEvent",
     "PlaybackStatus",
