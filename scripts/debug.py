@@ -165,7 +165,11 @@ def _render(player: YotoPlayer, log: Deque[Tuple[str, str]]) -> Layout:
     ambient = [
         (name, preset or "<custom>")
         for name, colour, preset in (
-            ("day_ambient_preset", config.day_ambient_colour, config.day_ambient_preset),
+            (
+                "day_ambient_preset",
+                config.day_ambient_colour,
+                config.day_ambient_preset,
+            ),
             (
                 "night_ambient_preset",
                 config.night_ambient_colour,

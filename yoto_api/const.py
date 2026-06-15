@@ -84,6 +84,7 @@ def ambient_hex_to_preset(hex_colour: Optional[str]) -> Optional[str]:
         return None
     return AMBIENT_PRESET_BY_HEX.get(hex_colour.lower())
 
+
 VOLUME_MAPPING_INVERTED = [
     0,
     7,
