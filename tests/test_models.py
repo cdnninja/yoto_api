@@ -133,6 +133,10 @@ class PlayerConfigParseTests(unittest.TestCase):
         self.assertTrue(config.bluetooth_enabled)
         self.assertFalse(config.headphones_volume_limited)
         self.assertEqual(config.day_ambient_colour, "#ff0000")
+        # ambientColour hex resolves to a stable preset key (either
+        # generation's hex maps back to the same key).
+        self.assertEqual(config.day_ambient_preset, "tambourine_red")
+        self.assertEqual(config.night_ambient_preset, "tambourine_red")
         # Brightness split: "100" → manual=100, "auto" → auto=True
         self.assertEqual(config.day_display_brightness_auto, False)
         self.assertEqual(config.day_display_brightness, 100)
@@ -143,6 +147,20 @@ class PlayerConfigParseTests(unittest.TestCase):
         config = self._parse({})
         self.assertIsNone(config.day_display_brightness_auto)
         self.assertIsNone(config.day_display_brightness)
+
+    def test_ambient_preset_recognises_v3_hex(self) -> None:
+        # #40bfd9 is the v3 calibration of Sky Blue.
+        config = self._parse({"ambientColour": "#40bfd9"})
+        self.assertEqual(config.day_ambient_preset, "sky_blue")
+
+    def test_ambient_preset_none_for_custom_hex(self) -> None:
+        config = self._parse({"ambientColour": "#123456"})
+        self.assertIsNone(config.day_ambient_preset)
+
+    def test_ambient_preset_none_when_unset(self) -> None:
+        config = self._parse({})
+        self.assertIsNone(config.day_ambient_preset)
+        self.assertIsNone(config.night_ambient_preset)
 
 
 if __name__ == "__main__":

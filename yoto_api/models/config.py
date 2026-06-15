@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from datetime import time
 from typing import List, Optional
 
+from ..const import ambient_hex_to_preset
+
 
 @dataclass
 class Alarm:
@@ -65,3 +67,13 @@ class PlayerConfig:
     pause_power_button: Optional[bool] = None
 
     alarms: List[Alarm] = field(default_factory=list)
+
+    @property
+    def day_ambient_preset(self) -> Optional[str]:
+        """Day ambient colour as an app preset key, or None if custom."""
+        return ambient_hex_to_preset(self.day_ambient_colour)
+
+    @property
+    def night_ambient_preset(self) -> Optional[str]:
+        """Night ambient colour as an app preset key, or None if custom."""
+        return ambient_hex_to_preset(self.night_ambient_colour)

@@ -7,7 +7,16 @@ from .Token import Token
 from .account import get_account_id, has_scope
 from .capabilities import Capabilities, caps_for
 from .client import YotoClient
-from .const import HEX_COLORS, LIGHT_COLORS, POWER_SOURCE, VOLUME_MAPPING_INVERTED
+from .const import (
+    AMBIENT_PRESET_KEYS,
+    LEGACY_PRESETS,
+    LIGHT_COLORS,
+    POWER_SOURCE,
+    V3_PRESETS,
+    VOLUME_MAPPING_INVERTED,
+    ambient_hex_to_preset,
+    ambient_preset_to_hex,
+)
 from .exceptions import (
     AuthenticationError,
     YotoAPIError,
@@ -39,11 +48,15 @@ __all__ = [
     "Card",
     "CardInsertionState",
     "Chapter",
+    "AMBIENT_PRESET_KEYS",
     "DayMode",
     "Device",
     "EventPatch",
     "Group",
-    "HEX_COLORS",
+    "LEGACY_PRESETS",
+    "V3_PRESETS",
+    "ambient_hex_to_preset",
+    "ambient_preset_to_hex",
     "LIGHT_COLORS",
     "POWER_SOURCE",
     "PlaybackEvent",

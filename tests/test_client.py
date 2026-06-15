@@ -219,6 +219,49 @@ class SetPlayerConfigTests(_ClientTestCase):
         self.assertEqual(payload["nightAmbientColour"], "#f57399")
         self.assertEqual(payload["nightMaxVolumeLimit"], "16")
 
+    def _add_player(self, device_id: str, family: str) -> None:
+        self.client.players[device_id] = YotoPlayer(
+            device=Device(device_id=device_id, name=device_id, device_family=family)
+        )
+
+    async def test_ambient_preset_v3_writes_v3_hex(self) -> None:
+        self._add_player("v3dev", "v3")
+        await self.client.set_player_config("v3dev", day_ambient_preset="sky_blue")
+        payload = self.client._rest.update_settings.call_args.args[2]
+        self.assertEqual(payload["ambientColour"], "#40bfd9")
+
+    async def test_ambient_preset_legacy_writes_legacy_hex(self) -> None:
+        self._add_player("v2dev", "v2")
+        await self.client.set_player_config("v2dev", day_ambient_preset="sky_blue")
+        payload = self.client._rest.update_settings.call_args.args[2]
+        self.assertEqual(payload["ambientColour"], "#41c0f0")
+
+    async def test_ambient_preset_defaults_to_legacy_when_unknown_device(self) -> None:
+        # "dev1" isn't loaded — fall back to legacy hexes.
+        await self.client.set_player_config("dev1", day_ambient_preset="sky_blue")
+        payload = self.client._rest.update_settings.call_args.args[2]
+        self.assertEqual(payload["ambientColour"], "#41c0f0")
+
+    async def test_night_ambient_preset_maps_to_night_key(self) -> None:
+        self._add_player("v3dev", "v3")
+        await self.client.set_player_config("v3dev", night_ambient_preset="off")
+        payload = self.client._rest.update_settings.call_args.args[2]
+        self.assertEqual(payload["nightAmbientColour"], "#0")
+
+    async def test_ambient_preset_and_colour_mutually_exclusive(self) -> None:
+        self._add_player("v3dev", "v3")
+        with self.assertRaises(YotoError):
+            await self.client.set_player_config(
+                "v3dev",
+                day_ambient_preset="sky_blue",
+                day_ambient_colour="#40bfd9",
+            )
+
+    async def test_unknown_ambient_preset_raises(self) -> None:
+        self._add_player("v3dev", "v3")
+        with self.assertRaises(YotoError):
+            await self.client.set_player_config("v3dev", day_ambient_preset="puce")
+
     async def test_unknown_field_raises(self) -> None:
         with self.assertRaises(YotoError):
             await self.client.set_player_config("dev1", made_up_field="x")
