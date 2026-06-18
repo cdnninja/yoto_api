@@ -326,13 +326,21 @@ class SetPlayerConfigTests(_ClientTestCase):
                 day_display_brightness=80,
             )
 
-    async def test_brightness_auto_false_alone_is_noop(self) -> None:
-        # Setting auto=False without a value would mean "leave manual mode
-        # but don't change the value" — Yoto can't express that, so the
-        # lib drops it silently. The consumer has to pass a value to set
-        # manual mode.
+    async def test_brightness_auto_false_writes_full_brightness(self) -> None:
+        # The API has no standalone "auto off" — disabling auto means writing
+        # a manual value. Mirror the Yoto app and write full brightness, so a
+        # consumer (e.g. HA) only has to send the boolean.
         await self.client.set_player_config("dev1", day_display_brightness_auto=False)
-        self.client._rest.update_settings.assert_not_awaited()
+        payload = self.client._rest.update_settings.call_args.args[2]
+        self.assertEqual(payload["dayDisplayBrightness"], "100")
+
+    async def test_brightness_value_overrides_auto_false(self) -> None:
+        # An explicit value wins over the auto-off default.
+        await self.client.set_player_config(
+            "dev1", day_display_brightness_auto=False, day_display_brightness=30
+        )
+        payload = self.client._rest.update_settings.call_args.args[2]
+        self.assertEqual(payload["dayDisplayBrightness"], "30")
 
     async def test_serialize_int_rejects_string(self) -> None:
         # Make sure we don't accidentally accept str inputs for int fields.

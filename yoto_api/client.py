@@ -129,6 +129,11 @@ _BRIGHTNESS_PAIRS = (
     ),
 )
 
+# Auto-brightness shares its field with the manual value, so the API has no
+# standalone "off": disabling it means writing a manual value. Mirror the Yoto
+# app, which writes full brightness, so a consumer only has to send the bool.
+_BRIGHTNESS_WHEN_AUTO_OFF = 100
+
 # (preset kwarg, the raw colour field it resolves into) — the two are
 # mutually exclusive in a single call.
 _AMBIENT_PRESET_PAIRS = (
@@ -457,6 +462,8 @@ class YotoClient:
 
         For each side (day / night), `display_brightness_auto=True` and
         `display_brightness=N` are mutually exclusive in a single call.
+        `display_brightness_auto=False` alone writes full brightness
+        (matching the Yoto app), since the API has no standalone auto-off.
 
         Ambient light can be set by preset key via `day_ambient_preset` /
         `night_ambient_preset` (one of `AMBIENT_PRESET_KEYS`); the lib
@@ -500,6 +507,8 @@ class YotoClient:
                 payload[api_key] = "auto"
             elif value is not None:
                 payload[api_key] = _serialize_int(value)
+            elif auto is False:
+                payload[api_key] = _serialize_int(_BRIGHTNESS_WHEN_AUTO_OFF)
 
         for snake, value in fields.items():
             if value is None:
