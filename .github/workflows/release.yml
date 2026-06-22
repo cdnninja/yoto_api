@@ -16,7 +16,7 @@ jobs:
       id-token: write # PyPI Trusted Publisher (OIDC)
       attestations: write # Sigstore attestations on the published files
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # semantic-release needs full history to find prior tags
       - name: Get semantic release info
