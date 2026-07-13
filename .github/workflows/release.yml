@@ -21,7 +21,7 @@ jobs:
           fetch-depth: 0 # semantic-release needs full history to find prior tags
       - name: Get semantic release info
         id: semantic_release_info
-        uses: cycjimmy/semantic-release-action@v4
+        uses: cycjimmy/semantic-release-action@v6
         with:
           dry_run: true # only compute the next version; the steps below publish
         env:
