@@ -457,8 +457,10 @@ class YotoClient:
         """Update PlayerConfig settings.
 
         Kwargs are `PlayerConfig` field names with proper Python types
-        (`datetime.time`, `int`, `bool`, ...). `None` values are
-        dropped — `PUT /config` merges, omitted fields stay unchanged.
+        (`datetime.time`, `int`, `bool`, ...). `None` values are dropped.
+        Omitted fields stay unchanged: `PUT /config` replaces the whole
+        config block, so the lib reads the current one and merges client
+        side (see `RestClient.update_settings`).
 
         For each side (day / night), `display_brightness_auto=True` and
         `display_brightness=N` are mutually exclusive in a single call.
@@ -534,8 +536,9 @@ class YotoClient:
     async def set_alarms(self, device_id: str, alarms: List[Alarm]) -> None:
         """Replace the device's full alarm list.
 
-        Yoto's `PUT /config` treats the list as a replacement, so always
-        pass every alarm you want to keep.
+        The `alarms` list is written wholesale, so always pass every alarm
+        you want to keep. The rest of the config is preserved (see
+        `RestClient.update_settings`).
         """
         token = await self.check_and_refresh_token()
         payload = encode_alarms_payload(alarms)
