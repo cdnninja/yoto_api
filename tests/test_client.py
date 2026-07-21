@@ -1014,5 +1014,79 @@ class GetCardGroupsResponseShapeTests(_ClientTestCase):
         self.assertEqual(await rest.get_card_groups(fresh_token()), [])
 
 
+class ConfigMergeTests(_ClientTestCase):
+    """`PUT /config` replaces the whole config block and the firmware
+    refills missing keys with its defaults, so every write merges onto a
+    freshly read config."""
+
+    RAW = {
+        "dayTime": "07:30",
+        "nightTime": "19:30",
+        "ambientColour": "#ff8c00",
+        "nightAmbientColour": "#40bfd9",
+        "dayDisplayBrightness": "auto",
+        "alarms": ["07:00,1,0,0,0,1"],
+    }
+
+    def _rest(self, raw=None):
+        from yoto_api.rest.client import RestClient
+
+        rest = RestClient(session=MagicMock())
+        rest._get = AsyncMock(return_value={"device": {"config": raw or self.RAW}})
+        rest._put = AsyncMock(return_value={})
+        return rest
+
+    def _sent_config(self, rest):
+        return rest._put.call_args.args[3]["config"]
+
+    async def test_untouched_keys_survive(self) -> None:
+        rest = self._rest()
+        await rest.update_settings(fresh_token(), "dev1", {"dayTime": "09:00"})
+        sent = self._sent_config(rest)
+        self.assertEqual(sent["dayTime"], "09:00")
+        for key in ("nightTime", "ambientColour", "nightAmbientColour"):
+            self.assertEqual(sent[key], self.RAW[key])
+
+    async def test_brightness_encoding_merges_on_api_key(self) -> None:
+        rest = self._rest()
+        await rest.update_settings(fresh_token(), "dev1", {"dayTime": "09:00"})
+        self.assertEqual(self._sent_config(rest)["dayDisplayBrightness"], "auto")
+
+        rest = self._rest()
+        await rest.update_settings(
+            fresh_token(), "dev1", {"dayDisplayBrightness": "80"}
+        )
+        self.assertEqual(self._sent_config(rest)["dayDisplayBrightness"], "80")
+
+    async def test_alarms_round_trip_on_config_write(self) -> None:
+        rest = self._rest()
+        await rest.update_settings(fresh_token(), "dev1", {"dayTime": "09:00"})
+        self.assertEqual(self._sent_config(rest)["alarms"], self.RAW["alarms"])
+
+    async def test_alarms_write_preserves_the_rest(self) -> None:
+        rest = self._rest()
+        await rest.update_settings(
+            fresh_token(), "dev1", {"alarms": ["08:00,1,0,0,0,1"]}
+        )
+        sent = self._sent_config(rest)
+        self.assertEqual(sent["alarms"], ["08:00,1,0,0,0,1"])
+        self.assertEqual(sent["dayTime"], "07:30")
+        self.assertEqual(sent["ambientColour"], "#ff8c00")
+
+    async def test_unmapped_key_is_preserved(self) -> None:
+        rest = self._rest({**self.RAW, "someNewFirmwareKey": "42"})
+        await rest.update_settings(fresh_token(), "dev1", {"dayTime": "09:00"})
+        self.assertEqual(self._sent_config(rest)["someNewFirmwareKey"], "42")
+
+    async def test_missing_config_block_still_writes(self) -> None:
+        from yoto_api.rest.client import RestClient
+
+        rest = RestClient(session=MagicMock())
+        rest._get = AsyncMock(return_value={})
+        rest._put = AsyncMock(return_value={})
+        await rest.update_settings(fresh_token(), "dev1", {"dayTime": "09:00"})
+        self.assertEqual(self._sent_config(rest), {"dayTime": "09:00"})
+
+
 if __name__ == "__main__":
     unittest.main()

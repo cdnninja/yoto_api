@@ -108,10 +108,30 @@ class RestClient:
 
     # ─── Settings writes ──────────────────────────────────────────
 
+    async def get_raw_config(self, token: Token, device_id: str) -> Dict[str, Any]:
+        """Unparsed so `update_settings` can merge onto it: a
+        parse-then-reserialise drops the keys the lib doesn't map yet.
+        """
+        response = await self._get(
+            token,
+            endpoints.device_config(device_id),
+            f"get player {device_id} raw config",
+        )
+        raw = (response.get("device") or {}).get("config")
+        return raw if isinstance(raw, dict) else {}
+
     async def update_settings(
         self, token: Token, device_id: str, payload: Dict[str, Any]
     ) -> None:
-        body = {"deviceId": device_id, "config": payload}
+        """Merge `payload` (API keys) into the device's current config.
+
+        `PUT /config` replaces the whole block and the firmware refills
+        missing keys with its defaults, so a partial write resets every
+        setting it omits. Re-read on each write rather than cached: the
+        config also changes from the Yoto app.
+        """
+        raw = await self.get_raw_config(token, device_id)
+        body = {"deviceId": device_id, "config": {**raw, **payload}}
         await self._put(
             token,
             endpoints.device_config(device_id),
