@@ -104,6 +104,29 @@ class UpdateAllPlayerInfoToleranceTests(_ClientTestCase):
         self.assertIsNotNone(client.players["also_good"].info_refreshed_at)
 
 
+class UpdateLibraryTests(_ClientTestCase):
+    async def test_reads_card_category_from_metadata_category(self) -> None:
+        client = self.make_client()
+        client.token = fresh_token()
+        client._rest.get_card_library = AsyncMock(
+            return_value={
+                "cards": [
+                    {
+                        "cardId": "card-1",
+                        "card": {
+                            "title": "Story card",
+                            "metadata": {"category": "stories"},
+                        },
+                    }
+                ]
+            }
+        )
+
+        await client.update_library()
+
+        self.assertEqual(client.library["card-1"].category, "stories")
+
+
 class MqttSurfaceTests(_ClientTestCase):
     async def test_connect_events_passes_getter_reading_live_token(self) -> None:
         # The MQTT client gets a token_getter that re-reads self.token on every
