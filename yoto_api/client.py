@@ -337,8 +337,8 @@ class YotoClient:
             card.author = get_child_value(item, "card.metadata.author")
             card.category = get_child_value(item, "card.metadata.category")
             card.cover_image_large = get_child_value(item, "card.metadata.cover.imageL")
-            card.series_order = get_child_value(item, "card.metadata.cover.seriesorder")
-            card.series_title = get_child_value(item, "card.metadata.cover.seriestitle")
+            card.series_order = get_child_value(item, "card.metadata.seriesorder")
+            card.series_title = get_child_value(item, "card.metadata.seriestitle")
 
     async def update_card_detail(self, card_id: str) -> None:
         """GET /card/{cardId} — populate chapters/tracks on the card."""

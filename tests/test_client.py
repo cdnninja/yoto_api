@@ -105,7 +105,10 @@ class UpdateAllPlayerInfoToleranceTests(_ClientTestCase):
 
 
 class UpdateLibraryTests(_ClientTestCase):
-    async def test_reads_card_category_from_metadata_category(self) -> None:
+    """Card fields sit directly under `card.metadata`; `cover` holds image
+    URLs only, so reading anything else through it always yields None."""
+
+    async def test_reads_card_fields_from_metadata_root(self) -> None:
         client = self.make_client()
         client.token = fresh_token()
         client._rest.get_card_library = AsyncMock(
@@ -114,8 +117,15 @@ class UpdateLibraryTests(_ClientTestCase):
                     {
                         "cardId": "card-1",
                         "card": {
-                            "title": "Story card",
-                            "metadata": {"category": "stories"},
+                            "title": "Fear",
+                            "metadata": {
+                                "author": "Yoto",
+                                "category": "stories",
+                                "cover": {"imageL": "https://example.test/cover"},
+                                "description": "A story about fear",
+                                "seriesorder": 3,
+                                "seriestitle": "My little library of emotions",
+                            },
                         },
                     }
                 ]
@@ -124,7 +134,14 @@ class UpdateLibraryTests(_ClientTestCase):
 
         await client.update_library()
 
-        self.assertEqual(client.library["card-1"].category, "stories")
+        card = client.library["card-1"]
+        self.assertEqual(card.title, "Fear")
+        self.assertEqual(card.category, "stories")
+        self.assertEqual(card.series_order, 3)
+        self.assertEqual(card.series_title, "My little library of emotions")
+        self.assertEqual(card.cover_image_large, "https://example.test/cover")
+        self.assertEqual(card.author, "Yoto")
+        self.assertEqual(card.description, "A story about fear")
 
 
 class MqttSurfaceTests(_ClientTestCase):
