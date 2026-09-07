@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional
-
+from typing import Any
 
 # Yoto's player hardware uses a 0..16 raw volume scale. `volume_max` in
 # MQTT events is the user-configured cap (often == 16, can be lower in
@@ -21,35 +20,35 @@ class PlaybackEvent:
     """Live playback delta from MQTT `device/{id}/data/events`."""
 
     player_id: str
-    event_utc: Optional[int] = None
+    event_utc: int | None = None
 
-    card_id: Optional[str] = None
-    chapter_key: Optional[str] = None
-    chapter_title: Optional[str] = None
-    track_key: Optional[str] = None
-    track_title: Optional[str] = None
-    track_length: Optional[int] = None  # seconds
-    position: Optional[int] = None  # seconds
-    source: Optional[str] = None  # e.g. "remote", "card"
+    card_id: str | None = None
+    chapter_key: str | None = None
+    chapter_title: str | None = None
+    track_key: str | None = None
+    track_title: str | None = None
+    track_length: int | None = None  # seconds
+    position: int | None = None  # seconds
+    source: str | None = None  # e.g. "remote", "card"
 
-    playback_status: Optional[PlaybackStatus] = None
-    repeat_all: Optional[bool] = None
-    streaming: Optional[bool] = None
+    playback_status: PlaybackStatus | None = None
+    repeat_all: bool | None = None
+    streaming: bool | None = None
 
     # Raw 0-volume_max scale (NOT percentage)
-    volume: Optional[int] = None
-    volume_max: Optional[int] = None
+    volume: int | None = None
+    volume_max: int | None = None
 
-    sleep_timer_seconds: Optional[int] = None
-    sleep_timer_active: Optional[bool] = None
+    sleep_timer_seconds: int | None = None
+    sleep_timer_active: bool | None = None
 
     # Player is buffering / waiting between tracks (firmware-pushed bool).
-    playback_wait: Optional[bool] = None
+    playback_wait: bool | None = None
 
-    request_id: Optional[str] = None
+    request_id: str | None = None
 
     @property
-    def volume_percentage(self) -> Optional[float]:
+    def volume_percentage(self) -> float | None:
         """`volume` as a 0.0-1.0 ratio of the absolute hardware max (16).
 
         Suitable for HA `media_player.volume_level`. Note: this is NOT
@@ -72,7 +71,7 @@ class EventPatch:
     """
 
     player_id: str
-    fields: Dict[str, Any] = field(default_factory=dict)
+    fields: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -86,7 +85,7 @@ class StatusPatch:
     """
 
     player_id: str
-    fields: Dict[str, Any] = field(default_factory=dict)
+    fields: dict[str, Any] = field(default_factory=dict)
     extended: bool = False
 
 
@@ -101,4 +100,4 @@ class PresenceEvent:
 
     player_id: str
     is_online: bool
-    ts: Optional[int] = None  # device-supplied epoch ms
+    ts: int | None = None  # device-supplied epoch ms

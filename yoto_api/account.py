@@ -2,7 +2,7 @@
 
 import base64
 import json
-from typing import Any, Dict
+from typing import Any
 
 from .exceptions import YotoError
 
@@ -28,7 +28,7 @@ def has_scope(access_token: str, scope: str) -> bool:
     return scope in str(granted).split()
 
 
-def _decode_jwt_payload(access_token: str) -> Dict[str, Any]:
+def _decode_jwt_payload(access_token: str) -> dict[str, Any]:
     try:
         payload_b64 = access_token.split(".")[1]
     except (AttributeError, IndexError) as err:
