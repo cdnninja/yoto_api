@@ -175,6 +175,7 @@ class YotoClient:
         self._owns_session = session is None
         self._session = session or aiohttp.ClientSession()
         self._auth = Auth(self._session, client_id=client_id)
+        self._token_lock = asyncio.Lock()
         self._refresh_hook = refresh_hook
         self._rest = RestClient(self._session)
         self._mqtt: Optional[YotoMqttClient] = None
@@ -215,7 +216,9 @@ class YotoClient:
         return await self._auth.device_code_flow_start()
 
     async def device_code_flow_complete(self, auth_result: dict) -> Token:
-        self.token = await self._auth.poll_for_token(auth_result)
+        new_token = await self._auth.poll_for_token(auth_result)
+        async with self._token_lock:
+            self.token = new_token
         if self._refresh_hook is not None:
             try:
                 await _maybe_await(self._refresh_hook(self.token))
@@ -229,25 +232,30 @@ class YotoClient:
         Without a `client_id` the caller owns the OAuth lifecycle (e.g.
         HA's OAuth2Session) and syncs a token in; trust it, don't refresh.
         """
-        if self.token is None:
-            raise YotoError("No token available; authenticate first")
-        if self._auth.client_id is None:
-            if self.token.access_token is None:
-                raise YotoError("No access token provided")
-            return self.token
-        if (
-            self.token.access_token is None
-            or self.token.valid_until is None
-            or self.token.valid_until - timedelta(hours=1)
-            <= datetime.datetime.now(datetime.timezone.utc)
-        ):
-            _LOGGER.debug("%s - access token expired or near, refreshing", DOMAIN)
-            self.token = await self._auth.refresh(self.token)
-            if self._refresh_hook is not None:
-                try:
-                    await _maybe_await(self._refresh_hook(self.token))
-                except Exception:
-                    _LOGGER.exception("%s - refresh hook callback raised", DOMAIN)
+        refreshed = False
+        async with self._token_lock:
+            if self.token is None:
+                raise YotoError("No token available; authenticate first")
+            if self._auth.client_id is None:
+                if self.token.access_token is None:
+                    raise YotoError("No access token provided")
+                return self.token
+            if (
+                self.token.access_token is None
+                or self.token.valid_until is None
+                or self.token.valid_until - timedelta(hours=1)
+                <= datetime.datetime.now(datetime.timezone.utc)
+            ):
+                _LOGGER.debug("%s - access token expired or near, refreshing", DOMAIN)
+                self.token = await self._auth.refresh(self.token)
+                refreshed = True
+
+        if refreshed and self._refresh_hook is not None:
+            try:
+                await _maybe_await(self._refresh_hook(self.token))
+            except Exception:
+                _LOGGER.exception("%s - refresh hook callback raised", DOMAIN)
+
         return self.token
 
     # ─── Inventory ────────────────────────────────────────────────
