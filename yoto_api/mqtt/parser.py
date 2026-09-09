@@ -9,7 +9,7 @@ sent, so callers can merge selectively into the current snapshot.
 
 import json
 import logging
-from typing import Any, Union
+from typing import Any
 
 from .._coerce import (
     as_bool,
@@ -26,7 +26,7 @@ from ..models.status import CardInsertionState, DayMode, PowerSource
 _LOGGER = logging.getLogger(__name__)
 
 
-Message = Union[EventPatch, StatusPatch, PresenceEvent]
+Message = EventPatch | StatusPatch | PresenceEvent
 
 
 def parse_message(topic: str, payload: bytes) -> Message | None:

@@ -1,0 +1,13 @@
+target-version = "py310"
+
+# The default rule set widens between ruff releases; select explicitly so a
+# version bump can't change what CI enforces.
+[lint]
+select = [
+  "E4", # import layout (one import per line, imports at top of file)
+  "E7", # statement pitfalls (comparing with == None, multiple statements on one line)
+  "E9", # syntax errors and files that can't be parsed
+  "F",  # real bugs: unused imports/variables, undefined names, duplicate arguments
+  "I",  # import sorting
+  "UP", # outdated syntax for the targeted Python version (Optional[X] -> X | None)
+]

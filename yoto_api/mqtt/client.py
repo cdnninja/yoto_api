@@ -11,7 +11,6 @@ import json
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
-from typing import Union
 
 import aiomqtt
 
@@ -25,7 +24,7 @@ from .parser import parse_message
 _LOGGER = logging.getLogger(__name__)
 
 
-Message = Union[EventPatch, StatusPatch, PresenceEvent]
+Message = EventPatch | StatusPatch | PresenceEvent
 Callback = Callable[[Message], None | Awaitable[None]]
 DisconnectCallback = Callable[[Exception | None], None | Awaitable[None]]
 # Returns a fresh access token for the MQTT password, sync or async.
