@@ -9,7 +9,6 @@ from yoto_api import YotoClient
 from yoto_api.models.info import PlayerInfo
 from yoto_api.models.status import PlayerExtendedStatus
 
-
 pytestmark = pytest.mark.e2e
 
 

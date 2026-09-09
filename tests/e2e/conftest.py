@@ -17,8 +17,8 @@ Tests are read-only and don't mutate device state.
 
 import os
 import sys
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import AsyncIterator
 
 import pytest
 import pytest_asyncio

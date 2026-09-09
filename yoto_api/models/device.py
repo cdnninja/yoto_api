@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -13,11 +12,11 @@ class Device:
 
     device_id: str
     name: str
-    description: Optional[str] = None
-    device_type: Optional[str] = None  # short SKU code, e.g. "minie", "v3e"
-    device_family: Optional[str] = None  # product line, e.g. "mini", "v3"
-    device_group: Optional[str] = None
-    generation: Optional[str] = None  # e.g. "gen3"
-    form_factor: Optional[str] = None  # e.g. "mini", "standard"
-    release_channel: Optional[str] = None  # e.g. "general", "internal"
+    description: str | None = None
+    device_type: str | None = None  # short SKU code, e.g. "minie", "v3e"
+    device_family: str | None = None  # product line, e.g. "mini", "v3"
+    device_group: str | None = None
+    generation: str | None = None  # e.g. "gen3"
+    form_factor: str | None = None  # e.g. "mini", "standard"
+    release_channel: str | None = None  # e.g. "general", "internal"
     has_user_given_name: bool = False

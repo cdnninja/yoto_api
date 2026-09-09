@@ -1,17 +1,18 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import time
-from typing import List, Optional
 
 from ..const import ambient_hex_to_preset
 
 
 @dataclass
 class Alarm:
-    days_enabled: Optional[str] = None  # 7-char bitmap, e.g. "1111100"
-    enabled: Optional[bool] = None
-    time: Optional[time] = None
-    sound_id: Optional[str] = None
-    volume: Optional[int] = None
+    days_enabled: str | None = None  # 7-char bitmap, e.g. "1111100"
+    enabled: bool | None = None
+    time: time | None = None
+    sound_id: str | None = None
+    volume: int | None = None
 
 
 @dataclass
@@ -28,52 +29,52 @@ class PlayerConfig:
     """
 
     # Day mode
-    day_time: Optional[time] = None
-    day_display_brightness_auto: Optional[bool] = None
-    day_display_brightness: Optional[int] = None
-    day_ambient_colour: Optional[str] = None  # hex "#40bfd9"
-    day_max_volume_limit: Optional[int] = None
-    day_yoto_daily: Optional[str] = None  # card URI / ID
-    day_yoto_radio: Optional[str] = None
-    day_sounds_off: Optional[bool] = None
+    day_time: time | None = None
+    day_display_brightness_auto: bool | None = None
+    day_display_brightness: int | None = None
+    day_ambient_colour: str | None = None  # hex "#40bfd9"
+    day_max_volume_limit: int | None = None
+    day_yoto_daily: str | None = None  # card URI / ID
+    day_yoto_radio: str | None = None
+    day_sounds_off: bool | None = None
 
     # Night mode
-    night_time: Optional[time] = None
-    night_display_brightness_auto: Optional[bool] = None
-    night_display_brightness: Optional[int] = None
-    night_ambient_colour: Optional[str] = None
-    night_max_volume_limit: Optional[int] = None
-    night_yoto_daily: Optional[str] = None
-    night_yoto_radio: Optional[str] = None
-    night_sounds_off: Optional[bool] = None
+    night_time: time | None = None
+    night_display_brightness_auto: bool | None = None
+    night_display_brightness: int | None = None
+    night_ambient_colour: str | None = None
+    night_max_volume_limit: int | None = None
+    night_yoto_daily: str | None = None
+    night_yoto_radio: str | None = None
+    night_sounds_off: bool | None = None
 
     # Display + audio
-    clock_face: Optional[str] = None  # sentinel "digital-sun"
-    hour_format: Optional[int] = None  # 12 or 24
-    bluetooth_enabled: Optional[bool] = None
-    bt_headphones_enabled: Optional[bool] = None
-    headphones_volume_limited: Optional[bool] = None
-    repeat_all: Optional[bool] = None
-    shutdown_timeout: Optional[int] = None  # seconds
-    display_dim_timeout: Optional[int] = None  # seconds
-    display_dim_brightness: Optional[int] = None  # 0-100
-    locale: Optional[str] = None
-    timezone: Optional[str] = None
-    system_volume: Optional[int] = None
-    volume_level: Optional[str] = None  # sentinel "safe" / etc.
-    log_level: Optional[str] = None  # sentinel "error" / "none"
-    show_diagnostics: Optional[bool] = None
-    pause_volume_down: Optional[bool] = None
-    pause_power_button: Optional[bool] = None
+    clock_face: str | None = None  # sentinel "digital-sun"
+    hour_format: int | None = None  # 12 or 24
+    bluetooth_enabled: bool | None = None
+    bt_headphones_enabled: bool | None = None
+    headphones_volume_limited: bool | None = None
+    repeat_all: bool | None = None
+    shutdown_timeout: int | None = None  # seconds
+    display_dim_timeout: int | None = None  # seconds
+    display_dim_brightness: int | None = None  # 0-100
+    locale: str | None = None
+    timezone: str | None = None
+    system_volume: int | None = None
+    volume_level: str | None = None  # sentinel "safe" / etc.
+    log_level: str | None = None  # sentinel "error" / "none"
+    show_diagnostics: bool | None = None
+    pause_volume_down: bool | None = None
+    pause_power_button: bool | None = None
 
-    alarms: List[Alarm] = field(default_factory=list)
+    alarms: list[Alarm] = field(default_factory=list)
 
     @property
-    def day_ambient_preset(self) -> Optional[str]:
+    def day_ambient_preset(self) -> str | None:
         """Day ambient colour as an app preset key, or None if custom."""
         return ambient_hex_to_preset(self.day_ambient_colour)
 
     @property
-    def night_ambient_preset(self) -> Optional[str]:
+    def night_ambient_preset(self) -> str | None:
         """Night ambient colour as an app preset key, or None if custom."""
         return ambient_hex_to_preset(self.night_ambient_colour)

@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytz
 
-from yoto_api import YotoError
 from yoto_api import (
     Alarm,
     Device,
@@ -20,6 +19,7 @@ from yoto_api import (
     StatusPatch,
     Token,
     YotoClient,
+    YotoError,
     YotoPlayer,
 )
 from yoto_api.models.info import PlayerInfo

@@ -1,7 +1,5 @@
 """const.py"""
 
-from typing import Optional
-
 DOMAIN: str = "yoto_api"
 
 # Keys (stable, HA-translatable) and order mirror the app's light picker.
@@ -57,7 +55,7 @@ def ambient_preset_to_hex(key: str, *, is_v3: bool) -> str:
         ) from None
 
 
-def ambient_hex_to_preset(hex_colour: Optional[str]) -> Optional[str]:
+def ambient_hex_to_preset(hex_colour: str | None) -> str | None:
     """Map a stored ambientColour hex back to a preset key, or None.
 
     Returns None for an unrecognised (e.g. custom) hex, so a consumer can
