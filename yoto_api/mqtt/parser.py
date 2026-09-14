@@ -9,7 +9,7 @@ sent, so callers can merge selectively into the current snapshot.
 
 import json
 import logging
-from typing import Any, Dict, Optional, Union
+from typing import Any, Union
 
 from .._coerce import (
     as_bool,
@@ -29,7 +29,7 @@ _LOGGER = logging.getLogger(__name__)
 Message = Union[EventPatch, StatusPatch, PresenceEvent]
 
 
-def parse_message(topic: str, payload: bytes) -> Optional[Message]:
+def parse_message(topic: str, payload: bytes) -> Message | None:
     """Route `device/{id}/<suffix>` to its parser. None for ignored/bad."""
     parts = topic.split("/")
     if len(parts) < 3 or parts[0] != "device":
@@ -56,13 +56,13 @@ def parse_message(topic: str, payload: bytes) -> Optional[Message]:
     return None
 
 
-def _optional_str(value: Any) -> Optional[str]:
+def _optional_str(value: Any) -> str | None:
     if value is None:
         return None
     return str(value)
 
 
-def _parse_playback_status(value: Any) -> Optional[PlaybackStatus]:
+def _parse_playback_status(value: Any) -> PlaybackStatus | None:
     if value is None:
         return None
     try:
@@ -95,8 +95,8 @@ _EVENT_FIELDS = (
 )
 
 
-def _parse_events(device_id: str, body: Dict[str, Any]) -> EventPatch:
-    fields: Dict[str, Any] = {}
+def _parse_events(device_id: str, body: dict[str, Any]) -> EventPatch:
+    fields: dict[str, Any] = {}
     for raw_key, dest_key, coerce in _EVENT_FIELDS:
         if raw_key not in body:
             continue
@@ -148,9 +148,9 @@ _EXTENDED_VALUE_FIELDS = (
 _EXTENDED_BOOL_FIELDS = (("bgDownload", "is_background_download_active"),)
 
 
-def _v1_status_fields(status: Dict[str, Any]) -> Dict[str, Any]:
+def _v1_status_fields(status: dict[str, Any]) -> dict[str, Any]:
     """Extract the data/status fields actually present."""
-    fields: Dict[str, Any] = {}
+    fields: dict[str, Any] = {}
 
     if "activeCard" in status:
         fields["active_card"] = coerce_active_card(status["activeCard"])
@@ -173,7 +173,7 @@ def _v1_status_fields(status: Dict[str, Any]) -> Dict[str, Any]:
     return fields
 
 
-def _parse_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
+def _parse_status(device_id: str, body: dict[str, Any]) -> StatusPatch:
     """Parse `data/status` → PlayerStatus patch."""
     status = body.get("status") or body
     return StatusPatch(
@@ -181,7 +181,7 @@ def _parse_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
     )
 
 
-def _parse_extended_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
+def _parse_extended_status(device_id: str, body: dict[str, Any]) -> StatusPatch:
     """Parse `status/full` → PlayerExtendedStatus patch.
 
     The basic `data/status` fields plus the extras only `status/full` carries:
@@ -220,7 +220,7 @@ def _parse_extended_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
     return StatusPatch(player_id=device_id, fields=fields, extended=True)
 
 
-def _parse_presence(device_id: str, body: Dict[str, Any]) -> PresenceEvent:
+def _parse_presence(device_id: str, body: dict[str, Any]) -> PresenceEvent:
     """Parse `device/{id}/presence`: {"state": "online"|"offline", "ts": ms}."""
     return PresenceEvent(
         player_id=device_id,
