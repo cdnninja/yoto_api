@@ -14,34 +14,35 @@ MQTT background task are torn down cleanly:
 import asyncio
 import datetime
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import timedelta
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
+from typing import Any
 
 import aiohttp
 
+from ._coerce import parse_iso
+from .auth import Auth
 from .Card import Card, Chapter, Track
-from .Group import Group
 from .const import DOMAIN, ambient_preset_to_hex
 from .exceptions import YotoError
-from ._coerce import parse_iso
-from .Token import Token
-from .utils import get_child_value, get_raw_value
-from .auth import Auth
+from .Group import Group
+from .models.config import Alarm
 from .models.event import EventPatch, PlaybackEvent, PresenceEvent, StatusPatch
 from .models.info import PlayerInfo
 from .models.player import YotoPlayer
 from .models.status import PlayerExtendedStatus
 from .mqtt import YotoMqttClient
 from .mqtt.client import _maybe_await
-from .models.config import Alarm
 from .rest import RestClient
 from .rest.requests import encode_alarms_payload
+from .Token import Token
+from .utils import get_child_value, get_raw_value
 
 _LOGGER = logging.getLogger(__name__)
 
-UpdateCallback = Callable[[YotoPlayer], Union[None, Awaitable[None]]]
-RefreshTokenCallback = Callable[[Token], Union[None, Awaitable[None]]]
-DisconnectCallback = Callable[[Optional[Exception]], Union[None, Awaitable[None]]]
+UpdateCallback = Callable[[YotoPlayer], None | Awaitable[None]]
+RefreshTokenCallback = Callable[[Token], None | Awaitable[None]]
+DisconnectCallback = Callable[[Exception | None], None | Awaitable[None]]
 
 
 def _serialize_hhmm(value: Any) -> str:
@@ -66,9 +67,9 @@ def _serialize_passthrough(value: Any) -> Any:
     return value
 
 
-def _extract_group_card_ids(item: Dict[str, Any]) -> List[str]:
+def _extract_group_card_ids(item: dict[str, Any]) -> list[str]:
     """Card IDs in this group, from `items[].contentId`, in order, deduped."""
-    ids: List[str] = []
+    ids: list[str] = []
     seen: set[str] = set()
     for entry in item.get("items") or []:
         card_id = get_raw_value(entry, "contentId")
@@ -84,7 +85,7 @@ def _extract_group_card_ids(item: Dict[str, Any]) -> List[str]:
 # `ambientColour`, and day_max_volume_limit as the default `maxVolumeLimit`.
 # `display_brightness` is special-cased below — auto/value pair maps to
 # one API field.
-_CONFIG_FIELD_MAP: Dict[str, tuple] = {
+_CONFIG_FIELD_MAP: dict[str, tuple] = {
     # Day mode
     "day_time": ("dayTime", _serialize_hhmm),
     "day_ambient_colour": ("ambientColour", _serialize_passthrough),
@@ -168,9 +169,9 @@ class YotoClient:
 
     def __init__(
         self,
-        client_id: Optional[str] = None,
-        session: Optional[aiohttp.ClientSession] = None,
-        refresh_hook: Optional[RefreshTokenCallback] = None,
+        client_id: str | None = None,
+        session: aiohttp.ClientSession | None = None,
+        refresh_hook: RefreshTokenCallback | None = None,
     ) -> None:
         self._owns_session = session is None
         self._session = session or aiohttp.ClientSession()
@@ -178,18 +179,18 @@ class YotoClient:
         self._token_lock = asyncio.Lock()
         self._refresh_hook = refresh_hook
         self._rest = RestClient(self._session)
-        self._mqtt: Optional[YotoMqttClient] = None
-        self._update_callback: Optional[UpdateCallback] = None
-        self._disconnect_callback: Optional[DisconnectCallback] = None
-        self._connected_player_ids: List[str] = []
+        self._mqtt: YotoMqttClient | None = None
+        self._update_callback: UpdateCallback | None = None
+        self._disconnect_callback: DisconnectCallback | None = None
+        self._connected_player_ids: list[str] = []
         # Background status-refresh tasks spawned from MQTT events (card change,
         # came-online); tracked so they survive GC and are cancelled on close.
         self._event_refresh_tasks: set[asyncio.Task] = set()
 
-        self.token: Optional[Token] = None
-        self.players: Dict[str, YotoPlayer] = {}
-        self.library: Dict[str, Card] = {}
-        self.groups: Dict[str, Group] = {}
+        self.token: Token | None = None
+        self.players: dict[str, YotoPlayer] = {}
+        self.library: dict[str, Card] = {}
+        self.groups: dict[str, Group] = {}
 
     async def __aenter__(self) -> "YotoClient":
         return self
@@ -501,7 +502,7 @@ class YotoClient:
                 "use set_alarms() or set_alarm_enabled() instead"
             )
 
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
 
         # Resolve before the generic mapping so it sees a known colour field.
         if any(preset_key in fields for preset_key, _ in _AMBIENT_PRESET_PAIRS):
@@ -554,7 +555,7 @@ class YotoClient:
         token = await self.check_and_refresh_token()
         await self._rest.update_settings(token, device_id, payload)
 
-    async def set_alarms(self, device_id: str, alarms: List[Alarm]) -> None:
+    async def set_alarms(self, device_id: str, alarms: list[Alarm]) -> None:
         """Replace the device's full alarm list.
 
         The `alarms` list is written wholesale, so always pass every alarm
@@ -599,10 +600,10 @@ class YotoClient:
         device_id: str,
         card_id: str,
         *,
-        seconds_in: Optional[int] = None,
-        cutoff: Optional[int] = None,
-        chapter_key: Optional[str] = None,
-        track_key: Optional[str] = None,
+        seconds_in: int | None = None,
+        cutoff: int | None = None,
+        chapter_key: str | None = None,
+        track_key: str | None = None,
     ) -> None:
         # Optional args are kwargs-only on purpose: they're easy to mix up
         # positionally and the failure mode is silent (wrong track plays).
@@ -721,7 +722,7 @@ class YotoClient:
             track_key=new_track_key,
         )
 
-    def _current_event(self, device_id: str) -> Optional[PlaybackEvent]:
+    def _current_event(self, device_id: str) -> PlaybackEvent | None:
         player = self.players.get(device_id)
         return player.last_event if player is not None else None
 
@@ -736,9 +737,9 @@ class YotoClient:
 
     async def connect_events(
         self,
-        device_ids: List[str],
-        on_update: Optional[UpdateCallback] = None,
-        on_disconnect: Optional[DisconnectCallback] = None,
+        device_ids: list[str],
+        on_update: UpdateCallback | None = None,
+        on_disconnect: DisconnectCallback | None = None,
     ) -> None:
         """Subscribe to MQTT for the given players.
 
@@ -811,7 +812,7 @@ class YotoClient:
         return self._mqtt is not None and self._mqtt.is_connected
 
     async def _on_mqtt_message(
-        self, message: Union[EventPatch, StatusPatch, PresenceEvent]
+        self, message: EventPatch | StatusPatch | PresenceEvent
     ) -> None:
         player = self.players.get(message.player_id)
         if player is None:
