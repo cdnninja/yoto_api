@@ -1,11 +1,13 @@
 """Test concurrent refreshes don't cause session invalidation"""
 
-from yoto_api.Token import Token
 import asyncio
-import pytz
-from datetime import datetime, timedelta
-from yoto_api import YotoClient
 import unittest
+from datetime import datetime, timedelta
+
+import pytz
+
+from yoto_api import YotoClient
+from yoto_api.Token import Token
 
 last_seen_refresh_token = 0
 

@@ -16,7 +16,7 @@ from collections import deque
 from dataclasses import fields, is_dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Deque, Tuple
+from typing import Any
 
 from dotenv import load_dotenv
 from rich.console import Console
@@ -80,7 +80,7 @@ async def _run(client: YotoClient) -> int:
                 f"[yellow]warn: update_player_extended_status failed: {err}[/]"
             )
 
-    log: Deque[Tuple[str, str]] = deque(maxlen=15)
+    log: deque[tuple[str, str]] = deque(maxlen=15)
 
     async def on_update(player: YotoPlayer) -> None:
         ts = datetime.now().strftime("%H:%M:%S")
@@ -139,7 +139,7 @@ async def _run(client: YotoClient) -> int:
 # ─── Rendering ───────────────────────────────────────────────────────
 
 
-def _render(player: YotoPlayer, log: Deque[Tuple[str, str]]) -> Layout:
+def _render(player: YotoPlayer, log: deque[tuple[str, str]]) -> Layout:
     layout = Layout()
     layout.split_column(
         Layout(_header(player), name="header", size=3),
@@ -205,7 +205,7 @@ def _section_panel(
     title: str,
     obj: Any,
     skip: set[str] | None = None,
-    extra: list[Tuple[str, Any]] | None = None,
+    extra: list[tuple[str, Any]] | None = None,
 ) -> Panel:
     table = Table.grid(padding=(0, 1), expand=True)
     table.add_column(style="dim", no_wrap=True)
@@ -250,7 +250,7 @@ def _format_value(value: Any) -> str:
     return repr(value)
 
 
-def _log_panel(log: Deque[Tuple[str, str]]) -> Panel:
+def _log_panel(log: deque[tuple[str, str]]) -> Panel:
     if not log:
         body = Text("waiting for MQTT messages…", style="dim italic")
     else:
