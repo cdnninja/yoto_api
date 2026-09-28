@@ -10,25 +10,26 @@ import inspect
 import json
 import logging
 import uuid
-from typing import Awaitable, Callable, Dict, List, Optional, Set, Union
+from collections.abc import Awaitable, Callable
+from typing import Union
 
 import aiomqtt
 
 from ..const import DOMAIN, VOLUME_MAPPING_INVERTED
 from ..exceptions import YotoMQTTError
+from ..models.event import EventPatch, PresenceEvent, StatusPatch
 from ..Token import Token
 from ..utils import take_closest
-from ..models.event import EventPatch, PresenceEvent, StatusPatch
 from .parser import parse_message
 
 _LOGGER = logging.getLogger(__name__)
 
 
 Message = Union[EventPatch, StatusPatch, PresenceEvent]
-Callback = Callable[[Message], Union[None, Awaitable[None]]]
-DisconnectCallback = Callable[[Optional[Exception]], Union[None, Awaitable[None]]]
+Callback = Callable[[Message], None | Awaitable[None]]
+DisconnectCallback = Callable[[Exception | None], None | Awaitable[None]]
 # Returns a fresh access token for the MQTT password, sync or async.
-TokenGetter = Callable[[], Union[str, Awaitable[str]]]
+TokenGetter = Callable[[], str | Awaitable[str]]
 
 # `response` (command ACKs) also exists but the lib doesn't consume it.
 #   data/events  — playback deltas
@@ -70,16 +71,16 @@ class YotoMqttClient:
     _EVENTS_HEARTBEAT_S = 240
 
     def __init__(self) -> None:
-        self._client: Optional[aiomqtt.Client] = None
-        self._task: Optional[asyncio.Task] = None
+        self._client: aiomqtt.Client | None = None
+        self._task: asyncio.Task | None = None
         self._connected = asyncio.Event()
-        self._subscribed: Set[str] = set()
-        self._callback: Optional[Callback] = None
-        self._on_disconnect_cb: Optional[DisconnectCallback] = None
-        self._token: Optional[Token] = None
-        self._token_getter: Optional[TokenGetter] = None
+        self._subscribed: set[str] = set()
+        self._callback: Callback | None = None
+        self._on_disconnect_cb: DisconnectCallback | None = None
+        self._token: Token | None = None
+        self._token_getter: TokenGetter | None = None
         # Per reply-topic event, so a request can await its answer.
-        self._status_acks: Dict[str, asyncio.Event] = {}
+        self._status_acks: dict[str, asyncio.Event] = {}
         # volume_max per player; needed to clamp set_volume requests.
         self._volume_max: dict[str, int] = {}
 
@@ -91,11 +92,11 @@ class YotoMqttClient:
 
     async def connect(
         self,
-        token: Optional[Token],
-        player_ids: List[str],
+        token: Token | None,
+        player_ids: list[str],
         callback: Callback,
-        on_disconnect: Optional[DisconnectCallback] = None,
-        token_getter: Optional[TokenGetter] = None,
+        on_disconnect: DisconnectCallback | None = None,
+        token_getter: TokenGetter | None = None,
     ) -> None:
         """Connect, subscribe for each player, and start the message loop.
 
@@ -235,10 +236,10 @@ class YotoMqttClient:
         self,
         player_id: str,
         card_id: str,
-        seconds_in: Optional[int] = None,
-        cutoff: Optional[int] = None,
-        chapter_key: Optional[str] = None,
-        track_key: Optional[str] = None,
+        seconds_in: int | None = None,
+        cutoff: int | None = None,
+        chapter_key: str | None = None,
+        track_key: str | None = None,
     ) -> None:
         payload: dict = {"uri": f"https://yoto.io/{card_id}"}
         if cutoff is not None:
@@ -264,7 +265,7 @@ class YotoMqttClient:
 
     # ─── Per-player metadata fed in by the consumer ──────────────
 
-    def set_volume_max(self, player_id: str, volume_max: Optional[int]) -> None:
+    def set_volume_max(self, player_id: str, volume_max: int | None) -> None:
         """Tell the client the player's hardware volume cap (0-16 raw),
         used to clamp percentage requests in set_volume."""
         if volume_max is None:
@@ -320,7 +321,7 @@ class YotoMqttClient:
     async def _current_access_token(self) -> str:
         """Access token for the next connect: the getter (fresh per call) if
         set, else the static snapshot from `connect()`."""
-        access_token: Optional[str]
+        access_token: str | None
         if self._token_getter is not None:
             result = self._token_getter()
             access_token = await result if inspect.isawaitable(result) else result
@@ -386,7 +387,7 @@ class YotoMqttClient:
         except Exception:
             _LOGGER.exception("%s - MQTT callback raised", DOMAIN)
 
-    async def _fire_disconnect(self, err: Optional[Exception]) -> None:
+    async def _fire_disconnect(self, err: Exception | None) -> None:
         if self._on_disconnect_cb is None:
             return
         try:
@@ -394,7 +395,7 @@ class YotoMqttClient:
         except Exception:
             _LOGGER.exception("%s - on_disconnect callback raised", DOMAIN)
 
-    async def _publish(self, topic: str, payload: Optional[str] = None) -> None:
+    async def _publish(self, topic: str, payload: str | None = None) -> None:
         if not self.is_connected:
             raise YotoMQTTError("MQTT not connected")
         try:
@@ -424,7 +425,7 @@ class YotoMqttClient:
             _LOGGER.exception("%s - MQTT background task failed", DOMAIN)
         self._task = None
 
-    def _max_volume_percentage(self, player_id: str) -> Optional[int]:
+    def _max_volume_percentage(self, player_id: str) -> int | None:
         volume_max = self._volume_max.get(player_id)
         if volume_max is None:
             return None
