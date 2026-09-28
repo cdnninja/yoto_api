@@ -10,14 +10,14 @@ raising, because the right thing to do for a missing/odd field is
 import logging
 from datetime import datetime, time, timezone
 from enum import IntEnum
-from typing import Any, Optional, Tuple, Type, TypeVar
+from typing import Any, TypeVar
 
 _LOGGER = logging.getLogger(__name__)
 
 _E = TypeVar("_E", bound=IntEnum)
 
 
-def as_int(value: Any) -> Optional[int]:
+def as_int(value: Any) -> int | None:
     if value is None:
         return None
     try:
@@ -26,13 +26,13 @@ def as_int(value: Any) -> Optional[int]:
         return None
 
 
-def kib_to_bytes(value: Any) -> Optional[int]:
+def kib_to_bytes(value: Any) -> int | None:
     """Yoto reports `freeDisk`/`totalDisk` in KiB blocks; scale to bytes."""
     kib = as_int(value)
     return kib * 1024 if kib is not None else None
 
 
-def as_bool(value: Any) -> Optional[bool]:
+def as_bool(value: Any) -> bool | None:
     """Parse a bool from JSON `true`/`false`, `0`/`1` ints, and
     `"true"`/`"1"`/`"yes"` strings. `None` otherwise."""
     if value is None:
@@ -46,7 +46,7 @@ def as_bool(value: Any) -> Optional[bool]:
     return None
 
 
-def as_bool_int(value: Any) -> Optional[bool]:
+def as_bool_int(value: Any) -> bool | None:
     """For 0/1 booleans specifically (most of Yoto's MQTT status flags)."""
     coerced = as_int(value)
     if coerced is None:
@@ -54,14 +54,14 @@ def as_bool_int(value: Any) -> Optional[bool]:
     return coerced != 0
 
 
-def coerce_active_card(value: Any) -> Optional[str]:
+def coerce_active_card(value: Any) -> str | None:
     """Yoto sends "none" instead of null when no card is inserted."""
     if value in (None, "none", ""):
         return None
     return str(value)
 
 
-def parse_enum(enum_cls: Type[_E], value: Any) -> Optional[_E]:
+def parse_enum(enum_cls: type[_E], value: Any) -> _E | None:
     if value is None:
         return None
     coerced = as_int(value)
@@ -74,7 +74,7 @@ def parse_enum(enum_cls: Type[_E], value: Any) -> Optional[_E]:
         return None
 
 
-def parse_temp_pair(value: Any) -> Tuple[Optional[int], Optional[int]]:
+def parse_temp_pair(value: Any) -> tuple[int | None, int | None]:
     """Parse `"battery:device"` °C strings (e.g. `"24:18"`).
 
     Each side may be an int, `"0"` (unknown), `"notSupported"`, or empty.
@@ -86,7 +86,7 @@ def parse_temp_pair(value: Any) -> Tuple[Optional[int], Optional[int]]:
     return _temp_part(battery_part), _temp_part(device_part)
 
 
-def _temp_part(part: str) -> Optional[int]:
+def _temp_part(part: str) -> int | None:
     if part in ("", "0", "notSupported"):
         return None
     try:
@@ -95,7 +95,7 @@ def _temp_part(part: str) -> Optional[int]:
         return None
 
 
-def parse_iso(value: Any) -> Optional[datetime]:
+def parse_iso(value: Any) -> datetime | None:
     """Parse ISO8601 timestamps. Yoto sends UTC with a trailing `Z`."""
     if not isinstance(value, str):
         return None
@@ -108,7 +108,7 @@ def parse_iso(value: Any) -> Optional[datetime]:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-def parse_hhmm(value: Any) -> Optional[time]:
+def parse_hhmm(value: Any) -> time | None:
     """Parse "HH:MM" strings (used by Yoto's day_time / night_time)."""
     if not isinstance(value, str) or ":" not in value:
         return None
@@ -119,7 +119,7 @@ def parse_hhmm(value: Any) -> Optional[time]:
         return None
 
 
-def parse_brightness(value: Any) -> Tuple[Optional[bool], Optional[int]]:
+def parse_brightness(value: Any) -> tuple[bool | None, int | None]:
     """Yoto encodes display brightness as either `"auto"` or a stringified int.
 
     Returns `(is_auto, value)`:
