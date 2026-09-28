@@ -143,6 +143,19 @@ class UpdateLibraryTests(_ClientTestCase):
         self.assertEqual(card.author, "Yoto")
         self.assertEqual(card.description, "A story about fear")
 
+    async def test_keeps_numeric_looking_strings_as_strings(self) -> None:
+        client = self.make_client()
+        client.token = fresh_token()
+        client._rest.get_card_library = AsyncMock(
+            return_value={"cards": [{"cardId": "12345", "card": {"title": "1984"}}]}
+        )
+
+        await client.update_library()
+
+        card = client.library["12345"]
+        self.assertEqual(card.id, "12345")
+        self.assertEqual(card.title, "1984")
+
 
 class MqttSurfaceTests(_ClientTestCase):
     async def test_connect_events_passes_getter_reading_live_token(self) -> None:
