@@ -346,20 +346,20 @@ class YotoClient:
         token = await self.check_and_refresh_token()
         response = await self._rest.get_card_library(token)
         for item in response.get("cards", []):
-            card_id = get_child_value(item, "cardId")
+            card_id = get_raw_value(item, "cardId")
             if card_id is None:
                 continue
             card = self.library.get(card_id)
             if card is None:
                 card = Card(id=card_id)
                 self.library[card_id] = card
-            card.title = get_child_value(item, "card.title")
-            card.description = get_child_value(item, "card.metadata.description")
-            card.author = get_child_value(item, "card.metadata.author")
-            card.category = get_child_value(item, "card.metadata.category")
-            card.cover_image_large = get_child_value(item, "card.metadata.cover.imageL")
+            card.title = get_raw_value(item, "card.title")
+            card.description = get_raw_value(item, "card.metadata.description")
+            card.author = get_raw_value(item, "card.metadata.author")
+            card.category = get_raw_value(item, "card.metadata.category")
+            card.cover_image_large = get_raw_value(item, "card.metadata.cover.imageL")
             card.series_order = get_child_value(item, "card.metadata.seriesorder")
-            card.series_title = get_child_value(item, "card.metadata.seriestitle")
+            card.series_title = get_raw_value(item, "card.metadata.seriestitle")
 
     async def update_card_detail(self, card_id: str) -> None:
         """GET /card/{cardId} — populate chapters/tracks on the card."""
@@ -377,8 +377,8 @@ class YotoClient:
             if chapter is None:
                 chapter = Chapter(key=key)
                 card.chapters[key] = chapter
-            chapter.icon = get_child_value(chapter_item, "display.icon16x16")
-            chapter.title = get_child_value(chapter_item, "title")
+            chapter.icon = get_raw_value(chapter_item, "display.icon16x16")
+            chapter.title = get_raw_value(chapter_item, "title")
             chapter.duration = get_child_value(chapter_item, "duration")
             for track_item in chapter_item.get("tracks", []):
                 track_key = get_raw_value(track_item, "key")
@@ -387,13 +387,13 @@ class YotoClient:
                 if track_key not in chapter.tracks:
                     chapter.tracks[track_key] = Track(key=track_key)
                 track = chapter.tracks[track_key]
-                track.icon = get_child_value(track_item, "display.icon16x16")
-                track.title = get_child_value(track_item, "title")
+                track.icon = get_raw_value(track_item, "display.icon16x16")
+                track.title = get_raw_value(track_item, "title")
                 track.duration = get_child_value(track_item, "duration")
-                track.format = get_child_value(track_item, "format")
-                track.channels = get_child_value(track_item, "channels")
-                track.type = get_child_value(track_item, "type")
-                track.trackUrl = get_child_value(track_item, "trackUrl")
+                track.format = get_raw_value(track_item, "format")
+                track.channels = get_raw_value(track_item, "channels")
+                track.type = get_raw_value(track_item, "type")
+                track.trackUrl = get_raw_value(track_item, "trackUrl")
 
     async def update_groups(self) -> None:
         """GET /card/family/library/groups — populate self.groups.
