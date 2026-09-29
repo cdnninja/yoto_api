@@ -12,6 +12,7 @@ import pytz
 
 from yoto_api import YotoError
 from yoto_api import (
+    AbstractAuth,
     Alarm,
     Device,
     EventPatch,
@@ -1143,3 +1144,41 @@ class ConfigMergeTests(_ClientTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _StubAuth(AbstractAuth):
+    def __init__(self, *tokens: str) -> None:
+        self.tokens = list(tokens)
+
+    async def async_get_access_token(self) -> str:
+        return self.tokens.pop(0)
+
+
+class AbstractAuthTests(_ClientTestCase):
+    async def asyncSetUp(self) -> None:
+        self.client = YotoClient(auth=_StubAuth("first", "second"))
+        self._clients = [self.client]
+
+    async def test_asks_auth_on_every_call(self) -> None:
+        first = await self.client.check_and_refresh_token()
+        second = await self.client.check_and_refresh_token()
+        self.assertEqual(first.access_token, "first")
+        self.assertEqual(second.access_token, "second")
+        self.assertIsNone(self.client.token)
+
+    async def test_mqtt_reconnect_asks_auth(self) -> None:
+        self.assertEqual(await self.client._mqtt_access_token(), "first")
+        self.assertEqual(await self.client._mqtt_access_token(), "second")
+
+    async def test_connect_events_without_initial_token(self) -> None:
+        with patch("yoto_api.client.YotoMqttClient") as mqtt_cls:
+            mqtt_cls.return_value.connect = AsyncMock()
+            await self.client.connect_events(["player-1"])
+        mqtt_cls.return_value.connect.assert_awaited_once()
+        self.client._mqtt = None
+
+    async def test_rejects_client_id_or_refresh_hook(self) -> None:
+        with self.assertRaises(ValueError):
+            YotoClient(client_id="id", auth=_StubAuth())
+        with self.assertRaises(ValueError):
+            YotoClient(refresh_hook=AsyncMock(), auth=_StubAuth())

@@ -7,6 +7,7 @@ they hit Auth0, not Yoto's API server, and they have their own scope rules.
 import asyncio
 import datetime
 import logging
+from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import Optional
 
@@ -18,6 +19,15 @@ from .Token import Token
 from .rest import endpoints
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class AbstractAuth(ABC):
+    """Token source for callers that own the OAuth lifecycle (e.g. HA's
+    OAuth2Session). Pass an instance to `YotoClient(auth=...)`."""
+
+    @abstractmethod
+    async def async_get_access_token(self) -> str:
+        """Return a valid access token."""
 
 
 class Auth:
