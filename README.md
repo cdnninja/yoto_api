@@ -38,7 +38,21 @@ async def main():
 asyncio.run(main())
 ```
 
-If you already have a refresh token:
+## Authentication
+
+There are three ways to give the client an access token:
+
+- Standalone app or script: pass `client_id` and let the client refresh the token.
+- App that already runs its own OAuth (e.g. Home Assistant): pass `auth`.
+- Quick test with a token you copied: set `client.token`.
+
+`auth` can't be combined with `client_id` or `refresh_hook`.
+
+### The client manages the token (`client_id`)
+
+The client runs the OAuth flow and refreshes the access token itself, an hour before it expires. Use this for standalone apps and scripts.
+
+Start with the device code flow (see Quick start), or with a refresh token you stored earlier:
 
 ```python
 async with YotoClient(client_id="your_client_id") as client:
@@ -46,13 +60,44 @@ async with YotoClient(client_id="your_client_id") as client:
     await client.refresh()
 ```
 
-For consumers managing OAuth + session externally (e.g. HA core):
+The refresh token can change on every refresh. To keep it across restarts, pass `refresh_hook`: it's called with the new `Token` after the device code flow and after every refresh, so you can store it.
 
 ```python
-client = YotoClient(session=my_aiohttp_session)
-client.token = Token(access_token=..., refresh_token=..., ...)
-# caller owns the session — won't be closed by client.close()
+async def save_token(token: Token) -> None:
+    await my_store.save(token.refresh_token)
+
+async with YotoClient(client_id="your_client_id", refresh_hook=save_token) as client:
+    client.set_refresh_token(await my_store.load())
+    await client.refresh()
 ```
+
+### You manage the token (`auth`)
+
+When your app already owns the OAuth lifecycle (for example Home Assistant's `OAuth2Session`), implement `AbstractAuth`. The client never refreshes or stores the token: it calls `async_get_access_token()` before every REST call and every MQTT (re)connect, so it always gets a valid one.
+
+```python
+from yoto_api import AbstractAuth, YotoClient
+
+class MyAuth(AbstractAuth):
+    async def async_get_access_token(self) -> str:
+        await my_oauth_session.ensure_token_valid()
+        return my_oauth_session.access_token
+
+client = YotoClient(session=my_aiohttp_session, auth=MyAuth())
+```
+
+### Fixed access token
+
+Without `client_id` or `auth`, the client uses whatever is in `client.token` and never refreshes it. This is only suitable for short scripts and tests: once the token expires, REST calls fail and MQTT can't reconnect.
+
+```python
+client = YotoClient()
+client.token = Token(access_token=access_token)
+```
+
+### aiohttp session
+
+Pass `session=` to share your own `aiohttp.ClientSession`; the client then won't close it in `client.close()`. Without it, the client creates its own, so construct it inside a running event loop (typically `async with YotoClient(...)`).
 
 ## Data model
 

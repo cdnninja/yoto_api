@@ -26,7 +26,7 @@ from .exceptions import YotoError
 from ._coerce import parse_iso
 from .Token import Token
 from .utils import get_child_value, get_raw_value
-from .auth import Auth
+from .auth import AbstractAuth, Auth
 from .models.event import EventPatch, PlaybackEvent, PresenceEvent, StatusPatch
 from .models.info import PlayerInfo
 from .models.player import YotoPlayer
@@ -164,6 +164,15 @@ class YotoClient:
     2. Let the client create one — *must* construct + use inside a
        running event loop (typically via `async with YotoClient(...)`)
        so the session binds to the right loop.
+
+    Three ways to manage the access token:
+
+    1. `client_id`: the client refreshes the token itself;
+       `refresh_hook` is told about each new token so it can be stored.
+    2. `auth`: the caller owns the OAuth lifecycle and the client asks
+       `auth.async_get_access_token()` before every REST call and MQTT
+       (re)connect.
+    3. Neither: the caller keeps `client.token` current.
     """
 
     def __init__(
@@ -171,12 +180,16 @@ class YotoClient:
         client_id: Optional[str] = None,
         session: Optional[aiohttp.ClientSession] = None,
         refresh_hook: Optional[RefreshTokenCallback] = None,
+        auth: Optional[AbstractAuth] = None,
     ) -> None:
+        if auth is not None and (client_id is not None or refresh_hook is not None):
+            raise ValueError("auth can't be combined with client_id or refresh_hook")
         self._owns_session = session is None
         self._session = session or aiohttp.ClientSession()
         self._auth = Auth(self._session, client_id=client_id)
         self._token_lock = asyncio.Lock()
         self._refresh_hook = refresh_hook
+        self._external_auth = auth
         self._rest = RestClient(self._session)
         self._mqtt: Optional[YotoMqttClient] = None
         self._update_callback: Optional[UpdateCallback] = None
@@ -229,11 +242,14 @@ class YotoClient:
     async def check_and_refresh_token(self) -> Token:
         """Refresh the access token if it's expired or about to expire.
 
-        Without a `client_id` the caller owns the OAuth lifecycle (e.g.
-        HA's OAuth2Session) and syncs a token in; trust it, don't refresh.
+        With `auth`, ask it for the token. Without a `client_id` the caller
+        syncs a token in; trust it, don't refresh.
         """
         refreshed = False
         async with self._token_lock:
+            if self._external_auth is not None:
+                access_token = await self._external_auth.async_get_access_token()
+                return Token(access_token=access_token, token_type="Bearer")
             if self.token is None:
                 raise YotoError("No token available; authenticate first")
             if self._auth.client_id is None:
@@ -750,9 +766,9 @@ class YotoClient:
         AWS IoT enforces the access token's TTL, so each reconnect re-resolves
         the token through `check_and_refresh_token` — the same path REST uses
         per call. The caller just has to keep `self.token` current (refresh it
-        when self-managed, or sync it in when the OAuth lifecycle is external).
+        when self-managed, sync it in, or pass `auth`).
         """
-        if self.token is None:
+        if self.token is None and self._external_auth is None:
             raise YotoError("No token; authenticate before connecting MQTT")
         self._update_callback = on_update
         self._disconnect_callback = on_disconnect

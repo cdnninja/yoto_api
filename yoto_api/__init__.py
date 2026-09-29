@@ -5,6 +5,7 @@ from .Card import Card, Chapter, Track
 from .Group import Group
 from .Token import Token
 from .account import get_account_id, has_scope
+from .auth import AbstractAuth
 from .capabilities import Capabilities, caps_for
 from .client import YotoClient
 from .const import (
@@ -41,6 +42,7 @@ from .models import (
 )
 
 __all__ = [
+    "AbstractAuth",
     "Alarm",
     "AuthenticationError",
     "Capabilities",
