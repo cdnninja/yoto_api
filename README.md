@@ -42,11 +42,11 @@ asyncio.run(main())
 
 The client supports three token modes:
 
-| Mode | Use case | Token refresh |
-| --- | --- | --- |
-| `client_id` | Standalone apps and scripts | By the client |
-| `auth` | Apps with their own OAuth handling (e.g. Home Assistant) | By the app |
-| `client.token` | Tests with a short-lived token | None |
+| Mode           | Use case                                                 | Token refresh |
+| -------------- | -------------------------------------------------------- | ------------- |
+| `client_id`    | Standalone apps and scripts                              | By the client |
+| `auth`         | Apps with their own OAuth handling (e.g. Home Assistant) | By the app    |
+| `client.token` | Tests with a short-lived token                           | None          |
 
 `auth` can't be combined with `client_id` or `refresh_hook`.
 
