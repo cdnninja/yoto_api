@@ -36,7 +36,7 @@ pytestmark = pytest.mark.e2e
 # ─── Device (from /devices/mine) ─────────────────────────────────────
 
 
-_KNOWN_FAMILIES = {"v1", "v2", "v3", "mini"}
+_KNOWN_FAMILIES = {"v1", "v2", "v3", "v4", "mini"}
 _KNOWN_GENERATIONS = {"gen1", "gen2", "gen3"}
 _KNOWN_FORM_FACTORS = {"mini", "standard"}
 
