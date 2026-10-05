@@ -5,7 +5,8 @@ directly for low latency, so their payload shapes live in
 `yoto_api.v3.mqtt.client`. Only settings writes go through REST.
 """
 
-from typing import Any, Dict, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from ..models.config import Alarm
 
@@ -28,7 +29,7 @@ def encode_alarm(alarm: Alarm) -> str:
     )
 
 
-def encode_alarms_payload(alarms: Iterable[Alarm]) -> Dict[str, Any]:
+def encode_alarms_payload(alarms: Iterable[Alarm]) -> dict[str, Any]:
     """Encode a full alarm list into Yoto's PUT /config payload shape.
 
     Yoto interprets `{"alarms": [...]}` as the new full list, so callers

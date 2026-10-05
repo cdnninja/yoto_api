@@ -1,7 +1,6 @@
 """YotoPlayer aggregate + StatusPatch merging + computed properties."""
 
 import unittest
-
 from unittest.mock import MagicMock
 
 from yoto_api import Device, PlaybackEvent, StatusPatch, YotoClient, YotoPlayer

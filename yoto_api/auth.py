@@ -9,14 +9,13 @@ import datetime
 import logging
 from abc import ABC, abstractmethod
 from datetime import timedelta
-from typing import Optional
 
 import aiohttp
 
 from .const import DOMAIN
 from .exceptions import AuthenticationError, YotoAPIError, YotoError
-from .Token import Token
 from .rest import endpoints
+from .Token import Token
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ class Auth:
     def __init__(
         self,
         session: aiohttp.ClientSession,
-        client_id: Optional[str] = None,
+        client_id: str | None = None,
     ) -> None:
         self._session = session
         self.client_id = client_id
@@ -162,7 +161,7 @@ class Auth:
             raise YotoError(f"client_id required for {operation}")
 
 
-def _build_token(body: dict, scope: Optional[str]) -> Token:
+def _build_token(body: dict, scope: str | None) -> Token:
     try:
         valid_until = datetime.datetime.now(datetime.timezone.utc) + timedelta(
             seconds=int(body["expires_in"])

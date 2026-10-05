@@ -14,7 +14,7 @@ import time
 import uuid
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import aiomqtt
 from dotenv import load_dotenv
@@ -72,10 +72,10 @@ async def _run(yoto: YotoClient) -> int:
         return 0
     device_id = target.device.device_id
 
-    samples: Dict[str, List[Any]] = defaultdict(list)
-    counts: Dict[str, int] = defaultdict(int)
-    full_log: List[Dict[str, Any]] = []
-    diagnostics: List[str] = []
+    samples: dict[str, list[Any]] = defaultdict(list)
+    counts: dict[str, int] = defaultdict(int)
+    full_log: list[dict[str, Any]] = []
+    diagnostics: list[str] = []
     probe_start = time.monotonic()
 
     def diag(msg: str) -> None:
@@ -205,7 +205,7 @@ async def _run(yoto: YotoClient) -> int:
         # phased schedule — e.g. did status/full only show up after the REST
         # POST, never after the MQTT command/status/request?
         f.write("\n=== Topic x phase matrix ===\n\n")
-        by_phase: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        by_phase: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
         for entry in full_log:
             by_phase[entry["phase"]][entry["topic"]] += 1
         for phase_label in sorted(by_phase):
@@ -262,7 +262,7 @@ async def _authenticate(client_id: str, refresh_token: str | None) -> YotoClient
     return yoto
 
 
-def _probe_topics(device_id: str) -> List[str]:
+def _probe_topics(device_id: str) -> list[str]:
     # Wildcards (device/{id}/#, device/+/..., $aws/things/.../shadow/...)
     # are denied by the IoT policy and the broker closes the connection on
     # subscribe, so every topic must be named explicitly.
