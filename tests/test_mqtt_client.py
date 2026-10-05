@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import aiomqtt
 
-from yoto_api.Token import Token
 from yoto_api.exceptions import YotoMQTTError
 from yoto_api.mqtt import YotoMqttClient
+from yoto_api.Token import Token
 
 
 def _connected_client(*player_ids: str) -> tuple[YotoMqttClient, MagicMock]:
