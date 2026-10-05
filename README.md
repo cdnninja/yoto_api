@@ -5,6 +5,14 @@ library, react to live MQTT playback events.
 
 Get a client ID at <https://yoto.dev/get-started/start-here/>.
 
+## Supported devices
+
+- Yoto Player (2nd gen)
+- Yoto Player (3rd gen)
+- Yoto Player (4th gen)
+- Yoto Mini
+- Yoto Mini (4th gen)
+
 ## Credit
 
 Thanks to @buzzeddesign for help sniffing the API and @fuatakgun for
