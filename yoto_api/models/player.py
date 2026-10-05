@@ -61,4 +61,6 @@ class YotoPlayer:
     @property
     def model(self) -> str:
         family = (self.device.device_family or "").lower()
-        return "Yoto Mini" if family == "mini" else "Yoto Player"
+        device_type = (self.device.device_type or "").lower()
+        is_mini = family == "mini" or device_type == "miniv4"
+        return "Yoto Mini" if is_mini else "Yoto Player"

@@ -16,8 +16,20 @@ class CapabilitiesTests(unittest.TestCase):
         self.assertFalse(caps_for(v2).has_light_sensor)
         self.assertFalse(caps_for(mini).has_light_sensor)
 
+    def test_v4_family(self) -> None:
+        player = Device(
+            device_id="x", name="Player V4", device_family="v4", device_type="v4"
+        )
+        mini = Device(
+            device_id="y", name="Mini V4", device_family="v4", device_type="miniv4"
+        )
+        self.assertTrue(caps_for(player).has_ambient_light)
+        self.assertFalse(caps_for(player).has_light_sensor)
+        self.assertFalse(caps_for(mini).has_ambient_light)
+        self.assertFalse(caps_for(mini).has_light_sensor)
+
     def test_unknown_falls_back_to_v2(self) -> None:
-        future = Device(device_id="z", name="?", device_family="v4")
+        future = Device(device_id="z", name="?", device_family="v5")
         caps = caps_for(future)
         self.assertTrue(caps.has_ambient_light)
 

@@ -131,7 +131,7 @@ Hardware differs by device family. `caps_for(device)` returns the
 ```python
 from yoto_api import caps_for
 caps = caps_for(player.device)
-caps.has_ambient_light   # ambient light ring (every family except Mini)
+caps.has_ambient_light   # ambient light ring (every model except the Minis)
 caps.has_light_sensor    # ambient light sensor, gates auto display brightness (v3 only)
 ```
 

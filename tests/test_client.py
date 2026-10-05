@@ -290,6 +290,13 @@ class SetPlayerConfigTests(_ClientTestCase):
         payload = self.client._rest.update_settings.call_args.args[2]
         self.assertEqual(payload["ambientColour"], "#41c0f0")
 
+    async def test_ambient_preset_v4_writes_legacy_hex(self) -> None:
+        # The Yoto app only applies the v3 calibration to the v3 family.
+        self._add_player("v4dev", "v4")
+        await self.client.set_player_config("v4dev", day_ambient_preset="sky_blue")
+        payload = self.client._rest.update_settings.call_args.args[2]
+        self.assertEqual(payload["ambientColour"], "#41c0f0")
+
     async def test_ambient_preset_defaults_to_legacy_when_unknown_device(self) -> None:
         # "dev1" isn't loaded — fall back to legacy hexes.
         await self.client.set_player_config("dev1", day_ambient_preset="sky_blue")
