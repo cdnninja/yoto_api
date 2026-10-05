@@ -27,13 +27,22 @@ _CAPABILITIES = {
     "v1": Capabilities(has_ambient_light=True, has_light_sensor=False),
     "v2": Capabilities(has_ambient_light=True, has_light_sensor=False),
     "v3": Capabilities(has_ambient_light=True, has_light_sensor=True),
+    "v4": Capabilities(has_ambient_light=True, has_light_sensor=False),
     "mini": Capabilities(has_ambient_light=False, has_light_sensor=False),
+}
+
+# The Mini v4 reports the "v4" family; only its device_type sets it apart.
+_CAPABILITIES_BY_TYPE = {
+    "miniv4": Capabilities(has_ambient_light=False, has_light_sensor=False),
 }
 
 assert FAMILY_DEFAULT in _CAPABILITIES, "FAMILY_DEFAULT must be a known family"
 
 
 def caps_for(device: Device) -> Capabilities:
+    device_type = (device.device_type or "").lower()
+    if device_type in _CAPABILITIES_BY_TYPE:
+        return _CAPABILITIES_BY_TYPE[device_type]
     family = (device.device_family or "").lower()
     if family in _CAPABILITIES:
         return _CAPABILITIES[family]

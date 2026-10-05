@@ -5,9 +5,9 @@ from typing import Optional
 DOMAIN: str = "yoto_api"
 
 # Keys (stable, HA-translatable) and order mirror the app's light picker.
-# v3 players are calibrated differently from v1/v2, so the same colour writes
-# a different hex per generation — hence two maps. mini has no ambient light;
-# gate on caps_for(device).has_ambient_light before exposing these.
+# v3 players are calibrated differently from the other generations, so the same
+# colour writes a different hex on v3 — hence two maps. Minis have no ambient
+# light; gate on caps_for(device).has_ambient_light before exposing these.
 V3_PRESETS = {
     "orange_peel": "#ff8c00",
     "tambourine_red": "#ff0000",
@@ -45,7 +45,8 @@ AMBIENT_PRESET_BY_HEX.update({"#000000": "off", "off": "off"})
 def ambient_preset_to_hex(key: str, *, is_v3: bool) -> str:
     """Resolve a preset key to the hex the app writes for this generation.
 
-    `is_v3` selects the v3 calibration; v1/v2 share the legacy hex.
+    `is_v3` selects the v3 calibration; every other generation uses the
+    legacy hex.
     Raises ValueError for an unknown preset key.
     """
     presets = V3_PRESETS if is_v3 else LEGACY_PRESETS

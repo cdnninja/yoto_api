@@ -34,8 +34,20 @@ class YotoPlayerTests(unittest.TestCase):
         )
         v3 = YotoPlayer(device=Device(device_id="y", name="V3", device_family="v3"))
         unknown = YotoPlayer(device=Device(device_id="z", name="?", device_family=None))
+        mini_v4 = YotoPlayer(
+            device=Device(
+                device_id="a", name="Mini V4", device_family="v4", device_type="miniv4"
+            )
+        )
+        v4 = YotoPlayer(
+            device=Device(
+                device_id="b", name="V4", device_family="v4", device_type="v4"
+            )
+        )
         self.assertEqual(mini.model, "Yoto Mini")
+        self.assertEqual(mini_v4.model, "Yoto Mini")
         self.assertEqual(v3.model, "Yoto Player")
+        self.assertEqual(v4.model, "Yoto Player")
         self.assertEqual(unknown.model, "Yoto Player")
 
     def test_sub_objects_default_to_empty(self) -> None:
