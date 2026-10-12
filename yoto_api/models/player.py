@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
 
 from .device import Device
 from .event import PlaybackEvent
@@ -34,12 +33,12 @@ class YotoPlayer:
 
     # Connection state — distinct from telemetry. Written by presence (MQTT)
     # and REST list/config; never lives inside a status object.
-    is_online: Optional[bool] = None
+    is_online: bool | None = None
 
-    devices_refreshed_at: Optional[datetime] = None
-    info_refreshed_at: Optional[datetime] = None
-    online_refreshed_at: Optional[datetime] = None
-    last_event_received_at: Optional[datetime] = None
+    devices_refreshed_at: datetime | None = None
+    info_refreshed_at: datetime | None = None
+    online_refreshed_at: datetime | None = None
+    last_event_received_at: datetime | None = None
 
     def __post_init__(self) -> None:
         # last_event keeps player_id — PlaybackEvent doubles as the routed

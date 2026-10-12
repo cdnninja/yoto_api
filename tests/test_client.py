@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytz
 
-from yoto_api import YotoError
 from yoto_api import (
     AbstractAuth,
     Alarm,
@@ -21,6 +20,7 @@ from yoto_api import (
     StatusPatch,
     Token,
     YotoClient,
+    YotoError,
     YotoPlayer,
 )
 from yoto_api.models.info import PlayerInfo
@@ -1012,7 +1012,7 @@ class UpdateGroupsTests(_ClientTestCase):
         self.assertEqual(group.family_id, "fam1")
         self.assertEqual(group.image_id, "img1")
         self.assertEqual(group.image_url, "https://example/img.png")
-        utc = datetime.timezone.utc
+        utc = datetime.UTC
         self.assertEqual(
             group.created_at, datetime.datetime(2024, 1, 2, 3, 4, 5, tzinfo=utc)
         )
