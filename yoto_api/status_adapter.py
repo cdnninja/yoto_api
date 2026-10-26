@@ -12,7 +12,7 @@ Field-by-field mapping notes:
   "0" (unknown), or "notSupported".
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from ._coerce import (
     as_bool_int,
@@ -29,7 +29,6 @@ from .models.status import (
     PlayerExtendedStatus,
     PowerSource,
 )
-
 
 # Raw `device.status` keys we know about. Kept here (next to the parser)
 # so `scripts/check_unmapped.py` can import it without duplicating the
@@ -101,7 +100,7 @@ KNOWN_RAW_STATUS_KEYS = frozenset(
 )
 
 
-def adapt_raw_status(raw: Dict[str, Any]) -> PlayerExtendedStatus:
+def adapt_raw_status(raw: dict[str, Any]) -> PlayerExtendedStatus:
     """Map a `device.status` dict from /config into a typed PlayerExtendedStatus."""
     battery_temp, device_temp = parse_temp_pair(raw.get("temp"))
     # batteryTemp is the direct reading; prefer it over the `temp` pair.

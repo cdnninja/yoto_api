@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .config import PlayerConfig
 
@@ -11,15 +10,15 @@ class PlayerInfo:
     Identity (which device) lives on `YotoPlayer` / `Device`, not here.
     """
 
-    name: Optional[str] = None
-    firmware_version: Optional[str] = None  # from device.releaseChannelVersion
-    pop_code: Optional[str] = None
-    activation_pop_code: Optional[str] = None
-    release_channel_id: Optional[str] = None
-    device_type: Optional[str] = None
-    device_family: Optional[str] = None
-    device_group: Optional[str] = None
-    mac: Optional[str] = None
-    geo_timezone: Optional[str] = None
-    error_code: Optional[str] = None
+    name: str | None = None
+    firmware_version: str | None = None  # from device.releaseChannelVersion
+    pop_code: str | None = None
+    activation_pop_code: str | None = None
+    release_channel_id: str | None = None
+    device_type: str | None = None
+    device_family: str | None = None
+    device_group: str | None = None
+    mac: str | None = None
+    geo_timezone: str | None = None
+    error_code: str | None = None
     config: PlayerConfig = field(default_factory=PlayerConfig)
