@@ -24,6 +24,7 @@ the original v2.x architecture (based on kia_uvo). Credit to piitaya for version
 import asyncio
 from yoto_api import YotoClient
 
+
 async def main():
     async with YotoClient(client_id="your_client_id") as client:
         auth = await client.device_code_flow_start()
@@ -35,13 +36,16 @@ async def main():
             print(pid, player.device.name, player.model)
 
         async def on_update(player):
-            print(player.last_event.playback_status,
-                  player.status.battery_level_percentage)
+            print(
+                player.last_event.playback_status,
+                player.status.battery_level_percentage,
+            )
 
         await client.connect_events(list(client.players), on_update=on_update)
         await client.pause(next(iter(client.players)))
         await asyncio.sleep(60)
         await client.disconnect_events()
+
 
 asyncio.run(main())
 ```
@@ -74,6 +78,7 @@ The refresh token may change on every refresh. `refresh_hook` is called with the
 async def save_token(token: Token) -> None:
     await my_store.save(token.refresh_token)
 
+
 async with YotoClient(client_id="your_client_id", refresh_hook=save_token) as client:
     client.set_refresh_token(await my_store.load())
     await client.refresh()
@@ -86,10 +91,12 @@ For apps that already handle OAuth, pass an `AbstractAuth` implementation. The c
 ```python
 from yoto_api import AbstractAuth, YotoClient
 
+
 class MyAuth(AbstractAuth):
     async def async_get_access_token(self) -> str:
         await my_oauth_session.ensure_token_valid()
         return my_oauth_session.access_token
+
 
 client = YotoClient(session=my_aiohttp_session, auth=MyAuth())
 ```
@@ -138,9 +145,10 @@ Hardware differs by device family. `caps_for(device)` returns the
 
 ```python
 from yoto_api import caps_for
+
 caps = caps_for(player.device)
-caps.has_ambient_light   # ambient light ring (every model except the Minis)
-caps.has_light_sensor    # ambient light sensor, gates auto display brightness (v3 only)
+caps.has_ambient_light  # ambient light ring (every model except the Minis)
+caps.has_light_sensor  # ambient light sensor, gates auto display brightness (v3 only)
 ```
 
 ## Common methods
@@ -151,19 +159,21 @@ Refresh over REST (`update_*`): a one-shot snapshot, returned and stored,
 works even when the device is offline.
 
 ```python
-await client.update_player_list()           # /devices/mine
+await client.update_player_list()  # /devices/mine
 await client.update_player_info(device_id)  # /config — info + info.config
-await client.update_player_extended_status(device_id)  # /config shadow — extended_status (offline/cold-start fallback)
-await client.update_library()               # /card/family/library — client.library
-await client.update_groups()                # /card/family/library/groups — client.groups
-await client.refresh()                      # list + all info
+await client.update_player_extended_status(
+    device_id
+)  # /config shadow — extended_status (offline/cold-start fallback)
+await client.update_library()  # /card/family/library — client.library
+await client.update_groups()  # /card/family/library/groups — client.groups
+await client.refresh()  # list + all info
 ```
 
 Refresh over MQTT (`request_*`): ask the device to push fresh data. It
 arrives on your `on_update` callback, so connect first with `connect_events`.
 
 ```python
-await client.request_player_status(device_id)           # -> player.status
+await client.request_player_status(device_id)  # -> player.status
 await client.request_player_extended_status(device_id)  # -> player.extended_status
 ```
 
@@ -192,9 +202,9 @@ await client.play_card(player_id, "card_id", chapter_key="01", track_key="01")
 await client.pause(player_id)
 await client.resume(player_id)
 await client.stop(player_id)
-await client.set_volume(player_id, 50)            # 0-100
-await client.set_sleep_timer(player_id, 600)      # seconds
-await client.set_ambients(player_id, 255, 0, 0)   # RGB
+await client.set_volume(player_id, 50)  # 0-100
+await client.set_sleep_timer(player_id, 600)  # seconds
+await client.set_ambients(player_id, 255, 0, 0)  # RGB
 await client.next_track(player_id)
 await client.previous_track(player_id)
 await client.seek(player_id, position=30)
@@ -204,6 +214,7 @@ Settings (REST PUT):
 
 ```python
 import datetime
+
 await client.set_player_config(
     player_id,
     day_time=datetime.time(7, 30),
@@ -220,6 +231,7 @@ JWT helpers (no API call):
 
 ```python
 from yoto_api import get_account_id, has_scope
+
 account_id = get_account_id(client.token.access_token)
 can_status = has_scope(client.token.access_token, "family:device-status:view")
 ```
@@ -233,13 +245,13 @@ from yoto_api import YotoError, AuthenticationError, YotoAPIError, YotoMQTTError
 
 try:
     await client.refresh()
-except AuthenticationError:        # token expired or invalid
+except AuthenticationError:  # token expired or invalid
     ...
-except YotoAPIError as err:        # HTTP / parse error (err.status_code on 4xx/5xx)
+except YotoAPIError as err:  # HTTP / parse error (err.status_code on 4xx/5xx)
     ...
-except YotoMQTTError:              # MQTT broker / aiomqtt error
+except YotoMQTTError:  # MQTT broker / aiomqtt error
     ...
-except YotoError:                  # catch-all
+except YotoError:  # catch-all
     ...
 ```
 

@@ -6,7 +6,8 @@ doesn't parse yet. Helpful to spot new firmware features.
 
 import asyncio
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 import pytest
 import pytest_asyncio

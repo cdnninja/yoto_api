@@ -3,7 +3,7 @@
 import datetime
 import re
 from bisect import bisect_left
-from typing import Any, Optional
+from typing import Any
 
 
 def get_child_value(data: Any, key: str) -> Any:
@@ -44,9 +44,7 @@ def get_raw_value(data: Any, key: str) -> Any:
     return value
 
 
-def parse_datetime(
-    value: Optional[str], timezone: datetime.tzinfo
-) -> datetime.datetime:
+def parse_datetime(value: str | None, timezone: datetime.tzinfo) -> datetime.datetime:
     if value is None:
         return datetime.datetime(2000, 1, 1, tzinfo=timezone)
 
