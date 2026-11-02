@@ -6,23 +6,23 @@ rather than raw dicts.
 """
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 
-from ..exceptions import AuthenticationError, YotoAPIError
-from ..Token import Token
 from .._coerce import (
     as_bool,
     as_int,
     parse_brightness,
     parse_hhmm,
 )
+from ..exceptions import AuthenticationError, YotoAPIError
 from ..models.config import Alarm, PlayerConfig
 from ..models.device import Device
 from ..models.info import PlayerInfo
 from ..models.status import PlayerExtendedStatus
 from ..status_adapter import adapt_raw_status
+from ..Token import Token
 from . import endpoints
 
 DEFAULT_TIMEOUT_SECONDS = 30.0
@@ -42,7 +42,7 @@ class RestClient:
 
     # ─── Inventory ────────────────────────────────────────────────
 
-    async def list_devices(self, token: Token) -> List[tuple[Device, bool]]:
+    async def list_devices(self, token: Token) -> list[tuple[Device, bool]]:
         """Return (Device, online) pairs from /devices/mine.
 
         `online` is split out because it's mutable state — it belongs on
@@ -81,7 +81,7 @@ class RestClient:
 
     async def get_player_status(
         self, token: Token, device_id: str
-    ) -> tuple[PlayerExtendedStatus, Optional[bool]]:
+    ) -> tuple[PlayerExtendedStatus, bool | None]:
         """Read the last-known telemetry snapshot from the device shadow.
 
         Returns `(PlayerExtendedStatus, online)`. Reads the `device.status`
@@ -108,7 +108,7 @@ class RestClient:
 
     # ─── Settings writes ──────────────────────────────────────────
 
-    async def get_raw_config(self, token: Token, device_id: str) -> Dict[str, Any]:
+    async def get_raw_config(self, token: Token, device_id: str) -> dict[str, Any]:
         """Unparsed so `update_settings` can merge onto it: a
         parse-then-reserialise drops the keys the lib doesn't map yet.
         """
@@ -121,7 +121,7 @@ class RestClient:
         return raw if isinstance(raw, dict) else {}
 
     async def update_settings(
-        self, token: Token, device_id: str, payload: Dict[str, Any]
+        self, token: Token, device_id: str, payload: dict[str, Any]
     ) -> None:
         """Merge `payload` (API keys) into the device's current config.
 
@@ -155,15 +155,15 @@ class RestClient:
 
     # ─── Library ──────────────────────────────────────────────────
 
-    async def get_card_library(self, token: Token) -> Dict[str, Any]:
+    async def get_card_library(self, token: Token) -> dict[str, Any]:
         return await self._get(token, endpoints.CARDS_LIBRARY, "get card library")
 
-    async def get_card_detail(self, token: Token, card_id: str) -> Dict[str, Any]:
+    async def get_card_detail(self, token: Token, card_id: str) -> dict[str, Any]:
         return await self._get(
             token, endpoints.card_detail(card_id), f"get card {card_id} detail"
         )
 
-    async def get_card_groups(self, token: Token) -> List[Dict[str, Any]]:
+    async def get_card_groups(self, token: Token) -> list[dict[str, Any]]:
         """GET /card/family/library/groups — a top-level JSON array of groups
         (unlike the other endpoints, which return objects)."""
         raw: Any = await self._get(
@@ -173,23 +173,23 @@ class RestClient:
 
     # ─── Internals ────────────────────────────────────────────────
 
-    def _headers(self, token: Token) -> Dict[str, str]:
+    def _headers(self, token: Token) -> dict[str, str]:
         return {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {token.access_token}",
         }
 
-    async def _get(self, token: Token, path: str, what: str) -> Dict[str, Any]:
+    async def _get(self, token: Token, path: str, what: str) -> dict[str, Any]:
         return await self._request(token, "GET", path, what)
 
     async def _put(
-        self, token: Token, path: str, what: str, body: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, token: Token, path: str, what: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
         return await self._request(token, "PUT", path, what, body=body)
 
     async def _post(
-        self, token: Token, path: str, what: str, body: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, token: Token, path: str, what: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
         return await self._request(token, "POST", path, what, body=body)
 
     async def _request(
@@ -198,10 +198,10 @@ class RestClient:
         method: str,
         path: str,
         what: str,
-        body: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        body: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         url = self.base_url + path
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "headers": self._headers(token),
             "timeout": self.timeout,
         }
@@ -298,7 +298,7 @@ KNOWN_CONFIG_KEYS = frozenset(
 # ─── Response parsers (private helpers) ──────────────────────────────
 
 
-def _parse_device(item: Dict[str, Any]) -> Device:
+def _parse_device(item: dict[str, Any]) -> Device:
     # `online` is intentionally not on Device — it's mutable state
     # tracked via YotoPlayer.is_online; YotoClient.update_player_list
     # propagates the value from this same payload onto the player.
@@ -316,7 +316,7 @@ def _parse_device(item: Dict[str, Any]) -> Device:
     )
 
 
-def _parse_player_info(response: Dict[str, Any]) -> PlayerInfo:
+def _parse_player_info(response: dict[str, Any]) -> PlayerInfo:
     device = response.get("device") or {}
     raw_config = device.get("config") or {}
 
@@ -336,7 +336,7 @@ def _parse_player_info(response: Dict[str, Any]) -> PlayerInfo:
     )
 
 
-def _parse_player_config(raw: Dict[str, Any]) -> PlayerConfig:
+def _parse_player_config(raw: dict[str, Any]) -> PlayerConfig:
     day_brightness_auto, day_brightness = parse_brightness(
         raw.get("dayDisplayBrightness")
     )
@@ -387,7 +387,7 @@ def _parse_player_config(raw: Dict[str, Any]) -> PlayerConfig:
 
 def _parse_alarm(encoded: str) -> Alarm:
     parts = encoded.split(",")
-    enabled: Optional[bool] = None
+    enabled: bool | None = None
     if len(parts) > 6:
         enabled = parts[6] != "0"
     return Alarm(

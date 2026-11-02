@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import IntEnum
-from typing import Optional
 
 
 class PowerSource(IntEnum):
@@ -42,26 +41,26 @@ class PlayerStatus:
     # When this telemetry was current device-side: the device clock
     # (status/full `utcTime`, shadow `updatedAt`), or our receive time when the
     # payload carries none (data/status).
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
-    battery_level_percentage: Optional[int] = None
-    is_charging: Optional[bool] = None
-    free_disk_space_bytes: Optional[int] = None
+    battery_level_percentage: int | None = None
+    is_charging: bool | None = None
+    free_disk_space_bytes: int | None = None
 
     # Snapshot only — live playback updates arrive via PlaybackEvent.
-    active_card: Optional[str] = None
-    card_insertion_state: Optional[CardInsertionState] = None
+    active_card: str | None = None
+    card_insertion_state: CardInsertionState | None = None
 
-    system_volume_percentage: Optional[int] = None
-    user_volume_percentage: Optional[int] = None
-    is_audio_device_connected: Optional[bool] = None
-    is_bluetooth_audio_connected: Optional[bool] = None
+    system_volume_percentage: int | None = None
+    user_volume_percentage: int | None = None
+    is_audio_device_connected: bool | None = None
+    is_bluetooth_audio_connected: bool | None = None
 
-    nightlight_mode: Optional[str] = None  # hex code or "off"
-    day_mode: Optional[DayMode] = None
-    ambient_light_sensor_reading: Optional[int] = None
+    nightlight_mode: str | None = None  # hex code or "off"
+    day_mode: DayMode | None = None
+    ambient_light_sensor_reading: int | None = None
     # Effective brightness now (0-100): tracks auto-dim, ALS, day/night.
-    current_display_brightness: Optional[int] = None
+    current_display_brightness: int | None = None
 
 
 @dataclass
@@ -71,22 +70,22 @@ class PlayerExtendedStatus(PlayerStatus):
     fields the `data/status` topic doesn't carry.
     """
 
-    battery_temperature: Optional[int] = None
-    power_source: Optional[PowerSource] = None
+    battery_temperature: int | None = None
+    power_source: PowerSource | None = None
     # Raw fuel-gauge reading before the firmware's profile smoothing — can
     # differ from battery_level_percentage.
-    battery_level_raw: Optional[int] = None
+    battery_level_raw: int | None = None
     # Millivolts. Only reported while live; None in an offline shadow read.
-    battery_voltage_mv: Optional[int] = None
-    battery_profile: Optional[str] = None  # e.g. "LJDX30X-4500"
+    battery_voltage_mv: int | None = None
+    battery_profile: str | None = None  # e.g. "LJDX30X-4500"
 
-    network_ssid: Optional[str] = None
-    wifi_strength: Optional[int] = None  # dBm
-    is_background_download_active: Optional[bool] = None
-    average_download_speed_bytes_second: Optional[int] = None
-    total_disk_space_bytes: Optional[int] = None
-    temperature_celcius: Optional[int] = None  # Yoto's typo preserved
+    network_ssid: str | None = None
+    wifi_strength: int | None = None  # dBm
+    is_background_download_active: bool | None = None
+    average_download_speed_bytes_second: int | None = None
+    total_disk_space_bytes: int | None = None
+    temperature_celcius: int | None = None  # Yoto's typo preserved
 
-    uptime: Optional[int] = None  # seconds
-    utc_time: Optional[int] = None
-    utc_offset_seconds: Optional[int] = None
+    uptime: int | None = None  # seconds
+    utc_time: int | None = None
+    utc_offset_seconds: int | None = None

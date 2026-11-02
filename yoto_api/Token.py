@@ -1,7 +1,7 @@
 """OAuth token returned by the Auth0 flows."""
 
-from dataclasses import dataclass, field
 import datetime as dt
+from dataclasses import dataclass, field
 
 
 @dataclass
