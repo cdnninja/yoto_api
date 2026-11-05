@@ -197,6 +197,7 @@ await client.stop(player_id)
 await client.set_volume(player_id, 50)            # 0-100
 await client.set_sleep_timer(player_id, 600)      # seconds
 await client.set_sleep_timer_end_of_track(player_id)
+await client.clear_sleep_timer(player_id)
 await client.set_ambients(player_id, 255, 0, 0)   # RGB
 await client.next_track(player_id)
 await client.previous_track(player_id)

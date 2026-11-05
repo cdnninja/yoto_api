@@ -920,6 +920,15 @@ class SetSleepTimerEndOfTrackTests(_ClientTestCase):
             await self.client.set_sleep_timer_end_of_track("unknown")
 
 
+class ClearSleepTimerTests(_ClientTestCase):
+    async def test_sends_zero(self) -> None:
+        client = self.make_client()
+        client._mqtt = MagicMock()
+        client._mqtt.set_sleep_timer = AsyncMock()
+        await client.clear_sleep_timer("d1")
+        client._mqtt.set_sleep_timer.assert_awaited_once_with("d1", 0)
+
+
 class OnlinePresenceOnEveryMqttMessageTests(_ClientTestCase):
     """A playback event marks the player online (presence proof). The
     status-patch path is covered in OnlineConsolidationTests."""
