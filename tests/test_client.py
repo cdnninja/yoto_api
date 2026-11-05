@@ -16,6 +16,8 @@ from yoto_api import (
     Alarm,
     Device,
     EventPatch,
+    NoTrackPlayingError,
+    PlaybackEvent,
     PlaybackStatus,
     PresenceEvent,
     StatusPatch,
@@ -866,6 +868,56 @@ class SleepTimerEndTests(_ClientTestCase):
         await self._send(sleep_timer_active=True, sleep_timer_seconds=1800)
         await self._send(sleep_timer_seconds=0)
         self.assertIsNone(self.player.sleep_timer_ends_at)
+
+
+class SetSleepTimerEndOfTrackTests(_ClientTestCase):
+    """The end of track timer is the time left in the current track."""
+
+    async def asyncSetUp(self) -> None:
+        self.client = self.make_client()
+        self.client._mqtt = MagicMock()
+        self.client._mqtt.set_sleep_timer = AsyncMock()
+        self.player = YotoPlayer(device=Device(device_id="d1", name="Mini"))
+        self.player.last_event = PlaybackEvent(
+            player_id="d1",
+            card_id="abc",
+            track_length=300,
+            position=120,
+            playback_status=PlaybackStatus.PAUSED,
+        )
+        self.player.last_event_received_at = datetime.datetime.now(
+            datetime.timezone.utc
+        ) - datetime.timedelta(seconds=30)
+        self.client.players["d1"] = self.player
+
+    async def test_paused_uses_reported_position(self) -> None:
+        await self.client.set_sleep_timer_end_of_track("d1")
+        self.client._mqtt.set_sleep_timer.assert_awaited_once_with("d1", 180)
+
+    async def test_playing_subtracts_time_since_last_event(self) -> None:
+        self.player.last_event.playback_status = PlaybackStatus.PLAYING
+        await self.client.set_sleep_timer_end_of_track("d1")
+        self.client._mqtt.set_sleep_timer.assert_awaited_once_with("d1", 150)
+
+    async def test_never_sends_zero(self) -> None:
+        self.player.last_event.playback_status = PlaybackStatus.PLAYING
+        self.player.last_event.position = 299
+        await self.client.set_sleep_timer_end_of_track("d1")
+        self.client._mqtt.set_sleep_timer.assert_awaited_once_with("d1", 1)
+
+    async def test_no_track_raises(self) -> None:
+        for field_name in ("card_id", "track_length", "position"):
+            with self.subTest(field_name=field_name):
+                value = getattr(self.player.last_event, field_name)
+                setattr(self.player.last_event, field_name, None)
+                with self.assertRaises(NoTrackPlayingError):
+                    await self.client.set_sleep_timer_end_of_track("d1")
+                setattr(self.player.last_event, field_name, value)
+        self.client._mqtt.set_sleep_timer.assert_not_awaited()
+
+    async def test_unknown_player_raises(self) -> None:
+        with self.assertRaises(NoTrackPlayingError):
+            await self.client.set_sleep_timer_end_of_track("unknown")
 
 
 class OnlinePresenceOnEveryMqttMessageTests(_ClientTestCase):

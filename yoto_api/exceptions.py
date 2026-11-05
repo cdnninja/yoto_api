@@ -30,3 +30,7 @@ class YotoAPIError(YotoError):
 
 class YotoMQTTError(YotoError):
     pass
+
+
+class NoTrackPlayingError(YotoError):
+    """Raised when a command needs a current track and the player has none."""

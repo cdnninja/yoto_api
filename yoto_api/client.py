@@ -22,12 +22,18 @@ import aiohttp
 from .Card import Card, Chapter, Track
 from .Group import Group
 from .const import DOMAIN, ambient_preset_to_hex
-from .exceptions import YotoError
+from .exceptions import NoTrackPlayingError, YotoError
 from ._coerce import parse_iso
 from .Token import Token
 from .utils import get_child_value, get_raw_value
 from .auth import AbstractAuth, Auth
-from .models.event import EventPatch, PlaybackEvent, PresenceEvent, StatusPatch
+from .models.event import (
+    EventPatch,
+    PlaybackEvent,
+    PlaybackStatus,
+    PresenceEvent,
+    StatusPatch,
+)
 from .models.info import PlayerInfo
 from .models.player import YotoPlayer
 from .models.status import PlayerExtendedStatus
@@ -651,6 +657,31 @@ class YotoClient:
 
     async def set_sleep_timer(self, device_id: str, seconds: int) -> None:
         await self._require_mqtt().set_sleep_timer(device_id, seconds)
+
+    async def set_sleep_timer_end_of_track(self, device_id: str) -> None:
+        """Stop playback when the current track ends.
+
+        The player only takes a duration, so this sends the time left in the
+        current track, like the Yoto app does. Seeking or changing track
+        afterwards does not move the timer. Raises `NoTrackPlayingError`
+        when no track is loaded.
+        """
+        player = self.players.get(device_id)
+        event = player.last_event if player else None
+        if (
+            event is None
+            or event.card_id is None
+            or event.track_length is None
+            or event.position is None
+        ):
+            raise NoTrackPlayingError(f"No track is loaded on {device_id}")
+        remaining = event.track_length - event.position
+        received_at = player.last_event_received_at
+        if event.playback_status == PlaybackStatus.PLAYING and received_at is not None:
+            elapsed = datetime.datetime.now(datetime.timezone.utc) - received_at
+            remaining -= int(elapsed.total_seconds())
+        # 0 would cancel the timer instead of stopping right away.
+        await self.set_sleep_timer(device_id, max(remaining, 1))
 
     async def set_ambients(self, device_id: str, r: int, g: int, b: int) -> None:
         await self._require_mqtt().set_ambients(device_id, r, g, b)
