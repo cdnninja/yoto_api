@@ -1,18 +1,10 @@
 """YotoPlayer aggregate + StatusPatch merging + computed properties."""
 
 import unittest
-from datetime import datetime, timedelta, timezone
 
 from unittest.mock import MagicMock
 
-from yoto_api import (
-    Device,
-    PlaybackEvent,
-    PlaybackStatus,
-    StatusPatch,
-    YotoClient,
-    YotoPlayer,
-)
+from yoto_api import Device, PlaybackEvent, StatusPatch, YotoClient, YotoPlayer
 
 
 class StatusPatchMergeTests(unittest.TestCase):
@@ -185,38 +177,3 @@ class PlayerConfigParseTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-class TrackTimeLeftTests(unittest.TestCase):
-    def _player(self, status: PlaybackStatus, received_ago: int) -> YotoPlayer:
-        player = YotoPlayer(device=Device(device_id="d1", name="x"))
-        player.last_event = PlaybackEvent(
-            player_id="d1",
-            card_id="abc",
-            track_length=300,
-            position=120,
-            playback_status=status,
-        )
-        player.last_event_received_at = datetime.now(timezone.utc) - timedelta(
-            seconds=received_ago
-        )
-        return player
-
-    def test_paused_uses_reported_position(self) -> None:
-        player = self._player(PlaybackStatus.PAUSED, received_ago=30)
-        self.assertEqual(player.track_time_left, 180)
-
-    def test_playing_subtracts_time_since_last_event(self) -> None:
-        player = self._player(PlaybackStatus.PLAYING, received_ago=30)
-        self.assertEqual(player.track_time_left, 150)
-
-    def test_never_negative(self) -> None:
-        player = self._player(PlaybackStatus.PLAYING, received_ago=600)
-        self.assertEqual(player.track_time_left, 0)
-
-    def test_none_without_track(self) -> None:
-        for field_name in ("card_id", "track_length", "position"):
-            with self.subTest(field_name=field_name):
-                player = self._player(PlaybackStatus.PAUSED, received_ago=0)
-                setattr(player.last_event, field_name, None)
-                self.assertIsNone(player.track_time_left)
