@@ -124,6 +124,11 @@ root-level `is_online`:
   via MQTT (track, position, volume).
 - `player.is_online` (`bool`): connection state, from MQTT presence and
   REST.
+- `player.sleep_timer_ends_at` (`datetime | None`): when the running sleep
+  timer stops playback. Only recomputed from events that report the timer.
+- `player.track_time_left` (`int | None`): seconds left in the current track,
+  counting the time elapsed since the last event while playing. Pass it to
+  `set_sleep_timer` to stop at the end of the track.
 
 All are always present (default-initialised). The `*_refreshed_at`,
 `last_event_received_at` and `online_refreshed_at` timestamps tell you

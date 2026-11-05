@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from .device import Device
-from .event import PlaybackEvent
+from .event import PlaybackEvent, PlaybackStatus
 from .info import PlayerInfo
 from .status import PlayerExtendedStatus, PlayerStatus
 
@@ -41,6 +41,10 @@ class YotoPlayer:
     online_refreshed_at: Optional[datetime] = None
     last_event_received_at: Optional[datetime] = None
 
+    # When the running sleep timer stops playback, or None when no timer runs.
+    # Only moves when an event reports the timer, not on every event.
+    sleep_timer_ends_at: Optional[datetime] = None
+
     def __post_init__(self) -> None:
         # last_event keeps player_id — PlaybackEvent doubles as the routed
         # MQTT message, keyed by it. The status/info objects don't: identity
@@ -49,6 +53,27 @@ class YotoPlayer:
         self.status = PlayerStatus()
         self.extended_status = PlayerExtendedStatus()
         self.last_event = PlaybackEvent(player_id=self.device.device_id)
+
+    @property
+    def track_time_left(self) -> Optional[int]:
+        """Seconds left in the current track, or None when nothing is loaded.
+
+        While playing, the time elapsed since the last event is subtracted,
+        since the player only reports its position with each event.
+        """
+        event = self.last_event
+        if (
+            event.card_id is None
+            or event.track_length is None
+            or event.position is None
+        ):
+            return None
+        remaining = event.track_length - event.position
+        received_at = self.last_event_received_at
+        if event.playback_status == PlaybackStatus.PLAYING and received_at is not None:
+            elapsed = datetime.now(timezone.utc) - received_at
+            remaining -= int(elapsed.total_seconds())
+        return max(remaining, 0)
 
     @property
     def id(self) -> str:

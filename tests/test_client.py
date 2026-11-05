@@ -825,6 +825,49 @@ class PlaybackEventMergeTests(_ClientTestCase):
         self.assertIsNone(last.chapter_title)
 
 
+class SleepTimerEndTests(_ClientTestCase):
+    """`sleep_timer_ends_at` follows the events that report the timer."""
+
+    async def asyncSetUp(self) -> None:
+        self.client = self.make_client()
+        self.player = YotoPlayer(device=Device(device_id="d1", name="Mini"))
+        self.client.players["d1"] = self.player
+
+    async def _send(self, **fields) -> None:
+        await self.client._on_mqtt_message(EventPatch(player_id="d1", fields=fields))
+
+    async def test_end_from_reported_time_left(self) -> None:
+        await self._send(sleep_timer_active=True, sleep_timer_seconds=1800)
+        self.assertEqual(
+            self.player.sleep_timer_ends_at,
+            self.player.last_event_received_at + datetime.timedelta(seconds=1800),
+        )
+
+    async def test_event_without_timer_keeps_end(self) -> None:
+        await self._send(sleep_timer_active=True, sleep_timer_seconds=1800)
+        ends_at = self.player.sleep_timer_ends_at
+        await self._send(volume=5)
+        self.assertEqual(self.player.sleep_timer_ends_at, ends_at)
+
+    async def test_new_time_left_moves_end(self) -> None:
+        await self._send(sleep_timer_active=True, sleep_timer_seconds=1800)
+        await self._send(sleep_timer_seconds=600)
+        self.assertEqual(
+            self.player.sleep_timer_ends_at,
+            self.player.last_event_received_at + datetime.timedelta(seconds=600),
+        )
+
+    async def test_inactive_clears_end(self) -> None:
+        await self._send(sleep_timer_active=True, sleep_timer_seconds=1800)
+        await self._send(sleep_timer_active=False)
+        self.assertIsNone(self.player.sleep_timer_ends_at)
+
+    async def test_zero_time_left_clears_end(self) -> None:
+        await self._send(sleep_timer_active=True, sleep_timer_seconds=1800)
+        await self._send(sleep_timer_seconds=0)
+        self.assertIsNone(self.player.sleep_timer_ends_at)
+
+
 class OnlinePresenceOnEveryMqttMessageTests(_ClientTestCase):
     """A playback event marks the player online (presence proof). The
     status-patch path is covered in OnlineConsolidationTests."""
