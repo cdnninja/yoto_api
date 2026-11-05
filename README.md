@@ -124,6 +124,8 @@ root-level `is_online`:
   via MQTT (track, position, volume).
 - `player.is_online` (`bool`): connection state, from MQTT presence and
   REST.
+- `player.sleep_timer_ends_at` (`datetime | None`): when the running sleep
+  timer stops playback. Only recomputed from events that report the timer.
 
 All are always present (default-initialised). The `*_refreshed_at`,
 `last_event_received_at` and `online_refreshed_at` timestamps tell you
@@ -194,6 +196,8 @@ await client.resume(player_id)
 await client.stop(player_id)
 await client.set_volume(player_id, 50)            # 0-100
 await client.set_sleep_timer(player_id, 600)      # seconds
+await client.set_sleep_timer_end_of_track(player_id)
+await client.clear_sleep_timer(player_id)
 await client.set_ambients(player_id, 255, 0, 0)   # RGB
 await client.next_track(player_id)
 await client.previous_track(player_id)
@@ -242,6 +246,8 @@ except YotoMQTTError:              # MQTT broker / aiomqtt error
 except YotoError:                  # catch-all
     ...
 ```
+
+`set_sleep_timer_end_of_track()` raises `NoTrackPlayingError` when no track is loaded on the player.
 
 ## Migration from 3.x
 

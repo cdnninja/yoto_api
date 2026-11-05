@@ -41,6 +41,10 @@ class YotoPlayer:
     online_refreshed_at: Optional[datetime] = None
     last_event_received_at: Optional[datetime] = None
 
+    # When the running sleep timer stops playback, or None when no timer runs.
+    # Only moves when an event reports the timer, not on every event.
+    sleep_timer_ends_at: Optional[datetime] = None
+
     def __post_init__(self) -> None:
         # last_event keeps player_id — PlaybackEvent doubles as the routed
         # MQTT message, keyed by it. The status/info objects don't: identity
