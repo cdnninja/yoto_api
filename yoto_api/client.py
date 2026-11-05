@@ -658,6 +658,10 @@ class YotoClient:
     async def set_sleep_timer(self, device_id: str, seconds: int) -> None:
         await self._require_mqtt().set_sleep_timer(device_id, seconds)
 
+    async def clear_sleep_timer(self, device_id: str) -> None:
+        """Cancel the running sleep timer."""
+        await self.set_sleep_timer(device_id, 0)
+
     async def set_sleep_timer_end_of_track(self, device_id: str) -> None:
         """Stop playback when the current track ends.
 
