@@ -246,6 +246,8 @@ except YotoError:                  # catch-all
     ...
 ```
 
+`set_sleep_timer_end_of_track()` raises `NoTrackPlayingError` when no track is loaded on the player.
+
 ## Migration from 3.x
 
 See [MIGRATION_4.md](MIGRATION_4.md). Short version: `player.status` splits
