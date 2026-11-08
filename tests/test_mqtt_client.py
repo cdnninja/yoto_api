@@ -53,6 +53,7 @@ class OnConnectedStatusPushTests(unittest.IsolatedAsyncioTestCase):
         subscribed = {call.args[0] for call in broker.subscribe.await_args_list}
         for device_id in ("dev1", "dev2"):
             self.assertIn(f"device/{device_id}/data/status", subscribed)
+            self.assertIn(f"device/{device_id}/status", subscribed)  # v4
             self.assertIn(f"device/{device_id}/status/full", subscribed)
 
 
@@ -134,6 +135,24 @@ class StatusReplyWaitTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(returned, "returned before the reply arrived")
 
         await client._handle_message(_FakeMsg("device/dev1/data/status", b"{}"))
+        await asyncio.wait_for(task, 1.0)
+        self.assertTrue(returned)
+
+    async def test_v4_status_reply_satisfies_basic_wait(self) -> None:
+        # 4th-gen players answer command/status/request on `status`.
+        client, _ = _connected_client("dev1")
+        client._connected.set()
+        returned: list[bool] = []
+
+        async def run() -> None:
+            await client.request_player_status("dev1")
+            returned.append(True)
+
+        task = asyncio.create_task(run())
+        await asyncio.sleep(0.02)
+        self.assertFalse(returned, "returned before the reply arrived")
+
+        await client._handle_message(_FakeMsg("device/dev1/status", b"{}"))
         await asyncio.wait_for(task, 1.0)
         self.assertTrue(returned)
 
