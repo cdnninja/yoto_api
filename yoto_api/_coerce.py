@@ -99,9 +99,8 @@ def parse_iso(value: Any) -> Optional[datetime]:
     """Parse ISO8601 timestamps. Yoto sends UTC with a trailing `Z`."""
     if not isinstance(value, str):
         return None
-    # fromisoformat only accepts `Z` from 3.11; we support 3.10.
     try:
-        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(value)
     except ValueError:
         return None
     # Yoto's timestamps are UTC; pin a bare one so it isn't read as local.

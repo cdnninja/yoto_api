@@ -1,0 +1,2 @@
+# Match python_requires in setup.py so ruff only applies fixes valid there.
+target-version = "py311"
