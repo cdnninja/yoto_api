@@ -19,6 +19,7 @@ from .const import (
 )
 from .exceptions import (
     AuthenticationError,
+    NoTrackPlayingError,
     YotoAPIError,
     YotoError,
     YotoMQTTError,
@@ -71,6 +72,7 @@ __all__ = [
     "Token",
     "Track",
     "VOLUME_MAPPING_INVERTED",
+    "NoTrackPlayingError",
     "YotoAPIError",
     "YotoClient",
     "YotoError",

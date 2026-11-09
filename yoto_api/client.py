@@ -22,12 +22,18 @@ import aiohttp
 from .Card import Card, Chapter, Track
 from .Group import Group
 from .const import DOMAIN, ambient_preset_to_hex
-from .exceptions import YotoError
+from .exceptions import NoTrackPlayingError, YotoError
 from ._coerce import parse_iso
 from .Token import Token
 from .utils import get_child_value, get_raw_value
 from .auth import AbstractAuth, Auth
-from .models.event import EventPatch, PlaybackEvent, PresenceEvent, StatusPatch
+from .models.event import (
+    EventPatch,
+    PlaybackEvent,
+    PlaybackStatus,
+    PresenceEvent,
+    StatusPatch,
+)
 from .models.info import PlayerInfo
 from .models.player import YotoPlayer
 from .models.status import PlayerExtendedStatus
@@ -652,6 +658,35 @@ class YotoClient:
     async def set_sleep_timer(self, device_id: str, seconds: int) -> None:
         await self._require_mqtt().set_sleep_timer(device_id, seconds)
 
+    async def clear_sleep_timer(self, device_id: str) -> None:
+        """Cancel the running sleep timer."""
+        await self.set_sleep_timer(device_id, 0)
+
+    async def set_sleep_timer_end_of_track(self, device_id: str) -> None:
+        """Stop playback when the current track ends.
+
+        The player only takes a duration, so this sends the time left in the
+        current track, like the Yoto app does. Seeking or changing track
+        afterwards does not move the timer. Raises `NoTrackPlayingError`
+        when no track is loaded.
+        """
+        player = self.players.get(device_id)
+        event = player.last_event if player else None
+        if (
+            event is None
+            or event.card_id is None
+            or event.track_length is None
+            or event.position is None
+        ):
+            raise NoTrackPlayingError(f"No track is loaded on {device_id}")
+        remaining = event.track_length - event.position
+        received_at = player.last_event_received_at
+        if event.playback_status == PlaybackStatus.PLAYING and received_at is not None:
+            elapsed = datetime.datetime.now(datetime.timezone.utc) - received_at
+            remaining -= int(elapsed.total_seconds())
+        # 0 would cancel the timer instead of stopping right away.
+        await self.set_sleep_timer(device_id, max(remaining, 1))
+
     async def set_ambients(self, device_id: str, r: int, g: int, b: int) -> None:
         await self._require_mqtt().set_ambients(device_id, r, g, b)
 
@@ -852,10 +887,9 @@ class YotoClient:
             elif isinstance(message, EventPatch):
                 prev_card = player.last_event.card_id
                 prev_streaming = player.last_event.streaming
-                self._apply_playback_event(player, message)
-                player.last_event_received_at = datetime.datetime.now(
-                    datetime.timezone.utc
-                )
+                received_at = datetime.datetime.now(datetime.timezone.utc)
+                self._apply_playback_event(player, message, received_at)
+                player.last_event_received_at = received_at
                 # Hand the hardware cap to the MQTT client so set_volume clamps
                 # against it.
                 volume_max = message.fields.get("volume_max")
@@ -892,7 +926,12 @@ class YotoClient:
         except YotoError:
             pass
 
-    def _apply_playback_event(self, player: YotoPlayer, patch: EventPatch) -> None:
+    def _apply_playback_event(
+        self,
+        player: YotoPlayer,
+        patch: EventPatch,
+        received_at: datetime.datetime,
+    ) -> None:
         """Apply an MQTT events patch onto the player's `last_event` snapshot.
 
         On stop the device clears card_id (to "none" or ""), but leaves the
@@ -904,6 +943,29 @@ class YotoClient:
             player.last_event.card_id = None
             for field_name in _CARD_SCOPED_FIELDS:
                 setattr(player.last_event, field_name, None)
+        self._apply_sleep_timer(player, patch, received_at)
+
+    def _apply_sleep_timer(
+        self,
+        player: YotoPlayer,
+        patch: EventPatch,
+        received_at: datetime.datetime,
+    ) -> None:
+        """Track when the sleep timer ends.
+
+        `sleepTimerSeconds` is the time left when the event was sent, so the
+        end is only recomputed from events that carry it: a patch without it
+        says nothing new about the timer.
+        """
+        event = player.last_event
+        if not event.sleep_timer_active or not event.sleep_timer_seconds:
+            player.sleep_timer_ends_at = None
+        elif (
+            "sleep_timer_seconds" in patch.fields or player.sleep_timer_ends_at is None
+        ):
+            player.sleep_timer_ends_at = received_at + datetime.timedelta(
+                seconds=event.sleep_timer_seconds
+            )
 
     def _apply_status_patch(self, player: YotoPlayer, patch: StatusPatch) -> None:
         target = player.extended_status if patch.extended else player.status
