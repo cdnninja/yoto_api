@@ -164,6 +164,10 @@ async def _check_mqtt(client: YotoClient, device_id: str) -> None:
         _collect(captured, "/data/status", KNOWN_STATUS_KEYS, unwrap_status=True),
     )
     _print_unmapped_samples(
+        "status (v4)",
+        _collect(captured, "/status", KNOWN_STATUS_KEYS, unwrap_status=True),
+    )
+    _print_unmapped_samples(
         "status/full",
         _collect(captured, "/status/full", KNOWN_STATUS_KEYS, unwrap_status=True),
     )
@@ -177,7 +181,8 @@ def _collect(
 ) -> dict[str, list[Any]]:
     samples: dict[str, list[Any]] = {}
     for topic, body in captured:
-        if not topic.endswith(topic_suffix):
+        # Exact suffix after device/{id}: "/status" must not match data/status.
+        if "/" + "/".join(topic.split("/")[2:]) != topic_suffix:
             continue
         payload = body.get("status", body) if unwrap_status else body
         if not isinstance(payload, dict):

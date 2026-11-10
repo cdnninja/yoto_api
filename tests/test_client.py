@@ -722,6 +722,31 @@ class OnlineConsolidationTests(_ClientTestCase):
         self.assertEqual(player.extended_status.battery_voltage_mv, 3775)
         self.assertEqual(player.extended_status.battery_level_raw, 59)
 
+    async def test_v4_status_topic_sets_battery(self) -> None:
+        # home-assistant/core#191270: Mini v4 battery stayed unknown because
+        # its telemetry arrives on device/<id>/status.
+        client = self.make_client()
+        player = YotoPlayer(
+            device=Device(
+                device_id="d1", name="Mini", device_family="v4", device_type="miniv4"
+            )
+        )
+        client.players["d1"] = player
+
+        patch = parse_message(
+            "device/d1/status",
+            b'{"status":{"batteryLevel":10,"userVolume":19,"chargingMethod":0,'
+            b'"activeContent":"none","contentSource":0,"contentTrigger":0,'
+            b'"bgDownload":0,"wifiLevel":4}}',
+        )
+        await client._on_mqtt_message(patch)
+
+        self.assertTrue(player.is_online)
+        self.assertEqual(player.status.battery_level_percentage, 10)
+        self.assertFalse(player.status.is_charging)
+        self.assertEqual(player.status.user_volume_percentage, 19)
+        self.assertIsNotNone(player.status.updated_at)
+
 
 class PlaybackEventMergeTests(_ClientTestCase):
     """Yoto emits partial MQTT events; the lib applies each EventPatch onto
