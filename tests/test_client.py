@@ -439,9 +439,29 @@ class SetAlarmsTests(_ClientTestCase):
         self.assertEqual(
             payload["alarms"],
             [
-                "1111100,07:30,s1,,,8,1",
-                "0000011,09:00,s2,,,4,0",
+                "1111100,0730,s1,,,8,1",
+                "0000011,0900,s2,,,4,0",
             ],
+        )
+
+    async def test_rejects_alarm_without_time(self) -> None:
+        with self.assertRaises(YotoError):
+            await self.client.set_alarms(
+                "dev1",
+                [Alarm(days_enabled="1111100", time=None, sound_id="s1", volume=8)],
+            )
+
+    async def test_preserves_extra_csv_slots_from_parsed_alarm(self) -> None:
+        from dataclasses import replace
+        from yoto_api.rest.client import _parse_alarm
+
+        parsed = _parse_alarm("0000001,0700,4OD25,slot3,slot4,6,1,slot7")
+        updated = replace(parsed, time=datetime.time(8, 15), enabled=False)
+        await self.client.set_alarms("dev1", [updated])
+        payload = self.client._rest.update_settings.call_args.args[2]
+        self.assertEqual(
+            payload["alarms"],
+            ["0000001,0815,4OD25,slot3,slot4,6,0,slot7"],
         )
 
     async def test_writes_through_to_local_state(self) -> None:
@@ -499,8 +519,8 @@ class SetAlarmEnabledTests(_ClientTestCase):
         self.assertEqual(
             payload["alarms"],
             [
-                "1111100,07:30,s1,,,8,1",
-                "0000011,09:00,s2,,,4,0",
+                "1111100,0730,s1,,,8,1",
+                "0000011,0900,s2,,,4,0",
             ],
         )
 
@@ -515,6 +535,12 @@ class SetAlarmEnabledTests(_ClientTestCase):
     async def test_invalid_index_raises(self) -> None:
         with self.assertRaises(YotoError):
             await self.client.set_alarm_enabled("dev1", 5, False)
+
+    async def test_failed_write_leaves_local_state_unchanged(self) -> None:
+        self.client._rest.update_settings.side_effect = YotoError("network error")
+        with self.assertRaises(YotoError):
+            await self.client.set_alarm_enabled("dev1", 1, False)
+        self.assertTrue(self.client.players["dev1"].info.config.alarms[1].enabled)
 
 
 class RefreshTests(_ClientTestCase):
@@ -1190,7 +1216,7 @@ class ConfigMergeTests(_ClientTestCase):
         "ambientColour": "#ff8c00",
         "nightAmbientColour": "#40bfd9",
         "dayDisplayBrightness": "auto",
-        "alarms": ["07:00,1,0,0,0,1"],
+        "alarms": ["0000001,0700,4OD25,,,1,1"],
     }
 
     def _rest(self, raw=None):
@@ -1231,10 +1257,10 @@ class ConfigMergeTests(_ClientTestCase):
     async def test_alarms_write_preserves_the_rest(self) -> None:
         rest = self._rest()
         await rest.update_settings(
-            fresh_token(), "dev1", {"alarms": ["08:00,1,0,0,0,1"]}
+            fresh_token(), "dev1", {"alarms": ["0000001,0800,4OD25,,,1,1"]}
         )
         sent = self._sent_config(rest)
-        self.assertEqual(sent["alarms"], ["08:00,1,0,0,0,1"])
+        self.assertEqual(sent["alarms"], ["0000001,0800,4OD25,,,1,1"])
         self.assertEqual(sent["dayTime"], "07:30")
         self.assertEqual(sent["ambientColour"], "#ff8c00")
 

@@ -108,11 +108,20 @@ def parse_iso(value: Any) -> Optional[datetime]:
 
 
 def parse_hhmm(value: Any) -> Optional[time]:
-    """Parse "HH:MM" strings (used by Yoto's day_time / night_time)."""
-    if not isinstance(value, str) or ":" not in value:
+    """Parse "HH:MM" or 4-digit "HHMM" strings into `datetime.time`.
+
+    `dayTime` / `nightTime` use `"HH:MM"`, whereas `alarms` entries use
+    compact `"HHMM"` without a colon (e.g. `"0700"`).
+    """
+    if not isinstance(value, str):
         return None
     try:
-        hours_str, minutes_str = value.split(":", 1)
+        if ":" in value:
+            hours_str, minutes_str = value.split(":", 1)
+        elif len(value) == 4 and value.isdigit():
+            hours_str, minutes_str = value[:2], value[2:]
+        else:
+            return None
         return time(hour=int(hours_str), minute=int(minutes_str))
     except (TypeError, ValueError):
         return None

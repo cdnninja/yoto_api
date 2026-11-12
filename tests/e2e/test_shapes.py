@@ -172,8 +172,7 @@ async def test_alarm_shape(client: YotoClient, first_device_id: str) -> None:
 
     for alarm in alarms:
         assert isinstance(alarm, Alarm)
-        if alarm.time is not None:
-            assert isinstance(alarm.time, datetime.time)
+        assert isinstance(alarm.time, datetime.time)
         if alarm.volume is not None:
             assert isinstance(alarm.volume, int)
         if alarm.days_enabled is not None:

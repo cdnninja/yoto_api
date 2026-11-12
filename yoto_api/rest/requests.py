@@ -7,25 +7,26 @@ directly for low latency, so their payload shapes live in
 
 from typing import Any, Dict, Iterable
 
+from ..exceptions import YotoError
 from ..models.config import Alarm
 
 
 def encode_alarm(alarm: Alarm) -> str:
     """Encode one Alarm to Yoto's comma-separated wire format.
 
-    `<days_enabled>,<time>,<sound_id>,,,<volume>,<enabled_int>`
+    `<days_enabled>,<HHMM>,<sound_id>,<slot3>,<slot4>,<volume>,<enabled_int>`
     """
-    return ",".join(
-        [
-            alarm.days_enabled or "",
-            alarm.time.strftime("%H:%M") if alarm.time is not None else "",
-            alarm.sound_id or "",
-            "",
-            "",
-            str(alarm.volume) if alarm.volume is not None else "",
-            "1" if alarm.enabled else "0",
-        ]
-    )
+    if alarm.time is None:
+        raise YotoError("Cannot encode alarm without a configured time")
+    parts = list(alarm._raw_parts) if alarm._raw_parts else [""] * 7
+    if len(parts) < 7:
+        parts.extend([""] * (7 - len(parts)))
+    parts[0] = alarm.days_enabled or ""
+    parts[1] = alarm.time.strftime("%H%M")
+    parts[2] = alarm.sound_id or ""
+    parts[5] = str(alarm.volume) if alarm.volume is not None else ""
+    parts[6] = "1" if alarm.enabled else "0"
+    return ",".join(parts)
 
 
 def encode_alarms_payload(alarms: Iterable[Alarm]) -> Dict[str, Any]:
