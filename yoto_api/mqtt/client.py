@@ -33,9 +33,27 @@ TokenGetter = Callable[[], Union[str, Awaitable[str]]]
 # `response` (command ACKs) also exists but the lib doesn't consume it.
 #   data/events  — playback deltas
 #   data/status  — basic status (reply to command/status/request)
+#   status       — basic status on 4th-gen firmware (Player/Mini v4), which
+#                  never publishes data/status or status/full
 #   status/full  — extended status (reply to command/status + requestId)
 #   presence     — online/offline transitions (broker Last-Will on offline)
-_SUBSCRIBED_TOPICS = ("data/events", "data/status", "status/full", "presence")
+_SUBSCRIBED_TOPICS = (
+    "data/events",
+    "data/status",
+    "status",
+    "status/full",
+    "presence",
+)
+
+
+def _ack_topic(topic: str) -> str:
+    """Reply topic a status waiter is keyed on. 4th-gen firmware answers the
+    basic status request on `status` instead of `data/status`, so treat it as
+    the same reply."""
+    parts = topic.split("/")
+    if len(parts) == 3 and parts[0] == "device" and parts[2] == "status":
+        return f"device/{parts[1]}/data/status"
+    return topic
 
 
 async def _maybe_await(result) -> None:
@@ -375,7 +393,7 @@ class YotoMqttClient:
 
     async def _handle_message(self, message: aiomqtt.Message) -> None:
         topic = str(message.topic)
-        event = self._status_acks.get(topic)
+        event = self._status_acks.get(_ack_topic(topic))
         if event is not None:
             event.set()
         parsed = parse_message(topic, message.payload)

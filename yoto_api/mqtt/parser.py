@@ -1,7 +1,8 @@
 """Parse incoming MQTT messages into typed patches.
 
 Returns an `EventPatch` for `device/{id}/data/events`, a `StatusPatch` for
-`device/{id}/data/status` (v1) and `device/{id}/status/full` (v3, extended=True),
+`device/{id}/data/status` (v1), `device/{id}/status` (4th-gen firmware) and
+`device/{id}/status/full` (v3, extended=True),
 a `PresenceEvent` for `device/{id}/presence`, or None for anything else
 (command acks, unknown topics). Each patch carries only the fields its payload
 sent, so callers can merge selectively into the current snapshot.
@@ -48,6 +49,8 @@ def parse_message(topic: str, payload: bytes) -> Optional[Message]:
         return _parse_events(device_id, body)
     if suffix == "data/status":
         return _parse_status(device_id, body)
+    if suffix == "status":
+        return _parse_v4_status(device_id, body)
     if suffix == "status/full":
         return _parse_extended_status(device_id, body)
     if suffix == "presence":
@@ -181,6 +184,29 @@ def _parse_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
     )
 
 
+def _parse_v4_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
+    """Parse `status` (4th-gen Player/Mini firmware) → PlayerStatus patch.
+
+    The v4 firmware never publishes `data/status` or `status/full`; it sends a
+    slimmer `{"status": {...}}` on `device/{id}/status` instead, e.g.
+    batteryLevel, userVolume, chargingMethod, activeContent, contentSource,
+    contentTrigger, bgDownload, wifiLevel. Shared keys keep their v1 names, so
+    reuse the v1 mapping and add the v4 renames on top.
+    """
+    status = body.get("status") or body
+    fields = _v1_status_fields(status)
+
+    # v4 renames activeCard → activeContent (same "none" sentinel).
+    if "activeContent" in status and "active_card" not in fields:
+        fields["active_card"] = coerce_active_card(status["activeContent"])
+    # v4 replaces the `charging` flag with `chargingMethod`: 0 when on battery,
+    # non-zero for the charger in use.
+    if "chargingMethod" in status and "is_charging" not in fields:
+        fields["is_charging"] = as_bool_int(status["chargingMethod"])
+
+    return StatusPatch(player_id=device_id, fields=fields, extended=False)
+
+
 def _parse_extended_status(device_id: str, body: Dict[str, Any]) -> StatusPatch:
     """Parse `status/full` → PlayerExtendedStatus patch.
 
@@ -233,7 +259,8 @@ def _parse_presence(device_id: str, body: Dict[str, Any]) -> PresenceEvent:
 # fields Yoto starts sending. Update when adding fields to the parsers.
 KNOWN_EVENT_KEYS = frozenset(raw_key for raw_key, _, _ in _EVENT_FIELDS)
 
-# Shared by data/status (v1) and status/full (v3): the flat set covers both.
+# Shared by data/status (v1), status (v4) and status/full (v3): the flat set
+# covers all three.
 KNOWN_STATUS_KEYS = frozenset(
     {
         # Mapped (to PlayerStatus / PlayerExtendedStatus)
@@ -264,6 +291,9 @@ KNOWN_STATUS_KEYS = frozenset(
         "batteryProfile",
         "batteryTemp",
         "bytesPS",
+        # 4th-gen `status` topic
+        "activeContent",
+        "chargingMethod",
         # Known but intentionally not mapped: firmware diagnostics / config echoes.
         "statusVersion",
         "fwVersion",
@@ -301,5 +331,11 @@ KNOWN_STATUS_KEYS = frozenset(
         "dayBright",
         "nightBright",
         "timeFormat",
+        # 4th-gen `status` topic, not mapped yet: content source/trigger codes
+        # (observed 2/1 physical card, 2/6 green button) aren't documented, and
+        # wifiLevel is signal bars rather than the dBm wifi_strength holds.
+        "contentSource",
+        "contentTrigger",
+        "wifiLevel",
     }
 )
