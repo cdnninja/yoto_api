@@ -14,6 +14,7 @@ MQTT background task are torn down cleanly:
 import asyncio
 import datetime
 import logging
+from dataclasses import replace
 from datetime import timedelta
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
@@ -583,8 +584,8 @@ class YotoClient:
         you want to keep. The rest of the config is preserved (see
         `RestClient.update_settings`).
         """
-        token = await self.check_and_refresh_token()
         payload = encode_alarms_payload(alarms)
+        token = await self.check_and_refresh_token()
         await self._rest.update_settings(token, device_id, payload)
         # Reflect the write locally so callers don't have to re-fetch.
         player = self.players.get(device_id)
@@ -611,8 +612,9 @@ class YotoClient:
                 f"set_alarm_enabled({device_id!r}): no alarm at index {index} "
                 f"(have {len(alarms)})"
             )
-        alarms[index].enabled = enabled
-        await self.set_alarms(device_id, alarms)
+        updated = list(alarms)
+        updated[index] = replace(updated[index], enabled=enabled)
+        await self.set_alarms(device_id, updated)
 
     # ─── Player commands (MQTT direct, low latency) ──────────────
 

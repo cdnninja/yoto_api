@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import time
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from ..const import ambient_hex_to_preset
 
@@ -12,6 +12,7 @@ class Alarm:
     time: Optional[time] = None
     sound_id: Optional[str] = None
     volume: Optional[int] = None
+    _raw_parts: Tuple[str, ...] = field(default=(), repr=False, compare=False)
 
 
 @dataclass

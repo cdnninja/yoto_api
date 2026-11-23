@@ -388,7 +388,7 @@ def _parse_player_config(raw: Dict[str, Any]) -> PlayerConfig:
 def _parse_alarm(encoded: str) -> Alarm:
     parts = encoded.split(",")
     enabled: Optional[bool] = None
-    if len(parts) > 6:
+    if len(parts) > 6 and parts[6] != "":
         enabled = parts[6] != "0"
     return Alarm(
         days_enabled=parts[0] if len(parts) > 0 else None,
@@ -396,4 +396,5 @@ def _parse_alarm(encoded: str) -> Alarm:
         sound_id=parts[2] if len(parts) > 2 else None,
         volume=as_int(parts[5]) if len(parts) > 5 else None,
         enabled=enabled if enabled is not None else True,
+        _raw_parts=tuple(parts),
     )

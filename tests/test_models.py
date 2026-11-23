@@ -174,6 +174,21 @@ class PlayerConfigParseTests(unittest.TestCase):
         self.assertIsNone(config.day_ambient_preset)
         self.assertIsNone(config.night_ambient_preset)
 
+    def test_parses_compact_hhmm_alarms(self) -> None:
+        from datetime import time
+
+        config = self._parse(
+            {"alarms": ["0000001,0700,4OD25,,,1,0", "1111100,0645,4OD25,,,8,1"]}
+        )
+        self.assertEqual(len(config.alarms), 2)
+        self.assertEqual(config.alarms[0].days_enabled, "0000001")
+        self.assertEqual(config.alarms[0].time, time(7, 0))
+        self.assertEqual(config.alarms[0].sound_id, "4OD25")
+        self.assertEqual(config.alarms[0].volume, 1)
+        self.assertFalse(config.alarms[0].enabled)
+        self.assertEqual(config.alarms[1].time, time(6, 45))
+        self.assertTrue(config.alarms[1].enabled)
+
 
 if __name__ == "__main__":
     unittest.main()
