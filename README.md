@@ -122,7 +122,8 @@ root-level `is_online`:
 - `player.device` (`Device`): immutable identity from `/devices/mine`.
 - `player.info` (`PlayerInfo`): settings, mac, firmware from `/config`.
 - `player.status` (`PlayerStatus`): basic live telemetry from MQTT
-  `data/status` (battery, volume, charging, day mode).
+  `data/status` (battery, volume, charging, day mode), or `status` on
+  4th-gen players.
 - `player.extended_status` (`PlayerExtendedStatus`): the richer telemetry from
   MQTT `status/full` or the REST `/config` shadow (network, disk, uptime,
   raw battery). A superset of `PlayerStatus`. Yoto doesn't document this one,
@@ -321,6 +322,10 @@ python scripts/probe_mqtt.py       # 30s MQTT capture → mqtt_probe.log
   (MQTT) for live values. `client.update_player_extended_status()` reads the
   REST shadow as a fallback (cold start or offline) and won't overwrite
   fresher live data.
+- 4th-gen players (Player v4, Mini v4) publish neither `data/status` nor
+  `status/full`. They send a slimmer basic status on `device/{id}/status`
+  (`batteryLevel`, `userVolume`, `chargingMethod`, `activeContent`, ...),
+  which feeds `player.status`. Day mode and headphone state aren't in it.
 
 ## Other notes
 

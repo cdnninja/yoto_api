@@ -81,6 +81,46 @@ class MqttParserTests(unittest.TestCase):
         result = parse_message("device/d/data/status", payload)
         self.assertEqual(set(result.fields.keys()), {"battery_level_percentage"})
 
+    def test_v4_status_topic_returns_basic_status_patch(self) -> None:
+        # 4th-gen firmware (Mini v4 fw v1.0.14) publishes on device/<id>/status
+        # instead of data/status. Payload captured in home-assistant/core#191270.
+        payload = (
+            b'{"status":{"batteryLevel":10,"userVolume":19,"chargingMethod":0,'
+            b'"activeContent":"none","contentSource":0,"contentTrigger":0,'
+            b'"bgDownload":0,"wifiLevel":4}}'
+        )
+        result = parse_message("device/dev1/status", payload)
+        self.assertIsInstance(result, StatusPatch)
+        self.assertFalse(result.extended)
+        self.assertEqual(result.player_id, "dev1")
+        self.assertEqual(result.fields["battery_level_percentage"], 10)
+        self.assertEqual(result.fields["user_volume_percentage"], 19)
+        self.assertIs(result.fields["is_charging"], False)
+        self.assertIsNone(result.fields["active_card"])
+
+    def test_v4_status_charging_and_active_content(self) -> None:
+        payload = (
+            b'{"status":{"batteryLevel":27,"chargingMethod":1,"activeContent":"abc12"}}'
+        )
+        result = parse_message("device/d/status", payload)
+        self.assertIs(result.fields["is_charging"], True)
+        self.assertEqual(result.fields["active_card"], "abc12")
+
+    def test_v4_status_keys_are_known(self) -> None:
+        from yoto_api.mqtt.parser import KNOWN_STATUS_KEYS
+
+        for key in (
+            "batteryLevel",
+            "userVolume",
+            "chargingMethod",
+            "activeContent",
+            "contentSource",
+            "contentTrigger",
+            "bgDownload",
+            "wifiLevel",
+        ):
+            self.assertIn(key, KNOWN_STATUS_KEYS)
+
     def test_response_topic_is_ignored(self) -> None:
         result = parse_message("device/d/response", b'{"status":{"x":1}}')
         self.assertIsNone(result)
